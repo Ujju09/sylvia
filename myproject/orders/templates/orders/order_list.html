@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-4">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h3 class="mb-4 text-primary">All Orders</h3>
+      <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Order Date</th>
+            <th>Dealer</th>
+            <th>Vehicle</th>
+            <th>Depot</th>
+            <th>Product Types</th>
+            <th>Total Quantity</th>
+            <th>MRN Status</th>
+            <th>Invoice Status</th>
+            <th>Edit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+          <tr>
+            <td>{{ order.order_date|date:'jS F, Y' }}</td>
+            <td>{{ order.dealer.name }}</td>
+            <td>{{ order.vehicle.truck_number }}</td>
+            <td>{% if order.depot %}{{ order.depot.name }}{% endif %}</td>
+            
+            <td>
+              {% for item in order.order_items.all %}
+                {{ item.product.name }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </td>
+            <td>{{ order.get_total_quantity }}</td>
+            <td>
+              {% if order.mrn %}
+                Approved on {{ order.mrn_date|date:'jS F, Y' }}
+              {% else %}
+                Pending for {{ order.order_date|timesince }} 
+              {% endif %}
+            </td>
+            <td>
+              {% if order.bill_date %}
+                Billed on {{ order.bill_date|date:'jS F, Y'  }}
+              {% else %}
+                Pending
+              {% endif %}
+            </td>
+            <td>
+              {% if order.status == 'PENDING' or order.status == 'MRN_CREATED' %}
+                <a href="{% url 'update_order' order.id %}" class="btn btn-sm btn-primary">Edit</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="11" class="text-center">No orders found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

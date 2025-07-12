@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-md-6 d-flex flex-column align-items-center justify-content-center border-end">
+      <img src="{% static 'orders/logo.png' %}" alt="Logo" style="max-width: 220px; width: 100%; margin-bottom: 2rem;">
+      <h1 class="display-5 fw-bold mb-3">{{ app_settings.site_title|default:"Shyam Distributors" }}</h1>
+      <p class="lead text-muted">{{ app_settings.site_description|default:"Move People ― Move Mountains" }}</p>
+    </div>
+    <div class="col-md-5">
+      <div class="p-4 bg-white">
+        <h2 class="mb-4 text-center">{{ app_settings.login_title|default:"Login" }}</h2>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

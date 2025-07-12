@@ -1,0 +1,399 @@
+[
+  {
+    "model": "sylvia.depot",
+    "pk": 1,
+    "fields": {
+      "name": "Chhattarpur Depot",
+      "code": "CHT",
+      "address": "Industrial Area, Chhattarpur",
+      "city": "Chhattarpur",
+      "state": "Madhya Pradesh",
+      "pincode": "471001",
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.depot",
+    "pk": 2,
+    "fields": {
+      "name": "Nagar Depot",
+      "code": "NGR",
+      "address": "Industrial Zone, Nagar",
+      "city": "Nagar",
+      "state": "Maharashtra",
+      "pincode": "414001",
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.product",
+    "pk": 1,
+    "fields": {
+      "name": "Marble",
+      "code": "MAR",
+      "description": "Premium quality marble stones",
+      "unit": "MT",
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.product",
+    "pk": 2,
+    "fields": {
+      "name": "Magna",
+      "code": "MAG",
+      "description": "Magna grade construction material",
+      "unit": "MT",
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.product",
+    "pk": 3,
+    "fields": {
+      "name": "Powermax",
+      "code": "PWR",
+      "description": "Powermax premium construction material",
+      "unit": "MT",
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 1,
+    "fields": {
+      "name": "Maa Ugratara Enterprises",
+      "code": "MUE001",
+      "contact_person": "Rajesh Kumar",
+      "phone": "+919876543201",
+      "whatsapp_number": "+919876543201",
+      "email": "ugratara@example.com",
+      "address": "Main Road, Business District",
+      "city": "Chhattarpur",
+      "state": "Madhya Pradesh",
+      "pincode": "471001",
+      "gstin": "23ABCDE1234F1Z5",
+      "credit_limit": "500000.00",
+      "credit_days": 30,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 2,
+    "fields": {
+      "name": "Raj Enterprises",
+      "code": "RAJ001",
+      "contact_person": "Raj Singh",
+      "phone": "+919876543202",
+      "whatsapp_number": "+919876543202",
+      "email": "raj@example.com",
+      "address": "Industrial Area",
+      "city": "Chhattarpur",
+      "state": "Madhya Pradesh",
+      "pincode": "471001",
+      "gstin": "23ABCDE1234F2Z5",
+      "credit_limit": "300000.00",
+      "credit_days": 15,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 3,
+    "fields": {
+      "name": "Ganpati Sales",
+      "code": "GAN001",
+      "contact_person": "Ganesh Patil",
+      "phone": "+919876543203",
+      "whatsapp_number": "+919876543203",
+      "email": "ganpati@example.com",
+      "address": "Market Street",
+      "city": "Nagar",
+      "state": "Maharashtra",
+      "pincode": "414001",
+      "gstin": "27ABCDE1234F3Z5",
+      "credit_limit": "800000.00",
+      "credit_days": 45,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 4,
+    "fields": {
+      "name": "Vishwakarma Enterprises",
+      "code": "VIS001",
+      "contact_person": "Vishnu Sharma",
+      "phone": "+919876543204",
+      "whatsapp_number": "+919876543204",
+      "email": "vishwakarma@example.com",
+      "address": "Construction Hub",
+      "city": "Chhattarpur",
+      "state": "Madhya Pradesh",
+      "pincode": "471001",
+      "gstin": "23ABCDE1234F4Z5",
+      "credit_limit": "200000.00",
+      "credit_days": 30,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 5,
+    "fields": {
+      "name": "Maa Laxmi Traders",
+      "code": "MLT001",
+      "contact_person": "Laxmi Devi",
+      "phone": "+919876543205",
+      "whatsapp_number": "+919876543205",
+      "email": "laxmi@example.com",
+      "address": "Trading Complex",
+      "city": "Chhattarpur",
+      "state": "Madhya Pradesh",
+      "pincode": "471001",
+      "gstin": "23ABCDE1234F5Z5",
+      "credit_limit": "400000.00",
+      "credit_days": 30,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 6,
+    "fields": {
+      "name": "Shekhar Stores",
+      "code": "SHE001",
+      "contact_person": "Shekhar Gupta",
+      "phone": "+919876543206",
+      "whatsapp_number": "+919876543206",
+      "email": "shekhar@example.com",
+      "address": "Main Market",
+      "city": "Chhattarpur",
+      "state": "Madhya Pradesh",
+      "pincode": "471001",
+      "gstin": "23ABCDE1234F6Z5",
+      "credit_limit": "150000.00",
+      "credit_days": 15,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 7,
+    "fields": {
+      "name": "Subh Laxmi Enterprises",
+      "code": "SLE001",
+      "contact_person": "Subhash Yadav",
+      "phone": "+919876543207",
+      "whatsapp_number": "+919876543207",
+      "email": "subhlaxmi@example.com",
+      "address": "Business Park",
+      "city": "Nagar",
+      "state": "Maharashtra",
+      "pincode": "414001",
+      "gstin": "27ABCDE1234F7Z5",
+      "credit_limit": "600000.00",
+      "credit_days": 30,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 8,
+    "fields": {
+      "name": "Keshri Enterprises",
+      "code": "KES001",
+      "contact_person": "Keshav Singh",
+      "phone": "+919876543208",
+      "whatsapp_number": "+919876543208",
+      "email": "keshri@example.com",
+      "address": "Industrial Complex",
+      "city": "Nagar",
+      "state": "Maharashtra",
+      "pincode": "414001",
+      "gstin": "27ABCDE1234F8Z5",
+      "credit_limit": "700000.00",
+      "credit_days": 45,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 9,
+    "fields": {
+      "name": "Alam Traders",
+      "code": "ALA001",
+      "contact_person": "Alam Khan",
+      "phone": "+919876543209",
+      "whatsapp_number": "+919876543209",
+      "email": "alam@example.com",
+      "address": "Commercial Street",
+      "city": "Nagar",
+      "state": "Maharashtra",
+      "pincode": "414001",
+      "gstin": "27ABCDE1234F9Z5",
+      "credit_limit": "900000.00",
+      "credit_days": 30,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.dealer",
+    "pk": 10,
+    "fields": {
+      "name": "Rishabh Raj",
+      "code": "RIS001",
+      "contact_person": "Rishabh Kumar",
+      "phone": "+919876543210",
+      "whatsapp_number": "+919876543210",
+      "email": "rishabh@example.com",
+      "address": "New Market Area",
+      "city": "Nagar",
+      "state": "Maharashtra",
+      "pincode": "414001",
+      "gstin": "27ABCDE1234F0Z5",
+      "credit_limit": "250000.00",
+      "credit_days": 15,
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.appsettings",
+    "pk": 1,
+    "fields": {
+      "key": "WHATSAPP_API_URL",
+      "value": "https://api.whatsapp.com/send",
+      "description": "WhatsApp API endpoint for sending messages",
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.appsettings",
+    "pk": 2,
+    "fields": {
+      "key": "COMPANY_NAME",
+      "value": "Your C&F Agency Name",
+      "description": "Company name for reports and documents",
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.appsettings",
+    "pk": 3,
+    "fields": {
+      "key": "COMPANY_ADDRESS",
+      "value": "Your Company Address",
+      "description": "Company address for reports and documents",
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.appsettings",
+    "pk": 4,
+    "fields": {
+      "key": "DEFAULT_TAX_RATE",
+      "value": "18.0",
+      "description": "Default GST rate percentage",
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.notificationtemplate",
+    "pk": 1,
+    "fields": {
+      "name": "Order Confirmation WhatsApp",
+      "type": "WHATSAPP",
+      "subject": "",
+      "template_content": "🚛 *Order Confirmation*\n\nOrder No: {order_number}\nDealer: {dealer_name}\nVehicle: {vehicle_number}\nDepot: {depot_name}\nDate: {order_date}\n\nProducts:\n{product_details}\n\nTotal Quantity: {total_quantity} MT\n\nThank you for your business!\n\n*{company_name}*",
+      "variables": ["order_number", "dealer_name", "vehicle_number", "depot_name", "order_date", "product_details", "total_quantity", "company_name"],
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.notificationtemplate",
+    "pk": 2,
+    "fields": {
+      "name": "MRN Created WhatsApp",
+      "type": "WHATSAPP",
+      "subject": "",
+      "template_content": "📋 *MRN Created*\n\nMRN No: {mrn_number}\nOrder No: {order_number}\nDealer: {dealer_name}\nMRN Date: {mrn_date}\n\nYour material has been received and MRN has been generated.\n\n*{company_name}*",
+      "variables": ["mrn_number", "order_number", "dealer_name", "mrn_date", "company_name"],
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  },
+  {
+    "model": "sylvia.notificationtemplate",
+    "pk": 3,
+    "fields": {
+      "name": "Invoice Ready WhatsApp",
+      "type": "WHATSAPP",
+      "subject": "",
+      "template_content": "💰 *Invoice Ready*\n\nInvoice No: {invoice_number}\nOrder No: {order_number}\nDealer: {dealer_name}\nAmount: ₹{total_amount}\nDue Date: {due_date}\n\nPlease arrange payment as per terms.\n\n*{company_name}*",
+      "variables": ["invoice_number", "order_number", "dealer_name", "total_amount", "due_date", "company_name"],
+      "is_active": true,
+      "created_at": "2025-07-10T00:00:00Z",
+      "updated_at": "2025-07-10T00:00:00Z",
+      "created_by": null
+    }
+  }
+]

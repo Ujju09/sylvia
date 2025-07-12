@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-4">
+  <div class="card ">
+    <div class="card-body">
+      <h3 class="mb-4 text-primary">Order Processing Workflow</h3>
+      <form id="order-form" method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label for="vehicle" class="form-label">Vehicle Number</label>
+          <select class="form-select" id="vehicle" name="vehicle" required>
+            <option value="">Select vehicle</option>
+            {% for v in vehicles %}
+              <option value="{{ v.id }}">{{ v.truck_number }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="depot" class="form-label">Depot</label>
+          <select class="form-select" id="depot" name="depot" required>
+            <option value="">Select depot</option>
+            {% for depot in depots %}
+              <option value="{{ depot.id }}">{{ depot.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="dealer" class="form-label">Dealer</label>
+          <select class="form-select" id="dealer" name="dealer" required>
+            <option value="">Select dealer</option>
+            {% for d in dealers %}
+              <option value="{{ d.id }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="order_date" class="form-label">Order Date & Time</label>
+          <input type="text" class="form-control" id="order_date" name="order_date" value="{{ now|date:'Y-m-d H:i' }}" readonly>
+        </div>
+        <hr>
+        <div class="mb-3">
+          <label for="product" class="form-label">Product/Grade</label>
+          <select class="form-select" id="product" name="product">
+            <option value="">Select product</option>
+            {% for p in products %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="quantity" class="form-label">Quantity (MT)</label>
+          <input type="number" class="form-control" id="quantity" name="quantity" min="0.01" step="0.01">
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="addProductRow()">Add Product</button>
+        <table class="table mt-3" id="product-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Quantity</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Product rows will be added here -->
+          </tbody>
+        </table>
+        <button type="submit" class="btn btn-success float-end">Finish & Save</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

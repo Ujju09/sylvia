@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="mb-4 text-primary">Update Order Details</h3>
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="mrn_status" class="form-label">MRN Status</label>
+              <select class="form-select" id="mrn_status" name="mrn_status">
+                <option value="">Select status</option>
+                <option value="PENDING" {% if mrn_status == 'PENDING' %}selected{% endif %}>Pending</option>
+                <option value="APPROVED" {% if mrn_status == 'APPROVED' %}selected{% endif %}>Approved</option>
+                <option value="REJECTED" {% if mrn_status == 'REJECTED' %}selected{% endif %}>Rejected</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="mrn_date" class="form-label">MRN Date</label>
+              <input type="date" class="form-control" id="mrn_date" name="mrn_date" value="{{ mrn_date|date:'Y-m-d' }}">
+            </div>
+            <div class="mb-3">
+              <label for="invoice_date" class="form-label">Invoice Date</label>
+              <input type="date" class="form-control" id="invoice_date" name="invoice_date" value="{{ invoice_date|date:'Y-m-d' }}">
+            </div>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <a href="{% url 'order_list' %}" class="btn btn-secondary ms-2">Cancel</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

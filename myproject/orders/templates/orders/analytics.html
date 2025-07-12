@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4 text-primary">Order Analytics</h2>
+  <!-- Export/Filter Form -->
+  <form class="card p-3 mb-4" method="get" action="{% url 'export_analytics' %}" target="_blank">
+    <div class="row align-items-end">
+      <div class="col-md-3 mb-2">
+        <label for="dealer">Dealer</label>
+        <select class="form-control" id="dealer" name="dealer">
+          <option value="">All Dealers</option>
+          {% for stat in dealer_stats %}
+            <option value="{{ stat.dealer_id }}">{{ stat.dealer }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 mb-2">
+        <label for="status">Status</label>
+        <select class="form-control" id="status" name="status">
+          <option value="PENDING">Pending</option>
+          <option value="MRN_CREATED">MRN Created</option>
+          <option value="BILLED">Billed</option>
+        </select>
+      </div>
+      <div class="col-md-2 mb-2">
+        <label for="month">Month</label>
+        <select class="form-control" id="month" name="month">
+          <option value="">Any</option>
+          {% for m in months %}
+            <option value="{{ m }}">{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 mb-2">
+        <label for="year">Year</label>
+        <input type="number" class="form-control" id="year" name="year" min="2020" max="2100" placeholder="Year">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label for="format">Format</label>
+        <select class="form-control" id="format" name="format">
+          <option value="excel">Excel</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+      <div class="col-md-1 mb-2">
+        <button type="submit" class="btn btn-primary w-100">Export</button>
+      </div>
+    </div>
+  </form>
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card p-3 mb-3">
+        <h5>Order Completion</h5>
+        <p>Total Orders: <strong>{{ total_orders }}</strong></p>
+        <p>MRN Pending Orders: <strong>{{ mrn_created_orders }}</strong></p>
+        <p>Billed Orders: <strong>{{ completed_orders }}</strong></p>
+        <p>Completion Rate: <strong>{{ percent_completed|floatformat:2 }}%</strong></p>
+      </div>
+      <div class="card p-3 mb-3">
+        <h5>Time Between Stages (Avg)</h5>
+        <ul>
+          <li>Order → MRN: <strong>{{ time_stats.avg_order_to_mrn|default:'-' }}</strong></li>
+          <li>MRN → Billing: <strong>{{ time_stats.avg_mrn_to_bill|default:'-' }}</strong></li>
+          <li>Order → Billing: <strong>{{ time_stats.avg_order_to_bill|default:'-' }}</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3 mb-3">
+        <h5>Longest Pending Dealers</h5>
+        <table class="table table-sm">
+          <thead><tr><th>Dealer</th><th>Pending Orders</th><th>Oldest Order</th></tr></thead>
+          <tbody>
+            {% for d in pending_dealers %}
+            <tr>
+              <td>{{ d.dealer__name }}</td>
+              <td>{{ d.pending_count }}</td>
+              <td>{{ d.oldest_order|date:'jS M Y' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">No pending dealers</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card p-3 mb-3">
+        <h5>Dealer-wise Stats (Last 7/30 Days)</h5>
+        <table class="table table-sm">
+          <thead><tr><th>Dealer</th><th>Weekly</th><th>Monthly</th><th>Avg Order→MRN</th><th>Avg MRN→Bill</th></tr></thead>
+          <tbody>
+            {% for stat in dealer_stats %}
+            <tr>
+              <td>{{ stat.dealer }}</td>
+              <td>{{ stat.weekly_orders }}</td>
+              <td>{{ stat.monthly_orders }}</td>
+              <td>{{ stat.avg_order_to_mrn|default:'-' }}</td>
+              <td>{{ stat.avg_mrn_to_bill|default:'-' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">No dealer data</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3 mb-3">
+        <h5>Product Stats</h5>
+        <table class="table table-sm">
+          <thead><tr><th>Product</th><th>Total Orders</th><th>Avg Quantity</th></tr></thead>
+          <tbody>
+            {% for p in product_stats %}
+            <tr>
+              <td>{{ p.order_items__product__name }}</td>
+              <td>{{ p.total_orders }}</td>
+              <td>{{ p.avg_quantity|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">No product data</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card p-3 mb-3">
+        <h5>Depot Stats</h5>
+        <table class="table table-sm">
+          <thead><tr><th>Depot</th><th>Total Orders</th></tr></thead>
+          <tbody>
+            {% for d in depot_stats %}
+            <tr>
+              <td>{{ d.depot__name }}</td>
+              <td>{{ d.total_orders }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2">No depot data</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

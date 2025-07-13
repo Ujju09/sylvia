@@ -97,9 +97,14 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 def get_database_config():
     database_url = os.environ.get('DATABASE_URL')
     if database_url:
-        return {
-            'default': dj_database_url.config(default=database_url)
+        config = dj_database_url.config(default=database_url)
+        # Add connection options for Railway PostgreSQL
+        config['OPTIONS'] = {
+            'connect_timeout': 60,
+            'sslmode': 'require'
         }
+        config['CONN_MAX_AGE'] = 60
+        return {'default': config}
     else:
         return {
             'default': {
@@ -157,3 +162,30 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Logging configuration for Railway debugging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+    },
+}

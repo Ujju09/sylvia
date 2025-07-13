@@ -1,5 +1,6 @@
 # Temporary files
 env
+.env.*
 *.tmp
 *.temp
 *.swp
@@ -41,3 +42,6 @@ yarn-error.log*
 *.exe
 *.manifest
 *.tmp.*
+db.sqlite3
+*.sqlite3
+myproject/.env

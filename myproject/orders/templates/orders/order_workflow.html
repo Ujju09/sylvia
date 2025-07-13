@@ -40,34 +40,40 @@
         </div>
         <hr>
         <div class="mb-3">
-          <label for="product" class="form-label">Product/Grade</label>
-          <select class="form-select" id="product" name="product">
-            <option value="">Select product</option>
+          <label class="form-label">Products</label>
+          <div class="row">
             {% for p in products %}
-              <option value="{{ p.id }}">{{ p.name }}</option>
+            <div class="col-md-4 col-sm-6 mb-3">
+              <div class="card h-100">
+                <img src="{% static 'orders/' %}{{ p.description }}" class="card-img-top" alt="{{ p.name }}" style="height:140px;object-fit:contain;">
+                <div class="card-body">
+                  <h5 class="card-title">{{ p.name }}</h5>
+                  <input type="number" class="form-control" name="product_{{ p.id }}" min="0" step="0.01" placeholder="Quantity (MT)">
+                </div>
+              </div>
+            </div>
             {% endfor %}
-          </select>
+          </div>
         </div>
-        <div class="mb-3">
-          <label for="quantity" class="form-label">Quantity (MT)</label>
-          <input type="number" class="form-control" id="quantity" name="quantity" min="0.01" step="0.01">
-        </div>
-        <button type="button" class="btn btn-secondary" onclick="addProductRow()">Add Product</button>
-        <table class="table mt-3" id="product-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Quantity</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Product rows will be added here -->
-          </tbody>
-        </table>
         <button type="submit" class="btn btn-success float-end">Finish & Save</button>
       </form>
     </div>
   </div>
 </div>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('#vehicle').select2({
+      placeholder: 'Select vehicle',
+      allowClear: true
+    });
+    //dealers
+    $('#dealer').select2({
+      placeholder: 'Select dealer',
+      allowClear: true
+    });
+  });
+</script>
 {% endblock %}

@@ -194,9 +194,7 @@ class MRN(BaseModel):
     
     def save(self, *args, **kwargs):
         if not self.mrn_number:
-            today = timezone.now().date()
-            count = MRN.objects.filter(mrn_date=today).count() + 1
-            self.mrn_number = f"MRN{today.strftime('%Y%m%d')}{count:04d}"
+            self.mrn_number = f"MRN{uuid.uuid4().hex[:12].upper()}"
         super().save(*args, **kwargs)
     
     def __str__(self):

@@ -1,0 +1,76 @@
+/* Theme colors inspired by the logo: vibrant orange, deep red, and white */
+:root {
+  --primary: #e94e1b;
+  --secondary: #f77c2b;
+  --accent: #b92d0b;
+  --background: #fff;
+  --text: #2d2d2d;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+}
+
+.navbar {
+  background: #fff;
+  color: var(--primary);
+  border-radius: 0 !important;
+  box-shadow: none;
+  border-bottom: 1px solid var(--accent);
+}
+.navbar .navbar-brand {
+  color: var(--primary);
+  font-size: 2rem;
+  letter-spacing: -0.5px;
+}
+.navbar .nav-link {
+  color: var(--primary) !important;
+  font-weight: 500;
+  margin-right: 1rem;
+  border-radius: 0 !important;
+}
+.navbar .nav-link.active, .navbar .nav-link[aria-current="page"] {
+  color: var(--secondary) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 4px;
+}
+
+.card, .table, .form-control, .btn, .form-select {
+  border-radius: 0 !important;
+}
+
+.table thead {
+  background: var(--secondary);
+  color: #fff;
+}
+.table-bordered > :not(caption) > * > * {
+  border-color: var(--accent);
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--accent);
+  border-color: var(--primary);
+}
+
+.badge.bg-info {
+  color: var(--text) !important;
+  border-radius: 0 !important;
+}
+
+/* Remove box shadows for sharp look */
+.card, .form-control, .btn, .form-select {
+  box-shadow: none !important;
+}
+
+/* Custom nav bar logo */
+.navbar-logo {
+  height: 40px;
+  width: 40px;
+  margin-right: 1rem;
+}

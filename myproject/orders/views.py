@@ -22,32 +22,32 @@ def order_workflow(request):
     dealers = Dealer.objects.filter(is_active=True)
     products = Product.objects.filter(is_active=True)
     depots = Depot.objects.filter(is_active=True)
-    print("[DEBUG] GET vehicles:", list(vehicles))
-    print("[DEBUG] GET dealers:", list(dealers))
-    print("[DEBUG] GET products:", list(products))
-    print("[DEBUG] GET depots:", list(depots))
 
     if request.method == 'POST':
-        print("[DEBUG] POST data:", request.POST)
         dealer_id = request.POST.get('dealer')
         vehicle_id = request.POST.get('vehicle')
         depot_id = request.POST.get('depot')
         order_date = request.POST.get('order_date')
-        product_ids = request.POST.getlist('product[]')
-        quantities = request.POST.getlist('quantity[]')
-        print(f"[DEBUG] dealer_id: {dealer_id}, vehicle_id: {vehicle_id}, depot_id: {depot_id}, order_date: {order_date}")
-        print(f"[DEBUG] product_ids: {product_ids}")
-        print(f"[DEBUG] quantities: {quantities}")
+        # Collect product quantities from form
+        product_ids = []
+        quantities = []
+        for product in products:
+            qty = request.POST.get(f'product_{product.id}')
+            if qty:
+                try:
+                    qty_val = float(qty)
+                except ValueError:
+                    qty_val = 0
+                if qty_val > 0:
+                    product_ids.append(product.id)
+                    quantities.append(qty_val)
 
         # Basic validation
         if dealer_id and vehicle_id and depot_id and product_ids and quantities and len(product_ids) == len(quantities):
             try:
                 dealer = Dealer.objects.get(id=dealer_id)
-                print(f"[DEBUG] Dealer object: {dealer}")
                 vehicle = Vehicle.objects.get(id=vehicle_id)
-                print(f"[DEBUG] Vehicle object: {vehicle}")
                 depot = Depot.objects.get(id=depot_id)
-                print(f"[DEBUG] Depot object: {depot}")
                 # Make order_date timezone-aware if needed
                 if order_date:
                     import datetime
@@ -67,12 +67,10 @@ def order_workflow(request):
                     depot=depot,
                     order_date=order_date,
                 )
-                print(f"[DEBUG] Created Order: {order}")
+
                 for pid, qty in zip(product_ids, quantities):
                     product = Product.objects.get(id=pid)
-                    print(f"[DEBUG] Adding OrderItem: product={product}, quantity={qty}")
                     OrderItem.objects.create(order=order, product=product, quantity=qty)
-                print("[DEBUG] All OrderItems created. Redirecting to order_list.")
                 return redirect('order_list')
             except Exception as e:
                 print(f"[ERROR] Exception during order creation: {e}")
@@ -86,7 +84,7 @@ def order_workflow(request):
                     'error': f'Error: {e}',
                 })
         else:
-            print("[ERROR] Validation failed. Missing required fields or mismatched product/quantity arrays.")
+            print("[ERROR] Validation failed. Missing required fields or no product quantities entered.")
             return render(request, 'orders/order_workflow.html', {
                 'vehicles': vehicles,
                 'dealers': dealers,
@@ -94,7 +92,7 @@ def order_workflow(request):
                 'depots': depots,
                 'now': timezone.now(),
                 'today': timezone.now().date(),
-                'error': 'Please fill all required fields.',
+                'error': 'Please fill all required fields and enter at least one product quantity.',
             })
 
     context = {

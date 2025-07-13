@@ -29,7 +29,14 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-default-insecure-key')
 
 DEBUG = True
 
+
 ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = [
+    'https://sylvia-production.up.railway.app',
+    'https://*.up.railway.app',  # This covers any Railway subdomain
+]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition

@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -27,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-default-insecure-key')
 
 
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 
 ALLOWED_HOSTS = ['*']
@@ -89,20 +90,18 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 def get_database_config():
-    # if DEBUG == False:
-    import dj_database_url
-    return {
-            
-            'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
-
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        return {
+            'default': dj_database_url.config(default=database_url)
         }
-    # else:
-    #     return {
-    #         'default': {
-    #             'ENGINE': 'django.db.backends.sqlite3',
-    #             'NAME': BASE_DIR / 'db.sqlite3',
-    #         }
-    #     }
+    else:
+        return {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 
 DATABASES = get_database_config()
 

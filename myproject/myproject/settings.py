@@ -89,20 +89,20 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 def get_database_config():
-    if DEBUG == False:
-        import dj_database_url
-        return {
+    # if DEBUG == False:
+    import dj_database_url
+    return {
             
             'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
 
         }
-    else:
-        return {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-            }
-        }
+    # else:
+    #     return {
+    #         'default': {
+    #             'ENGINE': 'django.db.backends.sqlite3',
+    #             'NAME': BASE_DIR / 'db.sqlite3',
+    #         }
+    #     }
 
 DATABASES = get_database_config()
 

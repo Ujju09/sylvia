@@ -2,9 +2,86 @@
 {% block content %}
 <div class="container py-5">
   <div class="row justify-content-center">
-    <div class="col-md-8 text-center">
-      <h1 class="display-4 mb-3">{{ app_settings.site_title|default:"Move People ― Move Mountains" }}</h1>
-
+    <div class="col-md-10">
+      <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">{{ app_settings.site_title|default:"Move People ― Move Mountains" }}</h1>
+        <p class="lead">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong></p>
+      </div>
+      
+      <!-- Daily Reports Section -->
+      <div class="row g-4">
+        <!-- Orders Created Card -->
+        <div class="col-lg-4 col-md-6">
+          <div class="card daily-report-card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h5 class="card-title text-primary">Orders Created</h5>
+                  <h2 class="display-4 fw-bold text-primary">{{ daily_reports.orders_created }}</h2>
+                  <p class="text-muted mb-0">orders today</p>
+                </div>
+                <div class="report-icon">
+                  <i class="fas fa-shopping-cart fa-2x text-primary"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- MRN Approved Card -->
+        <div class="col-lg-4 col-md-6">
+          <div class="card daily-report-card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h5 class="card-title text-success">MRN Approved</h5>
+                  <h2 class="display-4 fw-bold text-success">{{ daily_reports.mrn_approved }}</h2>
+                  <p class="text-muted mb-0">approvals today</p>
+                </div>
+                <div class="report-icon">
+                  <i class="fas fa-check-circle fa-2x text-success"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Orders Billed Card -->
+        <div class="col-lg-4 col-md-6">
+          <div class="card daily-report-card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h5 class="card-title text-info">Orders Billed</h5>
+                  <h2 class="display-4 fw-bold text-info">{{ daily_reports.orders_billed }}</h2>
+                  <p class="text-muted mb-0">bills generated</p>
+                </div>
+                <div class="report-icon">
+                  <i class="fas fa-file-invoice-dollar fa-2x text-info"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Quick Actions -->
+      <div class="row mt-5">
+        <div class="col-12 text-center">
+          <h4 class="mb-4">Quick Actions</h4>
+          <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="/orders/order-workflow/" class="btn btn-primary btn-lg">
+              <i class="fas fa-plus me-2"></i>Create New Order
+            </a>
+            <a href="/orders/orders/" class="btn btn-outline-secondary btn-lg">
+              <i class="fas fa-list me-2"></i>View Orders
+            </a>
+            <a href="/orders/analytics/" class="btn btn-outline-info btn-lg">
+              <i class="fas fa-chart-bar me-2"></i>Analytics
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

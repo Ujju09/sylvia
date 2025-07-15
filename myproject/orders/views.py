@@ -107,14 +107,28 @@ def order_workflow(request):
 
 @login_required
 def home(request):
+    from datetime import date
+    from django.db.models import Q
+    
     settings = {s.key: s.value for s in AppSettings.objects.all()}
-    # Get dealer locations
+    today = date.today()
+    
+    # Daily report data
+    orders_created_today = Order.objects.filter(order_date__date=today).count()
+    mrn_approved_today = MRN.objects.filter(mrn_date=today, status='APPROVED').count()
+    orders_billed_today = Order.objects.filter(bill_date=today, status='BILLED').count()
 
     context = {
         'app_settings': {
             'site_title': settings.get('site_title', 'Move People ― Move Mountains'),
             'site_description': settings.get('site_description', 'Move People ― Move Mountains'),
         },
+        'daily_reports': {
+            'orders_created': orders_created_today,
+            'mrn_approved': mrn_approved_today,
+            'orders_billed': orders_billed_today,
+        },
+        'current_date': today,
     }
     return render(request, 'home.html', context)
 

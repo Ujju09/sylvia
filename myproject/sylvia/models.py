@@ -140,10 +140,11 @@ class Order(BaseModel):
         if not self.order_number:
             from django.db import transaction
             with transaction.atomic():
-                today = timezone.now().date()
+                # Use order_date instead of today's date to handle backdated orders
+                order_date = self.order_date.date() if self.order_date else timezone.now().date()
                 # Lock the table to prevent race conditions
                 last_order = Order.objects.select_for_update().filter(
-                    order_date__date=today
+                    order_date__date=order_date
                 ).order_by('-order_number').first()
                 
                 if last_order:
@@ -153,7 +154,7 @@ class Order(BaseModel):
                 else:
                     count = 1
                 
-                self.order_number = f"ORD{today.strftime('%Y%m%d')}{count:04d}"
+                self.order_number = f"ORD{order_date.strftime('%Y%m%d')}{count:04d}"
         super().save(*args, **kwargs)
     
     def __str__(self):

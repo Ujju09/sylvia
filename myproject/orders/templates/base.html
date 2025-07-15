@@ -26,6 +26,7 @@
             <li class="nav-item"><a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a></li>
             <li class="nav-item"><a class="nav-link {% if request.path == '/orders/order-workflow/' %}active{% endif %}" href="/orders/order-workflow/">New Order</a></li>
             <li class="nav-item"><a class="nav-link {% if request.path == '/orders/orders/' %}active{% endif %}" href="/orders/orders/">Order List</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/orders/vehicles/' in request.path %}active{% endif %}" href="/orders/vehicles/">Vehicles</a></li>
             <li class="nav-item"><a class="nav-link {% if request.path == '/orders/analytics/' %}active{% endif %}" href="/orders/analytics/">Analytics</a></li>
             {% if user.is_authenticated %}
               <li class="nav-item">

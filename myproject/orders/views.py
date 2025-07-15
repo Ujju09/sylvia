@@ -1,11 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from sylvia.models import Vehicle, Dealer, Product, Order, OrderItem, Depot, AppSettings, MRN
+from sylvia.forms import VehicleForm, DealerForm, ProductForm, DepotForm
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Avg, Min, Max, Count, F, ExpressionWrapper, DurationField
+from django.db.models import Avg, Min, Max, Count, F, ExpressionWrapper, DurationField, Q
 from datetime import timedelta
 import json
 import io
@@ -384,5 +385,173 @@ def export_analytics(request):
         return HttpResponse('Invalid format', status=400)
 
 
+@login_required
+def add_vehicle(request):
+    """View to add a new vehicle"""
+    if request.method == 'POST':
+        form = VehicleForm(request.POST)
+        if form.is_valid():
+            vehicle = form.save(commit=False)
+            vehicle.created_by = request.user
+            vehicle.save()
+            return redirect('vehicle_list')
+    else:
+        form = VehicleForm()
+    
+    context = {
+        'form': form,
+        'title': 'Add Vehicle',
+        'action': 'Add'
+    }
+    return render(request, 'vehicles/vehicle_form.html', context)
+
+
+@login_required
+def edit_vehicle(request, vehicle_id):
+    """View to edit an existing vehicle"""
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id)
+    
+    if request.method == 'POST':
+        form = VehicleForm(request.POST, instance=vehicle)
+        if form.is_valid():
+            form.save()
+            return redirect('vehicle_list')
+    else:
+        form = VehicleForm(instance=vehicle)
+    
+    context = {
+        'form': form,
+        'vehicle': vehicle,
+        'title': 'Edit Vehicle',
+        'action': 'Update'
+    }
+    return render(request, 'vehicles/vehicle_form.html', context)
+
+
+@login_required
+def vehicle_list(request):
+    """View to list all vehicles with search and filter options"""
+    vehicles = Vehicle.objects.all().order_by('-created_at')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        vehicles = vehicles.filter(
+            Q(truck_number__icontains=search_query) |
+            Q(owner_name__icontains=search_query) |
+            Q(driver_name__icontains=search_query)
+        )
+    
+    # Filter by active status
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'active':
+        vehicles = vehicles.filter(is_active=True)
+    elif status_filter == 'inactive':
+        vehicles = vehicles.filter(is_active=False)
+    
+    # Filter by vehicle type
+    type_filter = request.GET.get('type', '')
+    if type_filter:
+        vehicles = vehicles.filter(vehicle_type=type_filter)
+    
+    # Calculate statistics
+    total_vehicles = vehicles.count()
+    active_vehicles = vehicles.filter(is_active=True).count()
+    total_capacity = sum(vehicle.capacity for vehicle in vehicles)
+    avg_capacity = total_capacity / total_vehicles if total_vehicles > 0 else 0
+    
+    context = {
+        'vehicles': vehicles,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'type_filter': type_filter,
+        'vehicle_types': Vehicle._meta.get_field('vehicle_type').choices,
+        'stats': {
+            'total_vehicles': total_vehicles,
+            'active_vehicles': active_vehicles,
+            'total_capacity': total_capacity,
+            'avg_capacity': avg_capacity,
+        }
+    }
+    return render(request, 'vehicles/vehicle_list.html', context)
+
+
+@login_required
+def delete_vehicle(request, vehicle_id):
+    """View to delete a vehicle"""
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id)
+    
+    if request.method == 'POST':
+        vehicle.delete()
+        return redirect('vehicle_list')
+    
+    context = {
+        'vehicle': vehicle,
+        'title': 'Delete Vehicle'
+    }
+    return render(request, 'vehicles/vehicle_confirm_delete.html', context)
+
+
+@login_required
+def add_dealer(request):
+    """View to add a new dealer"""
+    if request.method == 'POST':
+        form = DealerForm(request.POST)
+        if form.is_valid():
+            dealer = form.save(commit=False)
+            dealer.created_by = request.user
+            dealer.save()
+            return redirect('dealer_list')
+    else:
+        form = DealerForm()
+    
+    context = {
+        'form': form,
+        'title': 'Add Dealer',
+        'action': 'Add'
+    }
+    return render(request, 'dealers/dealer_form.html', context)
+
+
+@login_required
+def add_product(request):
+    """View to add a new product"""
+    if request.method == 'POST':
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            product = form.save(commit=False)
+            product.created_by = request.user
+            product.save()
+            return redirect('product_list')
+    else:
+        form = ProductForm()
+    
+    context = {
+        'form': form,
+        'title': 'Add Product',
+        'action': 'Add'
+    }
+    return render(request, 'products/product_form.html', context)
+
+
+@login_required
+def add_depot(request):
+    """View to add a new depot"""
+    if request.method == 'POST':
+        form = DepotForm(request.POST)
+        if form.is_valid():
+            depot = form.save(commit=False)
+            depot.created_by = request.user
+            depot.save()
+            return redirect('depot_list')
+    else:
+        form = DepotForm()
+    
+    context = {
+        'form': form,
+        'title': 'Add Depot',
+        'action': 'Add'
+    }
+    return render(request, 'depots/depot_form.html', context)
 
 

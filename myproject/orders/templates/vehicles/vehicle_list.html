@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Vehicle Management</h4>
+                    <a href="{% url 'add_vehicle' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add New Vehicle
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Search and Filter Form -->
+                    <form method="get" class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search_query }}" placeholder="Search by truck number, owner, or driver name">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-control" id="status" name="status">
+                                <option value="">All Status</option>
+                                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="type" class="form-label">Vehicle Type</label>
+                            <select class="form-control" id="type" name="type">
+                                <option value="">All Types</option>
+                                {% for value, label in vehicle_types %}
+                                    <option value="{{ value }}" {% if type_filter == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-secondary me-2">
+                                <i class="fas fa-search"></i> Filter
+                            </button>
+                            <a href="{% url 'vehicle_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                        </div>
+                    </form>
+
+                    <!-- Vehicles Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Truck Number</th>
+                                    <th>Owner Name</th>
+                                    <th>Driver Name</th>
+                                    <th>Driver Phone</th>
+                                    <th>Capacity (MT)</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for vehicle in vehicles %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ vehicle.truck_number }}</strong>
+                                    </td>
+                                    <td>{{ vehicle.owner_name|default:"-" }}</td>
+                                    <td>{{ vehicle.driver_name|default:"-" }}</td>
+                                    <td>{{ vehicle.driver_phone|default:"-" }}</td>
+                                    <td>{{ vehicle.capacity|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ vehicle.get_vehicle_type_display }}</span>
+                                    </td>
+                                    <td>
+                                        {% if vehicle.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ vehicle.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'edit_vehicle' vehicle.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'delete_vehicle' vehicle.id %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted">
+                                        <i class="fas fa-truck fa-3x mb-3"></i>
+                                        <p>No vehicles found. <a href="{% url 'add_vehicle' %}">Add the first vehicle</a></p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Vehicle Statistics -->
+                    {% if stats.total_vehicles > 0 %}
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Quick Stats</h6>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h5 class="text-primary">{{ stats.total_vehicles }}</h5>
+                                                <small class="text-muted">Total Vehicles</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h5 class="text-success">{{ stats.active_vehicles }}</h5>
+                                                <small class="text-muted">Active Vehicles</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h5 class="text-info">{{ stats.total_capacity|floatformat:2 }}</h5>
+                                                <small class="text-muted">Total Capacity (MT)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h5 class="text-warning">{{ stats.avg_capacity|floatformat:2 }}</h5>
+                                                <small class="text-muted">Avg Capacity (MT)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">{{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.truck_number.id_for_label }}" class="form-label">{{ form.truck_number.label }} <span class="text-danger">*</span></label>
+                                    {{ form.truck_number }}
+                                    {% if form.truck_number.errors %}
+                                        <div class="text-danger small">{{ form.truck_number.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Format: CG15EA0464</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.vehicle_type.id_for_label }}" class="form-label">{{ form.vehicle_type.label }}</label>
+                                    {{ form.vehicle_type }}
+                                    {% if form.vehicle_type.errors %}
+                                        <div class="text-danger small">{{ form.vehicle_type.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.owner_name.id_for_label }}" class="form-label">{{ form.owner_name.label }}</label>
+                                    {{ form.owner_name }}
+                                    {% if form.owner_name.errors %}
+                                        <div class="text-danger small">{{ form.owner_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.capacity.id_for_label }}" class="form-label">{{ form.capacity.label }}</label>
+                                    {{ form.capacity }}
+                                    {% if form.capacity.errors %}
+                                        <div class="text-danger small">{{ form.capacity.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.driver_name.id_for_label }}" class="form-label">{{ form.driver_name.label }}</label>
+                                    {{ form.driver_name }}
+                                    {% if form.driver_name.errors %}
+                                        <div class="text-danger small">{{ form.driver_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.driver_phone.id_for_label }}" class="form-label">{{ form.driver_phone.label }}</label>
+                                    {{ form.driver_phone }}
+                                    {% if form.driver_phone.errors %}
+                                        <div class="text-danger small">{{ form.driver_phone.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3 form-check">
+                                    {{ form.is_active }}
+                                    <label for="{{ form.is_active.id_for_label }}" class="form-check-label">{{ form.is_active.label }}</label>
+                                    {% if form.is_active.errors %}
+                                        <div class="text-danger small">{{ form.is_active.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'vehicle_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ action }} Vehicle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

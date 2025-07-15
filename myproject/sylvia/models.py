@@ -138,9 +138,22 @@ class Order(BaseModel):
     # Auto-generate order number
     def save(self, *args, **kwargs):
         if not self.order_number:
-            today = timezone.now().date()
-            count = Order.objects.filter(order_date__date=today).count() + 1
-            self.order_number = f"ORD{today.strftime('%Y%m%d')}{count:04d}"
+            from django.db import transaction
+            with transaction.atomic():
+                today = timezone.now().date()
+                # Lock the table to prevent race conditions
+                last_order = Order.objects.select_for_update().filter(
+                    order_date__date=today
+                ).order_by('-order_number').first()
+                
+                if last_order:
+                    # Extract the numeric part and increment
+                    last_num = int(last_order.order_number[-4:])
+                    count = last_num + 1
+                else:
+                    count = 1
+                
+                self.order_number = f"ORD{today.strftime('%Y%m%d')}{count:04d}"
         super().save(*args, **kwargs)
     
     def __str__(self):

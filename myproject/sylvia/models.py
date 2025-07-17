@@ -110,9 +110,6 @@ class Order(BaseModel):
         ('CONFIRMED', 'Confirmed'),
         ('MRN_CREATED', 'MRN Created'),
         ('BILLED', 'Billed'),
-        ('DISPATCHED', 'Dispatched'),
-        ('DELIVERED', 'Delivered'),
-        ('CANCELLED', 'Cancelled'),
     ]
     
     order_number = models.CharField(max_length=20, unique=True, editable=False)

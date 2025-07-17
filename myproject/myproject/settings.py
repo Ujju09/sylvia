@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',  # Add this for token authentication
     'corsheaders',
     'sylvia', 
     'orders',  # Include the orders app
@@ -171,6 +172,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -183,10 +185,12 @@ REST_FRAMEWORK = {
     ],
 }
 
-# CORS settings for Flutter web
+# CORS settings for Flutter web and Android
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://10.0.2.2:8000",  # Android emulator localhost
+    "http://10.0.2.2:3000",  # Android emulator alternative port
     "https://sylvia-production.up.railway.app",
 ]
 

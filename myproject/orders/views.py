@@ -162,10 +162,27 @@ def update_order(request, order_id):
     mrn_status = mrn.status if mrn else 'PENDING'
     invoice_date = order.bill_date
     mrn_date = order.mrn_date
+    
+    # Check if dealer is Anonymous
+    is_dealer_anonymous = order.dealer.name.lower() == 'anonymous'
+    dealers = None
+    if is_dealer_anonymous:
+        dealers = Dealer.objects.filter(is_active=True).exclude(name__iexact='anonymous')
+    
     if request.method == 'POST':
         new_mrn_status = request.POST.get('mrn_status')
         new_invoice_date = request.POST.get('invoice_date')
         new_mrn_date = request.POST.get('mrn_date')
+        new_dealer_id = request.POST.get('dealer_id')
+        
+        # Update dealer if Anonymous and new dealer selected
+        if is_dealer_anonymous and new_dealer_id:
+            try:
+                new_dealer = Dealer.objects.get(id=new_dealer_id, is_active=True)
+                order.dealer = new_dealer
+            except Dealer.DoesNotExist:
+                pass
+        
         # Update MRN status and MRN date
         if mrn:
             mrn.status = new_mrn_status
@@ -191,6 +208,8 @@ def update_order(request, order_id):
         'mrn_status': mrn_status,
         'invoice_date': invoice_date,
         'mrn_date': mrn_date,
+        'is_dealer_anonymous': is_dealer_anonymous,
+        'dealers': dealers,
     }
     return render(request, 'orders/update_order.html', context)
 

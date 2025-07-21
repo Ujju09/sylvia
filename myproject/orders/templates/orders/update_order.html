@@ -8,6 +8,18 @@
           <h3 class="mb-4 text-primary">Update Order Details</h3>
           <form method="post">
             {% csrf_token %}
+            {% if is_dealer_anonymous %}
+            <div class="mb-3">
+              <label for="dealer_id" class="form-label">Change Dealer</label>
+              <select class="form-select" id="dealer_id" name="dealer_id">
+                <option value="">Keep as Anonymous</option>
+                {% for dealer in dealers %}
+                <option value="{{ dealer.id }}">{{ dealer.name }} ({{ dealer.code }})</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Current dealer is Anonymous. Select a dealer to change it.</div>
+            </div>
+            {% endif %}
             <div class="mb-3">
               <label for="mrn_status" class="form-label">MRN Status</label>
               <select class="form-select" id="mrn_status" name="mrn_status">

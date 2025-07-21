@@ -196,9 +196,9 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_ALL_ORIGINS = True  # For development only, remove in production
+# CORS_ALLOW_ALL_ORIGINS = True  # For development only, remove in production
 
-# Logging configuration for Railway debugging
+# Logging configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -219,7 +219,7 @@ LOGGING = {
         },
         'django.db.backends': {
             'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'WARNING',
             'propagate': False,
         },
     },

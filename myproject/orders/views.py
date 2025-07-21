@@ -11,14 +11,17 @@ from datetime import timedelta
 import json
 import io
 import calendar
+import logging
 from django.http import HttpResponse
 import pandas as pd
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
+logger = logging.getLogger(__name__)
+
 @login_required
 def order_workflow(request):
-    # For prototype, just pass all vehicles, dealers, products
+    # Get all active entities
     vehicles = Vehicle.objects.filter(is_active=True)
     dealers = Dealer.objects.filter(is_active=True)
     products = Product.objects.filter(is_active=True)
@@ -57,8 +60,7 @@ def order_workflow(request):
                         try:
                             order_date_obj = datetime.datetime.strptime(order_date, "%Y-%m-%d %H:%M")
                             order_date = djtz.make_aware(order_date_obj)
-                        except Exception as dt_err:
-                            print(f"[ERROR] Failed to parse order_date: {dt_err}")
+                        except Exception:
                             order_date = djtz.now()
                 else:
                     order_date = djtz.now()
@@ -74,7 +76,7 @@ def order_workflow(request):
                     OrderItem.objects.create(order=order, product=product, quantity=qty)
                 return redirect('order_list')
             except Exception as e:
-                print(f"[ERROR] Exception during order creation: {e}")
+                logger.error(f"Exception during order creation: {e}")
                 return render(request, 'orders/order_workflow.html', {
                     'vehicles': vehicles,
                     'dealers': dealers,
@@ -82,10 +84,9 @@ def order_workflow(request):
                     'depots': depots,
                     'now': timezone.now(),
                     'today': timezone.now().date(),
-                    'error': f'Error: {e}',
+                    'error': 'An error occurred while creating the order. Please try again.',
                 })
         else:
-            print("[ERROR] Validation failed. Missing required fields or no product quantities entered.")
             return render(request, 'orders/order_workflow.html', {
                 'vehicles': vehicles,
                 'dealers': dealers,

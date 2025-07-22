@@ -163,10 +163,27 @@ def update_order(request, order_id):
     mrn_status = mrn.status if mrn else 'PENDING'
     invoice_date = order.bill_date
     mrn_date = order.mrn_date
+    
+    # Check if dealer is Anonymous
+    is_dealer_anonymous = order.dealer.name.lower() == 'anonymous'
+    dealers = None
+    if is_dealer_anonymous:
+        dealers = Dealer.objects.filter(is_active=True).exclude(name__iexact='anonymous')
+    
     if request.method == 'POST':
         new_mrn_status = request.POST.get('mrn_status')
         new_invoice_date = request.POST.get('invoice_date')
         new_mrn_date = request.POST.get('mrn_date')
+        new_dealer_id = request.POST.get('dealer_id')
+        
+        # Update dealer if Anonymous and new dealer selected
+        if is_dealer_anonymous and new_dealer_id:
+            try:
+                new_dealer = Dealer.objects.get(id=new_dealer_id, is_active=True)
+                order.dealer = new_dealer
+            except Dealer.DoesNotExist:
+                pass
+        
         # Update MRN status and MRN date
         if mrn:
             mrn.status = new_mrn_status
@@ -192,6 +209,8 @@ def update_order(request, order_id):
         'mrn_status': mrn_status,
         'invoice_date': invoice_date,
         'mrn_date': mrn_date,
+        'is_dealer_anonymous': is_dealer_anonymous,
+        'dealers': dealers,
     }
     return render(request, 'orders/update_order.html', context)
 
@@ -494,6 +513,50 @@ def delete_vehicle(request, vehicle_id):
 
 
 @login_required
+def dealer_list(request):
+    """View to list all dealers with search and filter options"""
+    dealers = Dealer.objects.all().order_by('-created_at')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        dealers = dealers.filter(
+            Q(name__icontains=search_query) |
+            Q(code__icontains=search_query) |
+            Q(contact_person__icontains=search_query) |
+            Q(phone__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(city__icontains=search_query)
+        )
+    
+    # Filter by active status
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'active':
+        dealers = dealers.filter(is_active=True)
+    elif status_filter == 'inactive':
+        dealers = dealers.filter(is_active=False)
+    
+    # Calculate statistics
+    total_dealers = dealers.count()
+    active_dealers = dealers.filter(is_active=True).count()
+    total_credit_limit = sum(dealer.credit_limit for dealer in dealers)
+    avg_credit_limit = total_credit_limit / total_dealers if total_dealers > 0 else 0
+    
+    context = {
+        'dealers': dealers,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'stats': {
+            'total_dealers': total_dealers,
+            'active_dealers': active_dealers,
+            'total_credit_limit': total_credit_limit,
+            'avg_credit_limit': avg_credit_limit,
+        }
+    }
+    return render(request, 'dealers/dealer_list.html', context)
+
+
+@login_required
 def add_dealer(request):
     """View to add a new dealer"""
     if request.method == 'POST':
@@ -512,6 +575,44 @@ def add_dealer(request):
         'action': 'Add'
     }
     return render(request, 'dealers/dealer_form.html', context)
+
+
+@login_required
+def edit_dealer(request, dealer_id):
+    """View to edit an existing dealer"""
+    dealer = get_object_or_404(Dealer, id=dealer_id)
+    
+    if request.method == 'POST':
+        form = DealerForm(request.POST, instance=dealer)
+        if form.is_valid():
+            form.save()
+            return redirect('dealer_list')
+    else:
+        form = DealerForm(instance=dealer)
+    
+    context = {
+        'form': form,
+        'dealer': dealer,
+        'title': 'Edit Dealer',
+        'action': 'Update'
+    }
+    return render(request, 'dealers/dealer_form.html', context)
+
+
+@login_required
+def delete_dealer(request, dealer_id):
+    """View to delete a dealer"""
+    dealer = get_object_or_404(Dealer, id=dealer_id)
+    
+    if request.method == 'POST':
+        dealer.delete()
+        return redirect('dealer_list')
+    
+    context = {
+        'dealer': dealer,
+        'title': 'Delete Dealer'
+    }
+    return render(request, 'dealers/dealer_confirm_delete.html', context)
 
 
 @login_required

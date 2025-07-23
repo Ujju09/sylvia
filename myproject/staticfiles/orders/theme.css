@@ -74,3 +74,83 @@ body {
   width: 40px;
   margin-right: 1rem;
 }
+
+/* Daily Report Cards */
+.daily-report-card {
+  border: 1px solid #dee2e6;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-radius: 0 !important;
+}
+
+.daily-report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.daily-report-card .card-body {
+  padding: 1.5rem;
+}
+
+.daily-report-card .card-footer {
+  border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa !important;
+  padding: 0.75rem 1.5rem;
+}
+
+.daily-report-card .report-icon {
+  opacity: 0.8;
+}
+
+/* Custom colors for report cards */
+.daily-report-card .text-primary {
+  color: var(--primary) !important;
+}
+
+.daily-report-card .text-success {
+  color: #28a745 !important;
+}
+
+.daily-report-card .text-info {
+  color: #17a2b8 !important;
+}
+
+/* Quick Actions */
+.btn-lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
+  margin: 0.25rem;
+}
+
+.btn-outline-secondary {
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--secondary);
+  border-color: var(--secondary);
+  color: #fff;
+}
+
+.btn-outline-info {
+  border-color: #17a2b8;
+  color: #17a2b8;
+}
+
+.btn-outline-info:hover {
+  background-color: #17a2b8;
+  border-color: #17a2b8;
+  color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .daily-report-card .display-4 {
+    font-size: 2rem;
+  }
+  
+  .btn-lg {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+}

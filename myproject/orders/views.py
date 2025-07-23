@@ -52,16 +52,17 @@ def order_workflow(request):
                 dealer = Dealer.objects.get(id=dealer_id)
                 vehicle = Vehicle.objects.get(id=vehicle_id)
                 depot = Depot.objects.get(id=depot_id)
-                # Make order_date timezone-aware if needed
+                # Set order date with constant time (1 PM IST)
                 if order_date:
                     import datetime
                     from django.utils import timezone as djtz
-                    if isinstance(order_date, str):
-                        try:
-                            order_date_obj = datetime.datetime.strptime(order_date, "%Y-%m-%d %H:%M")
-                            order_date = djtz.make_aware(order_date_obj)
-                        except Exception:
-                            order_date = djtz.now()
+                    try:
+                        # Parse date and set time to 1:00 PM (13:00)
+                        order_date_obj = datetime.datetime.strptime(order_date, "%Y-%m-%d")
+                        order_date_obj = order_date_obj.replace(hour=13, minute=0, second=0, microsecond=0)
+                        order_date = djtz.make_aware(order_date_obj)
+                    except Exception:
+                        order_date = djtz.now()
                 else:
                     order_date = djtz.now()
                 order = Order.objects.create(

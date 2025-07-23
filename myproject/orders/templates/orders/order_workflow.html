@@ -35,8 +35,9 @@
           </select>
         </div>
         <div class="mb-3">
-          <label for="order_date" class="form-label">Order Date & Time</label>
-          <input type="text" class="form-control" id="order_date" name="order_date" value="{{ now|date:'Y-m-d H:i' }}" >
+          <label for="order_date" class="form-label">Order Date</label>
+          <input type="date" class="form-control" id="order_date" name="order_date" value="{{ today|date:'Y-m-d' }}" required>
+          <div class="form-text">Order time will be set to 1:00 PM IST automatically</div>
         </div>
         <hr>
         <div class="mb-3">

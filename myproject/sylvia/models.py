@@ -322,3 +322,174 @@ class NotificationTemplate(BaseModel):
     
     class Meta:
         ordering = ['name']
+
+
+class DealerContext(BaseModel):
+    """Model to store contextual information about dealers for AI-enhanced relationship management
+    
+    Based on psychological principles:
+    1. Kahneman's structured evaluation: Independent trait assessment before intuitive judgment
+    2. Understanding-focused negotiation: Deep comprehension over persuasion
+    """
+    
+    INTERACTION_TYPE_CHOICES = [
+        ('CALL', 'Phone Call'),
+        ('WHATSAPP', 'WhatsApp'),
+        ('EMAIL', 'Email'),
+        ('MEETING', 'In-Person Meeting'),
+        ('ORDER', 'Order Related'),
+        ('COMPLAINT', 'Complaint/Issue'),
+        ('INQUIRY', 'General Inquiry'),
+        ('PAYMENT', 'Payment Related'),
+        ('OTHER', 'Other'),
+    ]
+    
+    SENTIMENT_CHOICES = [
+        ('POSITIVE', 'Positive'),
+        ('NEUTRAL', 'Neutral'),
+        ('NEGATIVE', 'Negative'),
+        ('URGENT', 'Urgent'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+        ('CRITICAL', 'Critical'),
+    ]
+    
+    dealer = models.ForeignKey(Dealer, on_delete=models.CASCADE, related_name='contexts')
+    
+    # Interaction details
+    interaction_type = models.CharField(max_length=20, choices=INTERACTION_TYPE_CHOICES)
+    interaction_date = models.DateTimeField(default=timezone.now)
+    interaction_summary = models.TextField(help_text="Brief summary of the interaction")
+    detailed_notes = models.TextField(blank=True, help_text="Detailed notes about the interaction")
+    
+    # Context and sentiment analysis
+    sentiment = models.CharField(max_length=20, choices=SENTIMENT_CHOICES, default='NEUTRAL')
+    priority_level = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='MEDIUM')
+    
+    # Kahneman-inspired structured trait evaluation (1-10 scale for independent assessment)
+    # Business traits
+    reliability_score = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Reliability in commitments (1-10)")
+    communication_clarity = models.PositiveSmallIntegerField(null=True, blank=True, help_text="How clearly they communicate (1-10)")
+    payment_punctuality = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Payment timeliness (1-10)")
+    order_consistency = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Consistency in order patterns (1-10)")
+    
+    # Relationship traits
+    trust_level = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Level of mutual trust (1-10)")
+    openness_to_feedback = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Receptiveness to suggestions (1-10)")
+    cooperation_level = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Willingness to cooperate (1-10)")
+    loyalty_tendency = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Tendency to remain loyal (1-10)")
+    
+    # Understanding-focused fields (based on "negotiation is about understanding")
+    # Deep understanding of dealer's perspective
+    primary_motivations = models.TextField(blank=True, help_text="What truly drives this dealer's decisions")
+    business_challenges = models.TextField(blank=True, help_text="Key challenges they face in their business")
+    success_metrics = models.TextField(blank=True, help_text="How they measure success and what matters most")
+    concerns_expressed = models.TextField(blank=True, help_text="Specific concerns or worries they've shared")
+    aspirations_goals = models.TextField(blank=True, help_text="Their business aspirations and long-term goals")
+    
+    # Communication and decision-making patterns
+    preferred_communication_style = models.CharField(max_length=200, blank=True, help_text="How they prefer to communicate")
+    decision_making_process = models.TextField(blank=True, help_text="How they make business decisions and who influences them")
+    information_preferences = models.TextField(blank=True, help_text="What type of information they value most")
+    timing_preferences = models.TextField(blank=True, help_text="When and how they prefer to be contacted")
+    
+    
+    # Business context
+    topics_discussed = models.JSONField(default=list, help_text="List of topics/keywords discussed")
+    products_mentioned = models.ManyToManyField(Product, blank=True, help_text="Products discussed in this interaction")
+    follow_up_required = models.BooleanField(default=False)
+    follow_up_date = models.DateTimeField(null=True, blank=True)
+    follow_up_notes = models.TextField(blank=True)
+    
+
+    intuitive_assessment = models.TextField(blank=True, help_text="Final intuitive judgment after structured trait evaluation")
+    
+  
+    # Resolution and outcome
+    issue_resolved = models.BooleanField(default=False)
+    resolution_notes = models.TextField(blank=True)
+    outcome = models.CharField(max_length=200, blank=True, help_text="Key outcome or next step")
+    understanding_gained = models.TextField(blank=True, help_text="New understanding gained about the dealer")
+    
+   
+    # Tags for categorization
+    tags = models.JSONField(default=list, help_text="Custom tags for categorization and filtering")
+    
+    def __str__(self):
+        return f"{self.dealer.name} - {self.interaction_type} ({self.interaction_date.strftime('%Y-%m-%d')})"
+    
+    def get_follow_up_status(self):
+        """Check if follow-up is overdue"""
+        if self.follow_up_required and self.follow_up_date:
+            return timezone.now() > self.follow_up_date
+        return False
+    
+    def add_ai_insight(self, key, value):
+        """Helper method to add AI insights"""
+        if not self.ai_insights:
+            self.ai_insights = {}
+        self.ai_insights[key] = value
+        self.save()
+    
+    def get_structured_trait_scores(self):
+        """Get all structured trait scores (Kahneman approach)"""
+        business_traits = {
+            'reliability_score': self.reliability_score,
+            'communication_clarity': self.communication_clarity,
+            'payment_punctuality': self.payment_punctuality,
+            'order_consistency': self.order_consistency,
+        }
+        relationship_traits = {
+            'trust_level': self.trust_level,
+            'openness_to_feedback': self.openness_to_feedback,
+            'cooperation_level': self.cooperation_level,
+            'loyalty_tendency': self.loyalty_tendency,
+        }
+        return {
+            'business_traits': business_traits,
+            'relationship_traits': relationship_traits,
+            'average_business': sum(filter(None, business_traits.values())) / len([x for x in business_traits.values() if x is not None]) if any(business_traits.values()) else None,
+            'average_relationship': sum(filter(None, relationship_traits.values())) / len([x for x in relationship_traits.values() if x is not None]) if any(relationship_traits.values()) else None,
+        }
+    
+    def get_understanding_summary(self):
+        """Get summary of understanding gained about dealer"""
+        understanding = {}
+        if self.primary_motivations:
+            understanding['motivations'] = self.primary_motivations
+        if self.business_challenges:
+            understanding['challenges'] = self.business_challenges
+        if self.success_metrics:
+            understanding['success_metrics'] = self.success_metrics
+        if self.concerns_expressed:
+            understanding['concerns'] = self.concerns_expressed
+        if self.aspirations_goals:
+            understanding['goals'] = self.aspirations_goals
+        return understanding
+    
+    def update_trait_score(self, trait_name, score):
+        """Update a specific trait score with validation"""
+        if trait_name in ['reliability_score', 'communication_clarity', 'payment_punctuality', 
+                         'order_consistency', 'trust_level', 'openness_to_feedback', 
+                         'cooperation_level', 'loyalty_tendency']:
+            if 1 <= score <= 10:
+                setattr(self, trait_name, score)
+                self.save()
+                return True
+        return False
+    
+    class Meta:
+        ordering = ['-interaction_date']
+        verbose_name = "Dealer Context"
+        verbose_name_plural = "Dealer Contexts"
+        indexes = [
+            models.Index(fields=['dealer', '-interaction_date']),
+            models.Index(fields=['interaction_type', '-interaction_date']),
+            models.Index(fields=['sentiment', 'priority_level']),
+            models.Index(fields=['follow_up_required', 'follow_up_date']),
+            models.Index(fields=['reliability_score', 'trust_level']),
+        ]

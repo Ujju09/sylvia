@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate
+    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext
 )
 
 @admin.register(Depot)
@@ -150,3 +150,13 @@ class NotificationTemplateAdmin(admin.ModelAdmin):
     list_filter = ['type', 'is_active', 'created_at']
     search_fields = ['name', 'subject']
     ordering = ['name']
+
+
+
+@admin.register(DealerContext)
+class DealerContextAdmin(admin.ModelAdmin):
+    list_display = ['dealer', 'interaction_date', 'created_at']
+    list_filter = ['interaction_date', 'created_at']
+    search_fields = ['dealer__name', 'topics_discussed']
+    ordering = ['-interaction_date']
+    

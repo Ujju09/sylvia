@@ -75,6 +75,13 @@
       placeholder: 'Select dealer',
       allowClear: true
     });
+    
+    // Auto-populate vehicle field if vehicle_id parameter is present
+    {% if selected_vehicle_id %}
+      $('#vehicle').val('{{ selected_vehicle_id }}').trigger('change');
+      // Add visual feedback that the vehicle was pre-selected
+      $('#vehicle').closest('.mb-3').prepend('<div class="alert alert-info alert-dismissible fade show mb-2" role="alert"><i class="fas fa-info-circle me-1"></i>Vehicle "{{ selected_vehicle.truck_number }}" has been pre-selected for you.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+    {% endif %}
   });
 </script>
 {% endblock %}

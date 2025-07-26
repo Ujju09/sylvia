@@ -9,14 +9,14 @@ from django.contrib.auth.models import User
 
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate
+    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext
 )
 from .serializers import (
     DepotSerializer, ProductSerializer, DealerSerializer, VehicleSerializer,
     OrderSerializer, OrderCreateSerializer, OrderItemSerializer, MRNSerializer,
     InvoiceSerializer, AuditLogSerializer, AppSettingsSerializer,
     NotificationTemplateSerializer, DashboardStatsSerializer, DealerStatsSerializer,
-    ProductStatsSerializer, UserSerializer
+    ProductStatsSerializer, UserSerializer, DealerContextSerializer
 )
 
 
@@ -323,6 +323,98 @@ class NotificationTemplateViewSet(viewsets.ModelViewSet):
         templates = self.queryset.filter(type=template_type, is_active=True)
         serializer = self.get_serializer(templates, many=True)
         return Response(serializer.data)
+    
+class DealerContextViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for DealerContext with read and create operations only.
+    Update and delete operations are disabled for audit trail integrity.
+    """
+    queryset = DealerContext.objects.all().order_by('-interaction_date')
+    serializer_class = DealerContextSerializer
+    search_fields = [
+        'dealer__name', 'dealer__code', 'interaction_summary', 
+        'detailed_notes', 'tags', 'topics_discussed'
+    ]
+    filterset_fields = [
+        'dealer', 'interaction_type', 'sentiment', 'priority_level',
+        'follow_up_required', 'issue_resolved'
+    ]
+    ordering_fields = ['interaction_date', 'dealer__name', 'priority_level', 'sentiment']
+    
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+    
+    def update(self, request, *args, **kwargs):
+        """Disable update operations"""
+        return Response(
+            {'detail': 'Update operations are not allowed for dealer contexts.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Disable partial update operations"""
+        return Response(
+            {'detail': 'Update operations are not allowed for dealer contexts.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    def destroy(self, request, *args, **kwargs):
+        """Disable delete operations"""
+        return Response(
+            {'detail': 'Delete operations are not allowed for dealer contexts.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    @action(detail=False, methods=['get'])
+    def by_dealer(self, request):
+        """Get all contexts for a specific dealer"""
+        dealer_id = request.query_params.get('dealer_id')
+        if not dealer_id:
+            return Response(
+                {'detail': 'dealer_id parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        contexts = self.queryset.filter(dealer_id=dealer_id)
+        page = self.paginate_queryset(contexts)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(contexts, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def follow_ups_due(self, request):
+        """Get contexts with overdue follow-ups"""
+        now = timezone.now()
+        overdue_contexts = self.queryset.filter(
+            follow_up_required=True,
+            follow_up_date__lt=now,
+            issue_resolved=False
+        )
+        
+        serializer = self.get_serializer(overdue_contexts, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def high_priority(self, request):
+        """Get high priority contexts"""
+        high_priority_contexts = self.queryset.filter(
+            priority_level__in=['HIGH', 'CRITICAL']
+        )
+        
+        serializer = self.get_serializer(high_priority_contexts, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def recent_interactions(self, request):
+        """Get recent interactions within last 7 days"""
+        week_ago = timezone.now() - timedelta(days=7)
+        recent_contexts = self.queryset.filter(interaction_date__gte=week_ago)
+        
+        serializer = self.get_serializer(recent_contexts, many=True)
+        return Response(serializer.data)
 
 
 # Dashboard and Analytics APIs
@@ -455,3 +547,6 @@ def order_analytics(request):
 def user_profile(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+
+

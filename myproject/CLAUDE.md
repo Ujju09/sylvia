@@ -55,6 +55,7 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 - **MRN**: Material Receipt Notes for quality approval
 - **Invoice**: Billing/invoice management
 - **AuditLog**: Audit trail for important actions
+- **DealerContext**: AI-enhanced relationship management with psychological assessment
 
 ### API Architecture (sylvia/)
 - RESTful API using Django REST Framework
@@ -156,6 +157,32 @@ Base URL: `/api/v1/`
 - Dashboard stats and analytics endpoints
 - Search and filtering capabilities
 - Pagination enabled (20 items per page)
+
+### DealerContext API (`/api/v1/dealer-context/`)
+**Read and Create Operations Only** - Update and delete operations are disabled for audit trail integrity.
+
+#### Standard Endpoints:
+- `GET /api/v1/dealer-context/` - List all dealer contexts (paginated)
+- `POST /api/v1/dealer-context/` - Create new dealer context
+- `GET /api/v1/dealer-context/{id}/` - Get specific dealer context
+
+#### Custom Actions:
+- `GET /api/v1/dealer-context/by_dealer/?dealer_id={id}` - Get all contexts for specific dealer
+- `GET /api/v1/dealer-context/follow_ups_due/` - Get contexts with overdue follow-ups
+- `GET /api/v1/dealer-context/high_priority/` - Get high/critical priority contexts
+- `GET /api/v1/dealer-context/recent_interactions/` - Get interactions from last 7 days
+
+#### Filtering and Search:
+- **Search fields**: dealer name/code, interaction summary, detailed notes, tags, topics
+- **Filter fields**: dealer, interaction_type, sentiment, priority_level, follow_up_required, issue_resolved
+- **Ordering**: interaction_date, dealer name, priority_level, sentiment
+
+#### Key Features:
+- Structured trait evaluation (1-10 scale) for business and relationship assessment
+- Understanding-focused fields for deep dealer insights
+- Follow-up tracking and priority management
+- AI insights and psychological assessment integration
+- JSON fields for flexible data storage (topics_discussed, tags)
 
 ## UI Features
 

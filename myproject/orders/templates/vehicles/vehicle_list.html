@@ -55,40 +55,33 @@
                                     <th>Owner Name</th>
                                     <th>Driver Name</th>
                                     <th>Driver Phone</th>
-                                    <th>Capacity (MT)</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                    <th>Created</th>
+                                    
+                                  
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for vehicle in vehicles %}
-                                <tr>
+                                <tr class="vehicle-row" data-vehicle-id="{{ vehicle.id }}">
                                     <td>
                                         <strong>{{ vehicle.truck_number }}</strong>
                                     </td>
                                     <td>{{ vehicle.owner_name|default:"-" }}</td>
                                     <td>{{ vehicle.driver_name|default:"-" }}</td>
                                     <td>{{ vehicle.driver_phone|default:"-" }}</td>
-                                    <td>{{ vehicle.capacity|floatformat:2 }}</td>
-                                    <td>
-                                        <span class="badge bg-info">{{ vehicle.get_vehicle_type_display }}</span>
-                                    </td>
-                                    <td>
-                                        {% if vehicle.is_active %}
-                                            <span class="badge bg-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ vehicle.created_at|date:"M d, Y" }}</td>
                                     <td>
                                         <div class="btn-group" role="group">
                                             <a href="{% url 'edit_vehicle' vehicle.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                         </div>
+                                        {% if vehicle.is_active %}
+                                        <div class="vehicle-hover-action">
+                                            <a href="{% url 'order_workflow' %}?vehicle_id={{ vehicle.id }}" class="btn btn-sm btn-success create-order-btn" title="Create Order">
+                                                <i class="fas fa-plus-circle"></i> Create
+                                            </a>
+                                        </div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -140,6 +133,46 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
+                    
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Vehicles pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                        <div class="text-center text-muted">
+                            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} vehicles
+                        </div>
+                    </nav>
                     {% endif %}
                 </div>
             </div>

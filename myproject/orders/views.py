@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.core.paginator import Paginator
 from sylvia.models import Vehicle, Dealer, Product, Order, OrderItem, Depot, AppSettings, MRN
 from sylvia.forms import VehicleForm, DealerForm, ProductForm, DepotForm
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -26,6 +27,15 @@ def order_workflow(request):
     dealers = Dealer.objects.filter(is_active=True)
     products = Product.objects.filter(is_active=True)
     depots = Depot.objects.filter(is_active=True)
+    
+    # Get vehicle_id from URL parameter if provided
+    selected_vehicle_id = request.GET.get('vehicle_id')
+    selected_vehicle = None
+    if selected_vehicle_id:
+        try:
+            selected_vehicle = Vehicle.objects.get(id=selected_vehicle_id, is_active=True)
+        except Vehicle.DoesNotExist:
+            selected_vehicle = None
 
     if request.method == 'POST':
         dealer_id = request.POST.get('dealer')
@@ -85,6 +95,8 @@ def order_workflow(request):
                     'depots': depots,
                     'now': timezone.now(),
                     'today': timezone.now().date(),
+                    'selected_vehicle': selected_vehicle,
+                    'selected_vehicle_id': selected_vehicle_id,
                     'error': 'An error occurred while creating the order. Please try again.',
                 })
         else:
@@ -95,6 +107,8 @@ def order_workflow(request):
                 'depots': depots,
                 'now': timezone.now(),
                 'today': timezone.now().date(),
+                'selected_vehicle': selected_vehicle,
+                'selected_vehicle_id': selected_vehicle_id,
                 'error': 'Please fill all required fields and enter at least one product quantity.',
             })
 
@@ -105,6 +119,8 @@ def order_workflow(request):
         'depots': depots,
         'now': timezone.now(),
         'today': timezone.now().date(),
+        'selected_vehicle': selected_vehicle,
+        'selected_vehicle_id': selected_vehicle_id,
     }
     return render(request, 'orders/order_workflow.html', context)
 
@@ -171,40 +187,130 @@ def update_order(request, order_id):
     if is_dealer_anonymous:
         dealers = Dealer.objects.filter(is_active=True).exclude(name__iexact='anonymous')
     
+    # Get available products for adding to order
+    current_product_ids = order.order_items.values_list('product_id', flat=True)
+    available_products = Product.objects.filter(is_active=True).exclude(id__in=current_product_ids)
+    
     if request.method == 'POST':
-        new_mrn_status = request.POST.get('mrn_status')
-        new_invoice_date = request.POST.get('invoice_date')
-        new_mrn_date = request.POST.get('mrn_date')
-        new_dealer_id = request.POST.get('dealer_id')
-        
-        # Update dealer if Anonymous and new dealer selected
-        if is_dealer_anonymous and new_dealer_id:
-            try:
-                new_dealer = Dealer.objects.get(id=new_dealer_id, is_active=True)
-                order.dealer = new_dealer
-            except Dealer.DoesNotExist:
-                pass
-        
-        # Update MRN status and MRN date
-        if mrn:
-            mrn.status = new_mrn_status
+        try:
+            # Handle status updates (existing functionality)
+            new_mrn_status = request.POST.get('mrn_status')
+            new_invoice_date = request.POST.get('invoice_date')
+            new_mrn_date = request.POST.get('mrn_date')
+            new_dealer_id = request.POST.get('dealer_id')
+            
+            # Update dealer if Anonymous and new dealer selected
+            if is_dealer_anonymous and new_dealer_id:
+                try:
+                    new_dealer = Dealer.objects.get(id=new_dealer_id, is_active=True)
+                    order.dealer = new_dealer
+                except Dealer.DoesNotExist:
+                    pass
+            
+            # Handle product updates (quantity only - no prices)
+            products_to_update = {}
+            existing_items = {item.product.id: item for item in order.order_items.all()}
+            
+            # Process all product quantity form data
+            for key, value in request.POST.items():
+                if key.startswith('product_') and key.endswith('_quantity'):
+                    parts = key.split('_')
+                    if len(parts) >= 3:
+                        try:
+                            product_id = int(parts[1])
+                            quantity = float(value) if value else 0
+                            products_to_update[product_id] = quantity
+                        except (ValueError, TypeError):
+                            continue
+            
+            # Update existing products and add new products
+            for product_id, quantity in products_to_update.items():
+                if product_id in existing_items:
+                    # Update existing product
+                    item = existing_items[product_id]
+                    
+                    if quantity <= 0:
+                        # Remove item if quantity is 0 or negative
+                        item.delete()
+                        logger.info(f"Removed product {item.product.name} from order {order.order_number}")
+                    else:
+                        item.quantity = quantity
+                        item.save()
+                        logger.info(f"Updated product {item.product.name} in order {order.order_number}: qty={quantity}")
+                else:
+                    # This is a new product to add
+                    if quantity > 0:  # Only add if quantity is positive
+                        try:
+                            product = Product.objects.get(id=product_id, is_active=True)
+                            OrderItem.objects.create(
+                                order=order,
+                                product=product,
+                                quantity=quantity
+                                # No unit_price since we're not handling prices
+                            )
+                            logger.info(f"Added new product {product.name} to order {order.order_number}: qty={quantity}")
+                        except Product.DoesNotExist:
+                            logger.warning(f"Attempted to add non-existent product ID {product_id} to order {order.order_number}")
+                            continue
+            
+            # Check if there are any remaining order items
+            remaining_items = OrderItem.objects.filter(order=order).count()
+            if remaining_items == 0:
+                # Add error message or prevent saving
+                logger.warning(f"Attempted to save order {order.order_number} with no products")
+                context = {
+                    'order': order,
+                    'mrn_status': mrn_status,
+                    'invoice_date': invoice_date,
+                    'mrn_date': mrn_date,
+                    'is_dealer_anonymous': is_dealer_anonymous,
+                    'dealers': dealers,
+                    'available_products': available_products,
+                    'error': 'Order must have at least one product with a positive quantity.',
+                }
+                return render(request, 'orders/update_order.html', context)
+            
+            # Update MRN status and MRN date
+            if mrn:
+                if new_mrn_status:
+                    mrn.status = new_mrn_status
+                if new_mrn_date:
+                    mrn.mrn_date = new_mrn_date
+                mrn.save()
+            elif new_mrn_status:
+                mrn = MRN.objects.create(order=order, status=new_mrn_status, mrn_date=new_mrn_date)
+            
+            # Update order status if MRN approved
+            if new_mrn_status == 'APPROVED':
+                order.status = 'MRN_CREATED'
+            
+            # Update MRN date in Order
             if new_mrn_date:
-                mrn.mrn_date = new_mrn_date
-            mrn.save()
-        elif new_mrn_status:
-            mrn = MRN.objects.create(order=order, status=new_mrn_status, mrn_date=new_mrn_date)
-        # Update order status if MRN approved
-        if new_mrn_status == 'APPROVED':
-            order.status = 'MRN_CREATED'
-        # Update MRN date in Order
-        if new_mrn_date:
-            order.mrn_date = new_mrn_date
-        # Update invoice date and status
-        if new_invoice_date:
-            order.bill_date = new_invoice_date
-            order.status = 'BILLED'
-        order.save()
-        return redirect('order_list')
+                order.mrn_date = new_mrn_date
+            
+            # Update invoice date and status
+            if new_invoice_date:
+                order.bill_date = new_invoice_date
+                order.status = 'BILLED'
+            
+            order.save()
+            
+            return redirect('order_list')
+            
+        except Exception as e:
+            logger.error(f"Error updating order {order_id}: {e}")
+            context = {
+                'order': order,
+                'mrn_status': mrn_status,
+                'invoice_date': invoice_date,
+                'mrn_date': mrn_date,
+                'is_dealer_anonymous': is_dealer_anonymous,
+                'dealers': dealers,
+                'available_products': available_products,
+                'error': 'An error occurred while updating the order. Please try again.',
+            }
+            return render(request, 'orders/update_order.html', context)
+    
     context = {
         'order': order,
         'mrn_status': mrn_status,
@@ -212,6 +318,7 @@ def update_order(request, order_id):
         'mrn_date': mrn_date,
         'is_dealer_anonymous': is_dealer_anonymous,
         'dealers': dealers,
+        'available_products': available_products,
     }
     return render(request, 'orders/update_order.html', context)
 
@@ -475,14 +582,21 @@ def vehicle_list(request):
     if type_filter:
         vehicles = vehicles.filter(vehicle_type=type_filter)
     
-    # Calculate statistics
+    # Calculate statistics (before pagination)
     total_vehicles = vehicles.count()
     active_vehicles = vehicles.filter(is_active=True).count()
     total_capacity = sum(vehicle.capacity for vehicle in vehicles)
     avg_capacity = total_capacity / total_vehicles if total_vehicles > 0 else 0
     
+    # Pagination
+    paginator = Paginator(vehicles, 15)  # Show 15 vehicles per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'vehicles': vehicles,
+        'vehicles': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
         'search_query': search_query,
         'status_filter': status_filter,
         'type_filter': type_filter,
@@ -537,14 +651,21 @@ def dealer_list(request):
     elif status_filter == 'inactive':
         dealers = dealers.filter(is_active=False)
     
-    # Calculate statistics
+    # Calculate statistics (before pagination)
     total_dealers = dealers.count()
     active_dealers = dealers.filter(is_active=True).count()
     total_credit_limit = sum(dealer.credit_limit for dealer in dealers)
     avg_credit_limit = total_credit_limit / total_dealers if total_dealers > 0 else 0
     
+    # Pagination
+    paginator = Paginator(dealers, 15)  # Show 15 dealers per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'dealers': dealers,
+        'dealers': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
         'search_query': search_query,
         'status_filter': status_filter,
         'stats': {

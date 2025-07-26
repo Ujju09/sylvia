@@ -6,8 +6,8 @@ from .api_views import (
     DepotViewSet, ProductViewSet, DealerViewSet, VehicleViewSet,
     OrderViewSet, OrderItemViewSet, MRNViewSet, InvoiceViewSet,
     AuditLogViewSet, AppSettingsViewSet, NotificationTemplateViewSet,
-    dashboard_stats, dealer_analytics, product_analytics, order_analytics,
-    user_profile
+    DealerContextViewSet, dashboard_stats, dealer_analytics, product_analytics, 
+    order_analytics, user_profile
 )
 
 # Create router and register viewsets
@@ -23,6 +23,7 @@ router.register(r'invoices', InvoiceViewSet)
 router.register(r'audit-logs', AuditLogViewSet)
 router.register(r'app-settings', AppSettingsViewSet)
 router.register(r'notification-templates', NotificationTemplateViewSet)
+router.register(r'dealer-context', DealerContextViewSet)
 
 urlpatterns = [
     # Authentication

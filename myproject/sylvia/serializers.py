@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate
+    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext
 )
 
 
@@ -217,3 +217,73 @@ class ProductStatsSerializer(serializers.Serializer):
     total_orders = serializers.IntegerField()
     total_quantity = serializers.DecimalField(max_digits=10, decimal_places=2)
     avg_quantity_per_order = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+
+class DealerContextSerializer(serializers.ModelSerializer):
+    created_by = UserSerializer(read_only=True)
+    dealer = DealerSerializer(read_only=True)
+    dealer_id = serializers.IntegerField(write_only=True)
+    products_mentioned = ProductSerializer(many=True, read_only=True)
+    products_mentioned_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
+    structured_trait_scores = serializers.SerializerMethodField()
+    understanding_summary = serializers.SerializerMethodField()
+    follow_up_overdue = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DealerContext
+        fields = [
+            'id', 'dealer', 'dealer_id', 'interaction_type', 'interaction_date',
+            'interaction_summary', 'detailed_notes', 'sentiment', 'priority_level',
+            
+            # Structured trait scores
+            'reliability_score', 'communication_clarity', 'payment_punctuality',
+            'order_consistency', 'trust_level', 'openness_to_feedback',
+            'cooperation_level', 'loyalty_tendency',
+            
+            # Understanding-focused fields
+            'primary_motivations', 'business_challenges', 'success_metrics',
+            'concerns_expressed', 'aspirations_goals', 'preferred_communication_style',
+            'decision_making_process', 'information_preferences', 'timing_preferences',
+            
+            # Business context
+            'topics_discussed', 'products_mentioned', 'products_mentioned_ids',
+            'follow_up_required', 'follow_up_date', 'follow_up_notes',
+            
+            # Assessment and outcome
+            'intuitive_assessment', 'issue_resolved', 'resolution_notes',
+            'outcome', 'understanding_gained', 'tags',
+            
+            # Computed fields
+            'structured_trait_scores', 'understanding_summary', 'follow_up_overdue',
+            
+            # Base model fields
+            'created_at', 'updated_at', 'created_by'
+        ]
+        read_only_fields = [
+            'id', 'created_at', 'updated_at', 'created_by', 'structured_trait_scores',
+            'understanding_summary', 'follow_up_overdue'
+        ]
+    
+    def get_structured_trait_scores(self, obj):
+        """Get structured trait scores summary"""
+        return obj.get_structured_trait_scores()
+    
+    def get_understanding_summary(self, obj):
+        """Get understanding summary"""
+        return obj.get_understanding_summary()
+    
+    def get_follow_up_overdue(self, obj):
+        """Check if follow-up is overdue"""
+        return obj.get_follow_up_status()
+    
+    def create(self, validated_data):
+        products_mentioned_ids = validated_data.pop('products_mentioned_ids', [])
+        context = DealerContext.objects.create(**validated_data)
+        
+        if products_mentioned_ids:
+            context.products_mentioned.set(products_mentioned_ids)
+        
+        return context

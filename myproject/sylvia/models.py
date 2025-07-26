@@ -323,7 +323,7 @@ class NotificationTemplate(BaseModel):
     class Meta:
         ordering = ['name']
 
-
+# Think this through before implementing a model.
 class DealerContext(BaseModel):
     """Model to store contextual information about dealers for AI-enhanced relationship management
     

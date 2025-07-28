@@ -126,16 +126,32 @@ def order_workflow(request):
 
 @login_required
 def home(request):
-    from datetime import date
-    from django.db.models import Q
+    from datetime import date, timedelta
+    from django.db.models import Q, Sum
     
     settings = {s.key: s.value for s in AppSettings.objects.all()}
     today = date.today()
+    week_ago = today - timedelta(days=7)
     
-    # Daily report data
-    orders_created_today = Order.objects.filter(order_date__date=today).count()
-    mrn_approved_today = MRN.objects.filter(mrn_date=today, status='APPROVED').count()
-    orders_billed_today = Order.objects.filter(bill_date=today, status='BILLED').count()
+    # Worker-focused metrics - shows actual efforts regardless of order dates
+    
+    # 1. Orders entered today (actual data entry work done)
+    orders_entered_today = Order.objects.filter(created_at__date=today).count()
+    
+    # 2. Workflow actions today (status progression work)
+    mrn_created_today = Order.objects.filter(updated_at__date=today, status='MRN_CREATED').count()
+    orders_billed_today = Order.objects.filter(updated_at__date=today, status='BILLED').count()
+    
+    # 3. This week's productivity (7-day rolling metrics)
+    orders_entered_week = Order.objects.filter(created_at__date__gte=week_ago).count()
+    mrn_approved_week = MRN.objects.filter(created_at__date__gte=week_ago, status='APPROVED').count()
+    total_quantity_week = Order.objects.filter(created_at__date__gte=week_ago).aggregate(
+        total=Sum('order_items__quantity')
+    )['total'] or 0
+    
+    # 4. Additional inspiring metrics
+    dealers_served_today = Order.objects.filter(created_at__date=today).values('dealer').distinct().count()
+    vehicles_loaded_today = Order.objects.filter(created_at__date=today).values('vehicle').distinct().count()
 
     context = {
         'app_settings': {
@@ -143,9 +159,16 @@ def home(request):
             'site_description': settings.get('site_description', 'Move People ― Move Mountains'),
         },
         'daily_reports': {
-            'orders_created': orders_created_today,
-            'mrn_approved': mrn_approved_today,
+            'orders_entered': orders_entered_today,
+            'mrn_created': mrn_created_today,
             'orders_billed': orders_billed_today,
+            'dealers_served': dealers_served_today,
+            'vehicles_loaded': vehicles_loaded_today,
+        },
+        'weekly_reports': {
+            'orders_entered': orders_entered_week,
+            'mrn_approved': mrn_approved_week,
+            'total_quantity': round(float(total_quantity_week), 2) if total_quantity_week else 0,
         },
         'current_date': today,
     }

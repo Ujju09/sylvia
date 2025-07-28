@@ -8,38 +8,42 @@
         <p class="lead">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong></p>
       </div>
       
-      <!-- Daily Reports Section -->
-      <div class="row g-4">
-        <!-- Orders Created Card -->
-        <div class="col-lg-4 col-md-6">
+      <!-- Today's Achievements Section -->
+      <div class="row g-4 mb-4">
+        <div class="col-12">
+          <h4 class="text-center mb-3"><i class="fas fa-trophy text-warning me-2"></i>Today's Achievements</h4>
+        </div>
+        
+        <!-- Orders Entered Card -->
+        <div class="col-lg-3 col-md-6">
           <div class="card daily-report-card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <h5 class="card-title text-primary">Orders Created</h5>
-                  <h2 class="display-4 fw-bold text-primary">{{ daily_reports.orders_created }}</h2>
-                  <p class="text-muted mb-0">orders today</p>
+                  <h6 class="card-title text-primary">Orders Entered</h6>
+                  <h2 class="display-4 fw-bold text-primary">{{ daily_reports.orders_entered }}</h2>
+                  <p class="text-muted mb-0 small">data entry work</p>
                 </div>
                 <div class="report-icon">
-                  <i class="fas fa-shopping-cart fa-2x text-primary"></i>
+                  <i class="fas fa-keyboard fa-2x text-primary"></i>
                 </div>
               </div>
             </div>
           </div>
         </div>
         
-        <!-- MRN Approved Card -->
-        <div class="col-lg-4 col-md-6">
+        <!-- MRN Progress Card -->
+        <div class="col-lg-3 col-md-6">
           <div class="card daily-report-card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <h5 class="card-title text-success">MRN Approved</h5>
-                  <h2 class="display-4 fw-bold text-success">{{ daily_reports.mrn_approved }}</h2>
-                  <p class="text-muted mb-0">approvals today</p>
+                  <h6 class="card-title text-success">MRN Created</h6>
+                  <h2 class="display-4 fw-bold text-success">{{ daily_reports.mrn_created }}</h2>
+                  <p class="text-muted mb-0 small">workflow progress</p>
                 </div>
                 <div class="report-icon">
-                  <i class="fas fa-check-circle fa-2x text-success"></i>
+                  <i class="fas fa-clipboard-check fa-2x text-success"></i>
                 </div>
               </div>
             </div>
@@ -47,17 +51,93 @@
         </div>
         
         <!-- Orders Billed Card -->
-        <div class="col-lg-4 col-md-6">
+        <div class="col-lg-3 col-md-6">
           <div class="card daily-report-card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <h5 class="card-title text-info">Orders Billed</h5>
+                  <h6 class="card-title text-info">Orders Billed</h6>
                   <h2 class="display-4 fw-bold text-info">{{ daily_reports.orders_billed }}</h2>
-                  <p class="text-muted mb-0">bills generated</p>
+                  <p class="text-muted mb-0 small">billing completed</p>
                 </div>
                 <div class="report-icon">
                   <i class="fas fa-file-invoice-dollar fa-2x text-info"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dealers Served Card -->
+        <div class="col-lg-3 col-md-6">
+          <div class="card daily-report-card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="card-title text-warning">Dealers Served</h6>
+                  <h2 class="display-4 fw-bold text-warning">{{ daily_reports.dealers_served }}</h2>
+                  <p class="text-muted mb-0 small">customers helped</p>
+                </div>
+                <div class="report-icon">
+                  <i class="fas fa-handshake fa-2x text-warning"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- This Week's Impact Section -->
+      <div class="row g-4">
+        <div class="col-12">
+          <h4 class="text-center mb-3"><i class="fas fa-chart-line text-success me-2"></i>This Week's Impact</h4>
+        </div>
+        
+        <div class="col-lg-4 col-md-6">
+          <div class="card weekly-report-card h-100 border-success">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="card-title text-success">Total Orders Processed</h6>
+                  <h3 class="display-5 fw-bold text-success">{{ weekly_reports.orders_entered }}</h3>
+                  <p class="text-muted mb-0 small">last 7 days</p>
+                </div>
+                <div class="report-icon">
+                  <i class="fas fa-calendar-week fa-2x text-success"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+          <div class="card weekly-report-card h-100 border-info">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="card-title text-info">MRNs Approved</h6>
+                  <h3 class="display-5 fw-bold text-info">{{ weekly_reports.mrn_approved }}</h3>
+                  <p class="text-muted mb-0 small">quality ensured</p>
+                </div>
+                <div class="report-icon">
+                  <i class="fas fa-medal fa-2x text-info"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+          <div class="card weekly-report-card h-100 border-warning">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="card-title text-warning">Material Moved</h6>
+                  <h3 class="display-5 fw-bold text-warning">{{ weekly_reports.total_quantity }}</h3>
+                  <p class="text-muted mb-0 small">MT processed</p>
+                </div>
+                <div class="report-icon">
+                  <i class="fas fa-truck fa-2x text-warning"></i>
                 </div>
               </div>
             </div>

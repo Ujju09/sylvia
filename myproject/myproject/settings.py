@@ -208,6 +208,7 @@ CSP_SCRIPT_SRC = (
     "'self'",
     "'unsafe-inline'",
     "https://cdn.jsdelivr.net",
+    "https://code.jquery.com",
 )
 CSP_IMG_SRC = (
     "'self'",

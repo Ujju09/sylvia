@@ -1,10 +1,132 @@
 {% extends 'base.html' %}
 {% load static %}
+
+{% block extra_css %}
+<style>
+.stat-card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
+  <!-- Quick Statistics Section -->
+  <div class="row mb-4 g-3">
+    <div class="col-6 col-md-2">
+      <a href="{% url 'order_list' %}" class="text-decoration-none">
+        <div class="card bg-primary text-white shadow-sm h-100 stat-card">
+          <div class="card-body text-center p-3">
+            <h5 class="card-title mb-1">{{ order_stats.total_orders }}</h5>
+            <p class="card-text small mb-0">Total Orders</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card bg-info text-white shadow-sm h-100 stat-card">
+        <div class="card-body text-center p-3">
+          <h5 class="card-title mb-1">{{ order_stats.anonymous_dealers_count }}</h5>
+          <p class="card-text small mb-0">Anonymous Dealers</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <a href="?status=PENDING" class="text-decoration-none">
+        <div class="card bg-warning text-white shadow-sm h-100 stat-card">
+          <div class="card-body text-center p-3">
+            <h5 class="card-title mb-1">{{ order_stats.pending_orders }}</h5>
+            <p class="card-text small mb-0">Pending</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a href="?status=MRN_CREATED" class="text-decoration-none">
+        <div class="card bg-secondary text-white shadow-sm h-100 stat-card">
+          <div class="card-body text-center p-3">
+            <h5 class="card-title mb-1">{{ order_stats.mrn_created_orders }}</h5>
+            <p class="card-text small mb-0">MRN Created</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-12 col-md-3">
+      <a href="?status=BILLED" class="text-decoration-none">
+        <div class="card bg-success text-white shadow-sm h-100 stat-card">
+          <div class="card-body text-center p-3">
+            <h5 class="card-title mb-1">{{ order_stats.billed_orders }}</h5>
+            <p class="card-text small mb-0">Billed</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
   <div class="card shadow-sm">
     <div class="card-body">
-      <h3 class="mb-4 text-primary">All Orders</h3>
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <h3 class="text-primary">All Orders</h3>
+        </div>
+        <div class="col-md-6">
+          <a href="{% url 'order_workflow' %}" class="btn btn-primary float-end">Create New Order</a>
+        </div>
+      </div>
+
+      <!-- Filters Section -->
+      <div class="card bg-light mb-4">
+        <div class="card-body">
+          <form method="get" class="row g-3">
+            <div class="col-md-4">
+              <label for="search" class="form-label">Search</label>
+              <input type="text" class="form-control" id="search" name="search" 
+                     value="{{ search_query }}" 
+                     placeholder="Order number, dealer name, vehicle...">
+            </div>
+            <div class="col-md-3">
+              <label for="dealer" class="form-label">Dealer</label>
+              <select class="form-select" id="dealer" name="dealer">
+                <option value="">All Dealers</option>
+                {% for dealer in dealers %}
+                  <option value="{{ dealer.id }}" {% if dealer_filter == dealer.id|stringformat:"s" %}selected{% endif %}>
+                    {{ dealer.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="status" class="form-label">Status</label>
+              <select class="form-select" id="status" name="status">
+                <option value="">All Statuses</option>
+                {% for status_code, status_display in order_status_choices %}
+                  <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
+                    {{ status_display }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">&nbsp;</label>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-outline-primary">Filter</button>
+              </div>
+            </div>
+          </form>
+          {% if search_query or dealer_filter or status_filter %}
+            <div class="mt-3">
+              <a href="{% url 'order_list' %}" class="btn btn-outline-secondary btn-sm">Clear Filters</a>
+              <span class="text-muted ms-2">
+                Showing filtered results
+                {% if search_query %}for "{{ search_query }}"{% endif %}
+                {% if dealer_filter %}• Selected dealer{% endif %}
+                {% if status_filter %}• Status: {{ status_filter }}{% endif %}
+              </span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
       <table class="table table-bordered table-hover align-middle">
         <thead class="table-light">
           <tr>
@@ -16,7 +138,7 @@
             <th>Total Quantity</th>
             <th>MRN Status</th>
             <th>Invoice Status</th>
-            <th>Edit</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -35,16 +157,25 @@
             <td>{{ order.get_total_quantity }}</td>
             <td>
               {% if order.mrn %}
-                Approved on {{ order.mrn_date|date:'jS F, Y' }}
+                {% if order.mrn.status == 'APPROVED' %}
+                  <span class="badge bg-success">Approved</span>
+                  <br><small class="text-muted">{{ order.mrn_date|date:'j M, Y' }}</small>
+                {% elif order.mrn.status == 'PENDING' %}
+                  <span class="badge bg-warning">Pending</span>
+                {% elif order.mrn.status == 'REJECTED' %}
+                  <span class="badge bg-danger">Rejected</span>
+                {% endif %}
               {% else %}
-                Pending for {{ order.order_date|timesince }} 
+                <span class="badge bg-secondary">Not Created</span>
+                <br><small class="text-muted">{{ order.order_date|timesince }} ago</small>
               {% endif %}
             </td>
             <td>
               {% if order.bill_date %}
-                Billed on {{ order.bill_date|date:'jS F, Y'  }}
+                <span class="badge bg-success">Billed</span>
+                <br><small class="text-muted">{{ order.bill_date|date:'j M, Y' }}</small>
               {% else %}
-                Pending
+                <span class="badge bg-warning">Pending</span>
               {% endif %}
             </td>
             <td>
@@ -54,7 +185,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="11" class="text-center">No orders found.</td></tr>
+          <tr><td colspan="10" class="text-center">No orders found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -65,10 +196,10 @@
         <ul class="pagination justify-content-center">
           {% if page_obj.has_previous %}
             <li class="page-item">
-              <a class="page-link" href="?page=1">&laquo; First</a>
+              <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if dealer_filter %}&dealer={{ dealer_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">&laquo; First</a>
             </li>
             <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dealer_filter %}&dealer={{ dealer_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Previous</a>
             </li>
           {% endif %}
           
@@ -79,22 +210,23 @@
               </li>
             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
               <li class="page-item">
-                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dealer_filter %}&dealer={{ dealer_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
               </li>
             {% endif %}
           {% endfor %}
           
           {% if page_obj.has_next %}
             <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dealer_filter %}&dealer={{ dealer_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next</a>
             </li>
             <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+              <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dealer_filter %}&dealer={{ dealer_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Last &raquo;</a>
             </li>
           {% endif %}
         </ul>
         <div class="text-center text-muted">
           Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} orders
+          {% if search_query or dealer_filter or status_filter %}(filtered){% endif %}
         </div>
       </nav>
       {% endif %}

@@ -25,6 +25,7 @@
           <ul class="navbar-nav ms-auto">
             <li class="nav-item"><a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a></li>
             <li class="nav-item"><a class="nav-link {% if request.path == '/orders/order-workflow/' %}active{% endif %}" href="/orders/order-workflow/">New Order</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/orders/dispatch-table/' in request.path %}active{% endif %}" href="/orders/dispatch-table/">🔆AI</a></li>
             <li class="nav-item"><a class="nav-link {% if request.path == '/orders/orders/' %}active{% endif %}" href="/orders/orders/">Order List</a></li>
             <li class="nav-item"><a class="nav-link {% if '/orders/vehicles/' in request.path %}active{% endif %}" href="/orders/vehicles/">Vehicles</a></li>
             <li class="nav-item"><a class="nav-link {% if '/orders/dealers/' in request.path %}active{% endif %}" href="/orders/dealers/">Dealers</a></li>

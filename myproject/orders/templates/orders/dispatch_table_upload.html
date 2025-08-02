@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-image"></i> {{ title }}
+                    </h4>
+                    <small class="text-muted">Upload a JPEG screenshot of dispatch table to automatically create orders</small>
+                </div>
+                <div class="card-body">
+                    <!-- Cost Warning -->
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Important - Use With Care:</h6>
+                        <ul class="mb-2">
+                            <li><strong>This is an expensive AI-powered process</strong> - Each image upload costs money</li>
+                            <li><strong>Avoid unnecessary uploads</strong> - Only process images when you're ready to create orders</li>
+                            <li><strong>Double-check your image quality</strong> before uploading to avoid reprocessing</li>
+                            <li><strong>Avoid Order Duplication</strong> only add data for new orders</li>
+                            <li><strong>Use sparingly</strong> - This feature uses Claude AI vision which has usage costs</li>
+                        </ul>
+                        <p class="mb-0"><small><strong>💡 Tip:</strong> Review your image carefully and ensure it's clear and complete and doesn't contain duplications before uploading.</small></p>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Instructions:</h6>
+                        <ul class="mb-0">
+                            <li>Upload a clear JPEG image of the dispatch table</li>
+                            <li>Ensure all columns are visible: Plant Name, Date, Transporter, Vehicle Number, Quantity, Product, Party Name</li>
+                            <li>The system will extract data, validate against existing records, and create missing entities</li>
+                            <li>You'll get a confirmation page before any database changes are made</li>
+                        </ul>
+                    </div>
+
+                    <!-- Upload Form -->
+                    <form id="dispatchForm" enctype="multipart/form-data">
+                        <div class="form-group mb-3">
+                            <label for="dispatch_image" class="form-label">
+                                <i class="fas fa-upload"></i> Select Dispatch Table Image
+                            </label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="dispatch_image" 
+                                   name="dispatch_image" 
+                                   accept="image/*" 
+                                   required>
+                            <div class="form-text">Supported formats: JPEG, PNG, GIF (max 10MB)</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="processBtn">
+                                <i class="fas fa-cog"></i> Process Image
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Progress Indicator -->
+                    <div id="progressContainer" class="mt-4" style="display: none;">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Processing image with AI vision...</p>
+                            <small class="text-muted">This may take 30-60 seconds</small>
+                        </div>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="resultsContainer" class="mt-4" style="display: none;">
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle"></i> Image Processed Successfully!</h6>
+                            <p id="resultsMessage" class="mb-0"></p>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'confirm_dispatch_data' %}" class="btn btn-success btn-lg">
+                                <i class="fas fa-eye"></i> Review & Confirm Data
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Error Container -->
+                    <div id="errorContainer" class="mt-4" style="display: none;">
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Processing Failed</h6>
+                            <p id="errorMessage" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expected Format Example -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-table"></i> Expected Table Format</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Receiving Plant Name</th>
+                                    <th>Plant INV Date</th>
+                                    <th>Transporter</th>
+                                    <th>Vehicle Number</th>
+                                    <th>Dispatch Quantity</th>
+                                    <th>Product Description</th>
+                                    <th>Party Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Depot ABC</td>
+                                    <td>2024-01-15</td>
+                                    <td>Transport Co.</td>
+                                    <td>CG15EA0464</td>
+                                    <td>25.5 MT</td>
+                                    <td>OPC Cement</td>
+                                    <td>Dealer Name</td>
+                                </tr>
+                                <tr class="text-muted">
+                                    <td colspan="7"><em>↑ This is the expected format for your dispatch table</em></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('dispatchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const imageFile = document.getElementById('dispatch_image').files[0];
+    
+    if (!imageFile) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    // Check file size (10MB limit)
+    if (imageFile.size > 10 * 1024 * 1024) {
+        alert('File size too large. Please use an image under 10MB.');
+        return;
+    }
+    
+    // Cost confirmation
+    if (!confirm('⚠️ COST WARNING: This AI processing is expensive. Are you sure you want to proceed?\n\n✓ Image is clear and readable\n✓ All table columns are visible\n✓ Ready to create orders from this data\n\nClick OK to proceed (costs will apply) or Cancel to review.')) {
+        return;
+    }
+    
+    formData.append('dispatch_image', imageFile);
+    
+    // Show progress
+    document.getElementById('progressContainer').style.display = 'block';
+    document.getElementById('resultsContainer').style.display = 'none';
+    document.getElementById('errorContainer').style.display = 'none';
+    document.getElementById('processBtn').disabled = true;
+    
+    // Submit to processing endpoint
+    fetch('{% url "process_dispatch_image" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('progressContainer').style.display = 'none';
+        document.getElementById('processBtn').disabled = false;
+        
+        if (data.success) {
+            document.getElementById('resultsMessage').textContent = data.message;
+            document.getElementById('resultsContainer').style.display = 'block';
+        } else {
+            document.getElementById('errorMessage').textContent = data.error || 'Unknown error occurred';
+            document.getElementById('errorContainer').style.display = 'block';
+        }
+    })
+    .catch(error => {
+        document.getElementById('progressContainer').style.display = 'none';
+        document.getElementById('processBtn').disabled = false;
+        document.getElementById('errorMessage').textContent = 'Network error: ' + error.message;
+        document.getElementById('errorContainer').style.display = 'block';
+    });
+});
+</script>
+{% endblock %}

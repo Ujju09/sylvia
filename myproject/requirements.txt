@@ -1,3 +1,4 @@
+anthropic==0.40.0
 asgiref==3.9.1
 charset-normalizer==3.4.2
 dj-database-url==3.0.1

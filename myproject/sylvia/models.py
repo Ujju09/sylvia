@@ -132,26 +132,21 @@ class Order(BaseModel):
     whatsapp_sent = models.BooleanField(default=False)
     whatsapp_sent_at = models.DateTimeField(null=True, blank=True)
     
-    # Auto-generate order number
     def save(self, *args, **kwargs):
         if not self.order_number:
             from django.db import transaction
             with transaction.atomic():
-                # Use order_date instead of today's date to handle backdated orders
-                order_date = self.order_date.date() if self.order_date else timezone.now().date()
-                # Lock the table to prevent race conditions
-                last_order = Order.objects.select_for_update().filter(
-                    order_date__date=order_date
-                ).order_by('-order_number').first()
+                # Simple incremental order numbering
+                # Get the highest existing order ID and increment
+                last_order = Order.objects.select_for_update().order_by('id').last()
                 
                 if last_order:
-                    # Extract the numeric part and increment
-                    last_num = int(last_order.order_number[-4:])
-                    count = last_num + 1
+                    next_id = last_order.id + 1
                 else:
-                    count = 1
+                    next_id = 1
                 
-                self.order_number = f"ORD{order_date.strftime('%Y%m%d')}{count:04d}"
+                # Simple format: ORD + 6-digit incremental number
+                self.order_number = f"ORD{next_id:06d}"
         super().save(*args, **kwargs)
     
     def __str__(self):

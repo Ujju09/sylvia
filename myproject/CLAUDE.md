@@ -76,9 +76,10 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 ## Business Workflow
 
 1. **Order Creation**: Create orders with dealer, vehicle, depot, and products
-2. **MRN Process**: Quality check and approval workflow
-3. **Billing**: Invoice generation and payment tracking
-4. **Analytics**: Performance tracking and reporting
+2. **AI-Powered Dispatch Processing**: Upload dispatch table images for automated order extraction
+3. **MRN Process**: Quality check and approval workflow
+4. **Billing**: Invoice generation and payment tracking
+5. **Analytics**: Performance tracking and reporting with enhanced filtering
 
 ## Database Configuration
 
@@ -93,6 +94,7 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 - `DEBUG`: Debug mode (True/False)
 - `DATABASE_URL`: PostgreSQL connection string (production)
 - `RAILWAY_ENVIRONMENT`: Deployment environment
+- `ANTHROPIC_API_KEY`: API key for Claude AI integration (dispatch table processing)
 
 ## Static Files
 
@@ -117,6 +119,9 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 - Comprehensive analytics and reporting
 - Excel/PDF export capabilities
 - Audit logging for important actions
+- **AI-Powered Dispatch Table Processing**: Upload and process dispatch table images using Claude AI
+- **Content Security Policy (CSP)**: Enhanced security headers for web application protection
+- **Secure Cookie Configuration**: Implementation of secure session management
 
 ## Testing
 
@@ -149,6 +154,12 @@ python3 manage.py test
 ### Entity Forms
 - `/orders/products/add/` - Add new product
 - `/orders/depots/add/` - Add new depot
+
+### AI-Powered Features
+- `/orders/dispatch-table/` - Upload and process dispatch table images using Claude AI
+- `/orders/process-dispatch-image/` - Process uploaded dispatch table images
+- `/orders/confirm-dispatch-data/` - Confirm extracted dispatch data before order creation
+- `/orders/create-dispatch-orders/` - Create orders from processed dispatch data
 
 ## API Endpoints
 
@@ -201,3 +212,48 @@ Base URL: `/api/v1/`
 - Address and contact information organization
 - Statistics display (total dealers, credit limits, etc.)
 - Delete confirmation with full dealer details
+
+### Order List UI
+- Enhanced filtering capabilities for better data organization
+- Brief statistics display for quick insights
+- Improved navigation and user experience
+
+### AI-Powered Dispatch Processing
+- Image upload interface for dispatch table processing
+- AI-powered data extraction using Claude API
+- Confirmation workflow before order creation
+- Error handling and validation for processed data
+- Logging system for troubleshooting and audit trails
+
+## Security Features
+
+### Content Security Policy (CSP)
+- Comprehensive CSP headers implementation
+- Protection against XSS attacks
+- Restricted resource loading policies
+- Frame protection and click-jacking prevention
+
+### Secure Configuration
+- Secure cookie settings
+- HTTPS enforcement in production
+- CSRF protection
+- Proxy SSL header configuration for Railway deployment
+
+## Dependencies
+
+### Core Requirements
+- Django 5.2.4 with REST Framework
+- PostgreSQL support (psycopg2-binary)
+- WhiteNoise for static files
+- Gunicorn for production serving
+
+### AI Integration
+- Anthropic Claude API (anthropic==0.40.0)
+- Image processing capabilities
+- JSON data extraction and validation
+
+### Security & Utilities
+- django-csp for Content Security Policy
+- django-cors-headers for CORS handling
+- python-dotenv for environment management
+- Report generation (openpyxl, reportlab, pandas)

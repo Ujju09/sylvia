@@ -62,14 +62,21 @@ def process_dispatch_image(request):
         prompt = """
         Analyze this dispatch table image and extract the following information for each row:
         
-        Expected columns (map as indicated):
-        1. Receiving Plant Name → Depot (map using depot correlation table below)
-        2. Plant INV Date → Order Date (format as YYYY-MM-DD)
-        3. Transporter → Vehicle Owner
-        4. Vehicle Number → Truck Number
-        5. Dispatch Quantity → Quantity (extract numeric value)
-        6. Product Description → Product Name (map using product correlation table below)
-        7. Party Name → Dealer Name (if empty, use "Anonymous")
+        FLEXIBLE COLUMN MAPPING - Look for these data types regardless of exact header names:
+        1. Depot/Plant/Location Name → Depot (map using depot correlation table below)
+        2. Date/Invoice Date/Plant Date/Dispatch Date → Order Date (CRITICAL: see date parsing rules below)
+        3. Transporter/Carrier/Owner → Vehicle Owner
+        4. Vehicle/Truck Number/Registration → Truck Number
+        5. Quantity/Dispatch Qty/Amount → Quantity (extract numeric value)
+        6. Product/Material/Item Description → Product Name (map using product correlation table below)
+        7. Party/Dealer/Customer Name → Dealer Name (if empty, use "Anonymous")
+        
+        CRITICAL DATE PARSING RULES:
+        - Parse dates in ANY format (DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, etc.)
+        - Convert ALL dates to YYYY-MM-DD format
+        - Examples: "01/08/2025" → "2025-08-01", "30.7.25" → "2025-07-30"
+        
+        IMPORTANT - Be flexible with column headers. The actual headers may vary but look for the data types described above.
         
         IMPORTANT - Depot Name Mapping:
         Use this correlation table to map depot descriptions to standard depot names:
@@ -90,7 +97,7 @@ def process_dispatch_image(request):
         
         If the product description doesn't match exactly, find the closest match from the correlation table.
         
-        Return the data as a JSON array with objects containing these exact fields:
+        CRITICAL: Return ONLY a valid JSON array with objects containing these exact fields:
         - depot_name (use mapped name from depot correlation table)
         - order_date
         - vehicle_owner
@@ -99,16 +106,29 @@ def process_dispatch_image(request):
         - product_name (use mapped name from product correlation table)
         - dealer_name
         
-        Important:
+        Important rules:
         - If any field is missing or unclear, use reasonable defaults
         - For quantities, extract only the numeric value (e.g., "25.5 MT" → "25.5")
-        - For dates, ensure YYYY-MM-DD format
+        - For dates, STRICTLY follow the date parsing rules above - ensure YYYY-MM-DD format 
         - For truck numbers, clean format (e.g., "CG 15 EA 0464" → "CG15EA0464")
         - If dealer is empty, use "Anonymous"
         - ALWAYS use the mapped depot names from the depot correlation table
         - ALWAYS use the mapped product names from the product correlation table
+        - Do NOT include any explanatory text, only return the JSON array
+        - If you cannot parse the table, return an empty array: []
         
-        Return only valid JSON, no additional text.
+        Example output format:
+        [
+          {
+            "depot_name": "Nagar Untari Depot",
+            "order_date": "2024-01-15",
+            "vehicle_owner": "ABC Transport",
+            "truck_number": "CG15EA0464",
+            "quantity": "25.5",
+            "product_name": "Magna",
+            "dealer_name": "XYZ Dealers"
+          }
+        ]
         """
         
         # Call Claude vision API
@@ -140,21 +160,40 @@ def process_dispatch_image(request):
             # Extract response text
             response_text = message.content[0].text.strip()
             
+            # Log the raw response for debugging
+            logger.info(f"Claude raw response: {response_text[:500]}...")
+            
             # Parse JSON response
             try:
                 extracted_data = json.loads(response_text)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON decode error: {e}")
                 # Try to extract JSON from response if it's wrapped in text
                 start_idx = response_text.find('[')
                 end_idx = response_text.rfind(']') + 1
                 if start_idx >= 0 and end_idx > start_idx:
                     json_text = response_text[start_idx:end_idx]
-                    extracted_data = json.loads(json_text)
+                    try:
+                        extracted_data = json.loads(json_text)
+                    except json.JSONDecodeError as e2:
+                        logger.error(f"Failed to parse extracted JSON: {e2}")
+                        return JsonResponse({
+                            'error': 'Could not parse response from image analysis. Please try again or check if the image is clear.',
+                            'debug_info': f'Response preview: {response_text[:200]}...'
+                        }, status=400)
                 else:
-                    raise ValueError("Could not parse JSON from Claude response")
+                    logger.error(f"No JSON array found in response: {response_text}")
+                    return JsonResponse({
+                        'error': 'No valid data structure found in image analysis response. Please ensure the image contains a clear dispatch table.',
+                        'debug_info': f'Response preview: {response_text[:200]}...'
+                    }, status=400)
             
             if not isinstance(extracted_data, list):
-                return JsonResponse({'error': 'Invalid data format from image analysis'}, status=400)
+                logger.error(f"Response is not a list: {type(extracted_data)}")
+                return JsonResponse({
+                    'error': 'Invalid data format from image analysis. Expected a list of dispatch entries.',
+                    'debug_info': f'Received: {type(extracted_data).__name__}'
+                }, status=400)
             
             # Validate and process the extracted data
             processed_data = validate_and_process_data(extracted_data)

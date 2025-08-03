@@ -234,6 +234,16 @@ def update_order(request, order_id):
             products_to_update = {}
             existing_items = {item.product.id: item for item in order.order_items.all()}
             
+            # Get products that should remain (exist in DOM)
+            existing_product_ids = set()
+            for key in request.POST.keys():
+                if key.startswith('existing_product_'):
+                    try:
+                        product_id = int(key.split('_')[2])
+                        existing_product_ids.add(product_id)
+                    except (ValueError, IndexError):
+                        continue
+            
             # Process all product quantity form data
             for key, value in request.POST.items():
                 if key.startswith('product_') and key.endswith('_quantity'):
@@ -246,10 +256,16 @@ def update_order(request, order_id):
                         except (ValueError, TypeError):
                             continue
             
+            # First, remove products that are no longer in the DOM
+            for product_id, item in existing_items.items():
+                if product_id not in existing_product_ids and product_id not in products_to_update:
+                    item.delete()
+                    logger.info(f"Removed product {item.product.name} from order {order.order_number} (not in DOM)")
+            
             # Update existing products and add new products
             for product_id, quantity in products_to_update.items():
-                if product_id in existing_items:
-                    # Update existing product
+                if product_id in existing_items and product_id in existing_product_ids:
+                    # Update existing product that's still in DOM
                     item = existing_items[product_id]
                     
                     if quantity <= 0:
@@ -260,7 +276,7 @@ def update_order(request, order_id):
                         item.quantity = quantity
                         item.save()
                         logger.info(f"Updated product {item.product.name} in order {order.order_number}: qty={quantity}")
-                else:
+                elif product_id not in existing_items:
                     # This is a new product to add
                     if quantity > 0:  # Only add if quantity is positive
                         try:

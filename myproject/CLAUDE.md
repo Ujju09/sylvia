@@ -80,6 +80,7 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 3. **MRN Process**: Quality check and approval workflow
 4. **Billing**: Invoice generation and payment tracking
 5. **Analytics**: Performance tracking and reporting with enhanced filtering
+6. **Proactive Dealer Management**: Daily recommendations for dealer outreach with complete order history
 
 ## Database Configuration
 
@@ -122,6 +123,8 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 - **AI-Powered Dispatch Table Processing**: Upload and process dispatch table images using Claude AI
 - **Content Security Policy (CSP)**: Enhanced security headers for web application protection
 - **Secure Cookie Configuration**: Implementation of secure session management
+- **Proactive Dashboard Analytics**: Advanced dealer contact recommendations with intelligent scoring
+- **Mixed Active/Dormant Dealer Targeting**: Balanced approach to maintain existing relationships and re-engage dormant customers
 
 ## Testing
 
@@ -225,6 +228,20 @@ Base URL: `/api/v1/`
 - Error handling and validation for processed data
 - Logging system for troubleshooting and audit trails
 
+### Proactive Analytics Dashboard
+- **Daily Dealer Contact Recommendations**: AI-powered scoring system suggests 2-3 dealers to contact daily
+- **Active vs Dormant Dealer Mix**: Intelligent algorithm ensures mix of relationship maintenance and re-engagement
+- **Comprehensive Order History**: Shows dealer's popular products, order frequency, and recent quantities
+- **Multiple Display Formats**: 
+  - Compact card view with expandable details
+  - Comprehensive table view with complete dealer analysis
+  - Product history with total quantities and order patterns
+- **Smart Scoring Algorithm**: 
+  - Factors in order frequency, recency, volume, and historical patterns
+  - Prioritizes dormant high-value customers for re-engagement
+  - Maintains regular contact schedules for active dealers
+- **Product Purchase Patterns**: Displays most-ordered products with quantities for strategic conversations
+
 ## Security Features
 
 ### Content Security Policy (CSP)
@@ -257,3 +274,40 @@ Base URL: `/api/v1/`
 - django-cors-headers for CORS handling
 - python-dotenv for environment management
 - Report generation (openpyxl, reportlab, pandas)
+
+## Implementation Details
+
+### Proactive Dashboard Implementation (orders/views.py)
+The proactive analytics system is implemented in the `analytics()` view with the following key components:
+
+#### Dealer Recommendation Algorithm
+- **Scoring System**: Multi-factor scoring based on order frequency, recency, volume, and historical patterns
+- **Active/Dormant Classification**: Dealers classified as dormant if no orders in 35+ days or reduced frequency
+- **Mixed Recommendations**: Algorithm ensures minimum 1 dormant dealer in daily recommendations (if available)
+- **Randomization**: Daily seed-based randomization prevents showing same dealers repeatedly
+
+#### Product History Aggregation
+- **Manual Aggregation**: Uses Python collections.defaultdict for reliable product quantity totals
+- **Tuple-based Storage**: Product data stored as (product_name, total_quantity) tuples for template compatibility
+- **Fallback Text**: String-based product summary for reliable display across different UI contexts
+
+#### Template Integration (orders/templates/orders/analytics.html)
+- **Multiple Display Modes**: 
+  - Inline badges for quick product overview
+  - Expandable detailed history sections
+  - Complete dealer analysis table
+- **Responsive Design**: Full-width layouts with Bootstrap-based responsive components
+- **Conditional Display**: Handles edge cases like dealers with no order history
+
+#### Data Structure
+```python
+dealer_data = {
+    'dealer': dealer_object,
+    'score': calculated_priority_score,
+    'popular_products': [(product_name, total_quantity), ...],
+    'product_summary_text': "Product1 (45MT), Product2 (30MT)",
+    'monthly_frequency': avg_orders_per_month,
+    'is_dormant': boolean_dormant_status,
+    # ... additional metrics
+}
+```

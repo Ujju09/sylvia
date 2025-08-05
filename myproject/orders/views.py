@@ -390,39 +390,7 @@ def analytics(request):
         max_order_to_bill=Max(order_to_bill),
     )
 
-    # PROACTIVE FEATURE 1: Pending MRN Alerts (>5 days overdue)
-    five_days_ago = today - timedelta(days=5)
-    overdue_mrns = Order.objects.filter(
-        Q(mrn_date=None) & Q(order_date__date__lt=five_days_ago)
-    ).select_related('vehicle', 'depot').prefetch_related('order_items__product')
-    
-    # Group overdue MRNs by product, vehicle, depot
-    pending_mrn_alerts = []
-    grouped_data = {}
-    
-    for order in overdue_mrns:
-        for item in order.order_items.all():
-            key = (item.product.name, order.vehicle.truck_number, order.depot.name)
-            if key not in grouped_data:
-                grouped_data[key] = {
-                    'product': item.product.name,
-                    'vehicle': order.vehicle.truck_number,
-                    'depot': order.depot.name,
-                    'count': 0,
-                    'oldest_date': order.order_date.date(),
-                    'total_quantity': 0
-                }
-            grouped_data[key]['count'] += 1
-            grouped_data[key]['total_quantity'] += item.quantity
-            if order.order_date.date() < grouped_data[key]['oldest_date']:
-                grouped_data[key]['oldest_date'] = order.order_date.date()
-    
-    # Convert to list and sort by oldest date first, then by count
-    for data in grouped_data.values():
-        data['days_overdue'] = (today - data['oldest_date']).days
-        pending_mrn_alerts.append(data)
-    
-    pending_mrn_alerts.sort(key=lambda x: (-x['days_overdue'], -x['count']))
+
 
     # PROACTIVE FEATURE 2: Daily Dealer Contact Recommendations (Enhanced with Active/Dormant Mix)
     active_dealers = Dealer.objects.filter(is_active=True)
@@ -440,11 +408,20 @@ def analytics(request):
             total=Sum('order_items__quantity')
         )['total'] or 0
         
-        # Get most ordered products
-        popular_products = dealer_orders.values('order_items__product__name').annotate(
-            total_quantity=Sum('order_items__quantity'),
-            order_count=Count('id')
-        ).order_by('-total_quantity')[:3]
+        # Get most ordered products - Alternative approach for better reliability
+        from collections import defaultdict
+        product_summary = defaultdict(float)
+        
+        # Aggregate product quantities manually for better control
+        for order in dealer_orders:
+            for item in order.order_items.all():
+                product_summary[item.product.name] += float(item.quantity)
+        
+        # Convert to sorted list of tuples (product_name, total_quantity)
+        popular_products = sorted(product_summary.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # Also create a simple string summary for fallback
+        product_summary_text = ", ".join([f"{name} ({qty:.0f}MT)" for name, qty in popular_products]) if popular_products else "No order history"
         
         # Calculate days since last order
         last_order = dealer_orders.order_by('-order_date').first()
@@ -494,7 +471,7 @@ def analytics(request):
         random.seed(today.toordinal() + dealer.id)  # Consistent per day per dealer
         score += random.randint(1, 3)
         
-        if score > 5:  # Only recommend dealers with meaningful scores
+        if score >= 5:  # Only recommend dealers with meaningful scores
             dealer_data = {
                 'dealer': dealer,
                 'score': score,
@@ -502,7 +479,8 @@ def analytics(request):
                 'monthly_frequency': monthly_frequency,
                 'total_quantity_month': round(float(total_quantity_month), 2),
                 'days_since_last_order': days_since_last_order,
-                'popular_products': list(popular_products),
+                'popular_products': popular_products,  # List of tuples (name, quantity)
+                'product_summary_text': product_summary_text,  # Simple string fallback
                 'last_order_date': last_order.order_date.date() if last_order else None,
                 'is_dormant': is_dormant,
                 'dealer_status': 'Dormant' if is_dormant else 'Active',
@@ -586,9 +564,9 @@ def analytics(request):
         'total_orders': total_orders,
         'completed_orders': completed_orders,
         # New proactive features
-        'pending_mrn_alerts': pending_mrn_alerts[:15],  # Limit to top 15 alerts
         'daily_dealer_recommendations': daily_dealer_recommendations,
         'today': today,
+        'months': [calendar.month_name[i] for i in range(1, 13)],  # For month filter dropdown
     }
     return render(request, 'orders/analytics.html', context)
 

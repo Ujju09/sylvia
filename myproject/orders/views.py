@@ -364,14 +364,18 @@ def update_order(request, order_id):
 @login_required
 def analytics(request):
     from sylvia.models import Order, Dealer
+    from django.db.models import Sum
+    from datetime import date
+    import random
+    
     now = timezone.now()
+    today = date.today()
     orders = Order.objects.all()
 
     # Time between Order, MRN, Billing
     orders_with_dates = orders.exclude(mrn_date=None).exclude(bill_date=None)
     order_to_mrn = ExpressionWrapper(F('mrn_date') - F('order_date'), output_field=DurationField())
-    mrn_to_bill = ExpressionWrapper(F('bill_date') - F('mrn_date'), output_field=DurationField(
-    ))
+    mrn_to_bill = ExpressionWrapper(F('bill_date') - F('mrn_date'), output_field=DurationField())
     order_to_bill = ExpressionWrapper(F('bill_date') - F('order_date'), output_field=DurationField())
 
     time_stats = orders_with_dates.aggregate(
@@ -385,6 +389,152 @@ def analytics(request):
         min_order_to_bill=Min(order_to_bill),
         max_order_to_bill=Max(order_to_bill),
     )
+
+    # PROACTIVE FEATURE 1: Pending MRN Alerts (>5 days overdue)
+    five_days_ago = today - timedelta(days=5)
+    overdue_mrns = Order.objects.filter(
+        Q(mrn_date=None) & Q(order_date__date__lt=five_days_ago)
+    ).select_related('vehicle', 'depot').prefetch_related('order_items__product')
+    
+    # Group overdue MRNs by product, vehicle, depot
+    pending_mrn_alerts = []
+    grouped_data = {}
+    
+    for order in overdue_mrns:
+        for item in order.order_items.all():
+            key = (item.product.name, order.vehicle.truck_number, order.depot.name)
+            if key not in grouped_data:
+                grouped_data[key] = {
+                    'product': item.product.name,
+                    'vehicle': order.vehicle.truck_number,
+                    'depot': order.depot.name,
+                    'count': 0,
+                    'oldest_date': order.order_date.date(),
+                    'total_quantity': 0
+                }
+            grouped_data[key]['count'] += 1
+            grouped_data[key]['total_quantity'] += item.quantity
+            if order.order_date.date() < grouped_data[key]['oldest_date']:
+                grouped_data[key]['oldest_date'] = order.order_date.date()
+    
+    # Convert to list and sort by oldest date first, then by count
+    for data in grouped_data.values():
+        data['days_overdue'] = (today - data['oldest_date']).days
+        pending_mrn_alerts.append(data)
+    
+    pending_mrn_alerts.sort(key=lambda x: (-x['days_overdue'], -x['count']))
+
+    # PROACTIVE FEATURE 2: Daily Dealer Contact Recommendations (Enhanced with Active/Dormant Mix)
+    active_dealers = Dealer.objects.filter(is_active=True)
+    active_recommendations = []
+    dormant_recommendations = []
+    
+    for dealer in active_dealers:
+        dealer_orders = orders.filter(dealer=dealer)
+        
+        # Calculate order history metrics
+        last_30_days = dealer_orders.filter(order_date__gte=now - timedelta(days=30))
+        
+        monthly_orders = last_30_days.count()
+        total_quantity_month = last_30_days.aggregate(
+            total=Sum('order_items__quantity')
+        )['total'] or 0
+        
+        # Get most ordered products
+        popular_products = dealer_orders.values('order_items__product__name').annotate(
+            total_quantity=Sum('order_items__quantity'),
+            order_count=Count('id')
+        ).order_by('-total_quantity')[:3]
+        
+        # Calculate days since last order
+        last_order = dealer_orders.order_by('-order_date').first()
+        days_since_last_order = (now.date() - last_order.order_date.date()).days if last_order else 999
+        
+        # Calculate monthly frequency (orders per month over last 6 months)
+        six_months_ago = now - timedelta(days=180)
+        six_month_orders = dealer_orders.filter(order_date__gte=six_months_ago).count()
+        monthly_frequency = round(six_month_orders / 6, 1) if six_month_orders > 0 else 0
+        
+        # Define dealer status: dormant if no orders in last 30-60 days
+        is_dormant = days_since_last_order > 35 or (monthly_frequency > 0 and monthly_orders == 0)
+        
+        # Scoring logic for recommendation priority
+        score = 0
+        
+        if is_dormant:
+            # Dormant dealer scoring - higher priority for re-engagement
+            if monthly_frequency > 1:  # Was a regular customer
+                score += 15
+            elif monthly_frequency > 0.5:  # Was semi-regular
+                score += 12
+            elif six_month_orders > 0:  # Had some orders historically
+                score += 8
+            else:  # Completely new or very old customer
+                score += 5
+            
+            # Boost for high historical volume
+            if dealer_orders.aggregate(total=Sum('order_items__quantity'))['total'] or 0 > 200:
+                score += 5
+        else:
+            # Active dealer scoring - maintain relationships
+            if monthly_frequency > 1 and days_since_last_order > 15:
+                score += 10
+            elif monthly_frequency > 0.5 and days_since_last_order > 20:
+                score += 8
+            elif days_since_last_order > 25:
+                score += 6
+            
+            # Higher score for high-volume active dealers
+            if total_quantity_month > 100:
+                score += 5
+            elif total_quantity_month > 50:
+                score += 3
+        
+        # Slight randomization to vary recommendations daily
+        random.seed(today.toordinal() + dealer.id)  # Consistent per day per dealer
+        score += random.randint(1, 3)
+        
+        if score > 5:  # Only recommend dealers with meaningful scores
+            dealer_data = {
+                'dealer': dealer,
+                'score': score,
+                'monthly_orders': monthly_orders,
+                'monthly_frequency': monthly_frequency,
+                'total_quantity_month': round(float(total_quantity_month), 2),
+                'days_since_last_order': days_since_last_order,
+                'popular_products': list(popular_products),
+                'last_order_date': last_order.order_date.date() if last_order else None,
+                'is_dormant': is_dormant,
+                'dealer_status': 'Dormant' if is_dormant else 'Active',
+            }
+            
+            if is_dormant:
+                dormant_recommendations.append(dealer_data)
+            else:
+                active_recommendations.append(dealer_data)
+    
+    # Sort both lists by score
+    active_recommendations.sort(key=lambda x: -x['score'])
+    dormant_recommendations.sort(key=lambda x: -x['score'])
+    
+    # Mix recommendations: ensure at least 1 dormant dealer if available
+    daily_dealer_recommendations = []
+    
+    # Add top dormant dealer first (if available)
+    if dormant_recommendations:
+        daily_dealer_recommendations.append(dormant_recommendations[0])
+    
+    # Add active dealers to fill remaining slots
+    remaining_slots = 3 - len(daily_dealer_recommendations)
+    daily_dealer_recommendations.extend(active_recommendations[:remaining_slots])
+    
+    # If we still have slots and more dormant dealers, add them
+    if len(daily_dealer_recommendations) < 3 and len(dormant_recommendations) > 1:
+        remaining_slots = 3 - len(daily_dealer_recommendations)
+        daily_dealer_recommendations.extend(dormant_recommendations[1:1+remaining_slots])
+    
+    # Final sort by score to maintain priority order
+    daily_dealer_recommendations.sort(key=lambda x: -x['score'])
 
     # Dealer-wise weekly/monthly stats
     dealer_stats = []
@@ -435,6 +585,10 @@ def analytics(request):
         'percent_completed': percent_completed,
         'total_orders': total_orders,
         'completed_orders': completed_orders,
+        # New proactive features
+        'pending_mrn_alerts': pending_mrn_alerts[:15],  # Limit to top 15 alerts
+        'daily_dealer_recommendations': daily_dealer_recommendations,
+        'today': today,
     }
     return render(request, 'orders/analytics.html', context)
 

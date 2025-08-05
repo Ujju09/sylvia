@@ -2,6 +2,9 @@
 {% block content %}
 <div class="container py-4">
   <h2 class="mb-4 text-primary">Order Analytics</h2>
+  
+  
+
   <!-- Export/Filter Form -->
   <form class="card p-3 mb-4" method="get" action="{% url 'export_analytics' %}" target="_blank">
     <div class="row align-items-end">
@@ -47,6 +50,125 @@
       </div>
     </div>
   </form>
+
+
+
+  <!-- PROACTIVE ALERTS SECTION -->
+  <div class="row mb-4">
+    <!-- Pending MRN Alerts -->
+    <div class="col-md-7">
+      <div class="card border-warning">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Pending MRN Alerts (>5 Days Overdue)</h5>
+          <small>Orders pending MRN approval - Sales Officers should follow up</small>
+        </div>
+        <div class="card-body p-0">
+          {% if pending_mrn_alerts %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Product</th>
+                    <th>Vehicle</th>
+                    <th>Depot</th>
+                    <th>Orders</th>
+                    <th>Quantity</th>
+                    <th>Days Overdue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for alert in pending_mrn_alerts %}
+                  <tr class="{% if alert.days_overdue > 10 %}table-danger{% elif alert.days_overdue > 7 %}table-warning{% endif %}">
+                    <td><strong>{{ alert.product }}</strong></td>
+                    <td>{{ alert.vehicle }}</td>
+                    <td>{{ alert.depot }}</td>
+                    <td><span class="badge badge-warning">{{ alert.count }}</span></td>
+                    <td>{{ alert.total_quantity|floatformat:1 }} MT</td>
+                    <td>
+                      <span class="badge {% if alert.days_overdue > 10 %}badge-danger{% elif alert.days_overdue > 7 %}badge-warning{% else %}badge-secondary{% endif %}">
+                        {{ alert.days_overdue }} days
+                      </span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-3 text-center text-muted">
+              <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+              <p class="mb-0">No overdue MRNs! All orders are being processed on time.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Dealer Contact Recommendations -->
+    <div class="col-md-5">
+      <div class="card border-info">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0"><i class="fas fa-handshake"></i> Daily Contact Recommendations</h5>
+          <small>Suggested dealers to contact today ({{ today|date:"M j, Y" }})</small>
+        </div>
+        <div class="card-body p-0">
+          {% if daily_dealer_recommendations %}
+            {% for rec in daily_dealer_recommendations %}
+            <div class="border-bottom p-3 {% if forloop.last %}border-0{% endif %}">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                  <h6 class="mb-1 text-primary">{{ rec.dealer.name }}</h6>
+                  <span class="badge {% if rec.is_dormant %}badge-warning{% else %}badge-success{% endif %}">
+                    {{ rec.dealer_status }}
+                  </span>
+                </div>
+                <small class="text-muted">{{ rec.days_since_last_order }} days ago</small>
+              </div>
+              
+              <div class="row text-sm">
+                <div class="col-6">
+                  <small class="text-muted">Monthly Orders:</small><br>
+                  <strong>{{ rec.monthly_orders }}</strong> ({{ rec.monthly_frequency }}/month avg)
+                </div>
+                <div class="col-6">
+                  <small class="text-muted">Monthly Quantity:</small><br>
+                  <strong>{{ rec.total_quantity_month }} MT</strong>
+                </div>
+              </div>
+              
+              {% if rec.is_dormant %}
+              <div class="mt-2">
+                <small class="text-warning">
+                  <i class="fas fa-exclamation-triangle"></i> 
+                  Re-engagement opportunity - Haven't ordered recently
+                </small>
+              </div>
+              {% endif %}
+              
+              {% if rec.popular_products %}
+              <div class="mt-2">
+                <small class="text-muted">Popular Products:</small><br>
+                {% for product in rec.popular_products %}
+                  <span class="badge badge-light mr-1">{{ product.order_items__product__name }} ({{ product.total_quantity|floatformat:0 }}MT)</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+              
+              <div class="mt-2">
+                <small class="text-muted">Contact: {{ rec.dealer.phone }}</small>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="p-3 text-center text-muted">
+              <i class="fas fa-users fa-2x text-info mb-2"></i>
+              <p class="mb-0">No specific dealer recommendations today. Good time to review general relationships!</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="row mb-4">
     <div class="col-md-6">
       <div class="card p-3 mb-3">
@@ -85,28 +207,6 @@
       </div>
     </div>
   </div>
-  <div class="row mb-4">
-    <div class="col-md-6">
-      <div class="card p-3 mb-3">
-        <h5>Dealer-wise Stats (Last 7/30 Days)</h5>
-        <table class="table table-sm">
-          <thead><tr><th>Dealer</th><th>Weekly</th><th>Monthly</th><th>Avg Order→MRN</th><th>Avg MRN→Bill</th></tr></thead>
-          <tbody>
-            {% for stat in dealer_stats %}
-            <tr>
-              <td>{{ stat.dealer }}</td>
-              <td>{{ stat.weekly_orders }}</td>
-              <td>{{ stat.monthly_orders }}</td>
-              <td>{{ stat.avg_order_to_mrn|default:'-' }}</td>
-              <td>{{ stat.avg_mrn_to_bill|default:'-' }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5">No dealer data</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
     <div class="col-md-6">
       <div class="card p-3 mb-3">
         <h5>Product Stats</h5>

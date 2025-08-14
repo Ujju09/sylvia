@@ -144,7 +144,7 @@ def home(request):
     
     # 3. This week's productivity (7-day rolling metrics)
     orders_entered_week = Order.objects.filter(created_at__date__gte=week_ago).count()
-    mrn_approved_week = MRN.objects.filter(created_at__date__gte=week_ago, status='APPROVED').count()
+    orders_billed_week = Order.objects.filter(bill_date__gte=week_ago).count()
     total_quantity_week = Order.objects.filter(created_at__date__gte=week_ago).aggregate(
         total=Sum('order_items__quantity')
     )['total'] or 0
@@ -167,7 +167,7 @@ def home(request):
         },
         'weekly_reports': {
             'orders_entered': orders_entered_week,
-            'mrn_approved': mrn_approved_week,
+            'orders_billed': orders_billed_week,
             'total_quantity': round(float(total_quantity_week), 2) if total_quantity_week else 0,
         },
         'current_date': today,

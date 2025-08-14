@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
+from datetime import date
 from sylvia.models import Order, Dealer
 
 def order_list(request):
@@ -8,11 +9,12 @@ def order_list(request):
     all_orders = Order.objects.all()
     
     # Calculate order statistics by status
+    today = date.today()
     order_stats = all_orders.aggregate(
         total_orders=Count('id'),
         pending_orders=Count('id', filter=Q(status='PENDING')),
         anonymous_dealers_count=Count('dealer_id', filter=Q(dealer__name__iexact='anonymous')),
-        mrn_created_orders=Count('id', filter=Q(status='MRN_CREATED')),
+        mrn_created_orders=Count('id', filter=Q(mrn_date=today)),
         billed_orders=Count('id', filter=Q(status='BILLED'))
     )
     

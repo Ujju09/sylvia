@@ -139,7 +139,7 @@ def home(request):
     orders_entered_today = Order.objects.filter(created_at__date=today).count()
     
     # 2. Workflow actions today (status progression work)
-    mrn_created_today = Order.objects.filter(updated_at__date=today, status='MRN_CREATED').count()
+    mrn_created_today = Order.objects.filter(mrn_date=today).count()
     orders_billed_today = Order.objects.filter(updated_at__date=today, status='BILLED').count()
     
     # 3. This week's productivity (7-day rolling metrics)

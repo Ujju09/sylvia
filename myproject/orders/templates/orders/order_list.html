@@ -156,15 +156,9 @@
             </td>
             <td>{{ order.get_total_quantity }}</td>
             <td>
-              {% if order.mrn %}
-                {% if order.mrn.status == 'APPROVED' %}
-                  <span class="badge bg-success">Approved</span>
-                  <br><small class="text-muted">{{ order.mrn_date|date:'j M, Y' }}</small>
-                {% elif order.mrn.status == 'PENDING' %}
-                  <span class="badge bg-warning">Pending</span>
-                {% elif order.mrn.status == 'REJECTED' %}
-                  <span class="badge bg-danger">Rejected</span>
-                {% endif %}
+              {% if order.mrn_date %}
+                <span class="badge bg-success">Approved</span>
+                <br><small class="text-muted">{{ order.mrn_date|date:'j M, Y' }}</small>
               {% else %}
                 <span class="badge bg-secondary">Not Created</span>
                 <br><small class="text-muted">{{ order.order_date|timesince }} ago</small>

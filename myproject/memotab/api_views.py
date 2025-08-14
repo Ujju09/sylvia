@@ -13,16 +13,6 @@ from .serializers import (
     CashCollectCreateSerializer, UserSerializer
 )
 
-try:
-    from .schemas import (
-        CashCollectCreate, CashCollectUpdate, CashCollectResponse,
-        SourceCreate, SourceUpdate, SourceResponse,
-        ErrorResponse, SuccessResponse
-    )
-    PYDANTIC_AVAILABLE = True
-except (ImportError, Exception):
-    PYDANTIC_AVAILABLE = False
-
 
 class IsMemoTabUser(BasePermission):
     """
@@ -68,29 +58,6 @@ class SourceViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
-    
-    def create(self, request, *args, **kwargs):
-        """Create a new source with Pydantic validation if available"""
-        if PYDANTIC_AVAILABLE:
-            try:
-                # Validate with Pydantic
-                pydantic_data = SourceCreate(**request.data)
-                validated_data = pydantic_data.dict()
-            except Exception as e:
-                return Response(
-                    {"error": "Validation failed", "detail": str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        else:
-            validated_data = request.data
-        
-        # Create using DRF serializer
-        serializer = self.get_serializer(data=validated_data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     @action(detail=False, methods=['get'])
     def active(self, request):
@@ -140,53 +107,6 @@ class CashCollectViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
-    
-    def create(self, request, *args, **kwargs):
-        """Create a new cash collection with Pydantic validation if available"""
-        if PYDANTIC_AVAILABLE:
-            try:
-                # Validate with Pydantic
-                pydantic_data = CashCollectCreate(**request.data)
-                validated_data = pydantic_data.dict()
-            except Exception as e:
-                return Response(
-                    {"error": "Validation failed", "detail": str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        else:
-            validated_data = request.data
-        
-        # Create using DRF serializer
-        serializer = self.get_serializer(data=validated_data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-    
-    def update(self, request, *args, **kwargs):
-        """Update cash collection with Pydantic validation if available"""
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        
-        if PYDANTIC_AVAILABLE:
-            try:
-                # Validate with Pydantic
-                pydantic_data = CashCollectUpdate(**request.data)
-                validated_data = pydantic_data.dict(exclude_unset=True)
-            except Exception as e:
-                return Response(
-                    {"error": "Validation failed", "detail": str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        else:
-            validated_data = request.data
-        
-        serializer = self.get_serializer(instance, data=validated_data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        
-        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def today(self, request):

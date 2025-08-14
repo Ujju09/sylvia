@@ -38,15 +38,6 @@
                 </div>
                 {% endif %}
                 
-                <div class="mb-3">
-                  <label for="mrn_status" class="form-label">MRN Status</label>
-                  <select class="form-select" id="mrn_status" name="mrn_status">
-                    <option value="">Select status</option>
-                    <option value="PENDING" {% if mrn_status == 'PENDING' %}selected{% endif %}>Pending</option>
-                    <option value="APPROVED" {% if mrn_status == 'APPROVED' %}selected{% endif %}>Approved</option>
-                    <option value="REJECTED" {% if mrn_status == 'REJECTED' %}selected{% endif %}>Rejected</option>
-                  </select>
-                </div>
                 
                 <div class="mb-3">
                   <label for="mrn_date" class="form-label">MRN Date</label>

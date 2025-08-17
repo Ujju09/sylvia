@@ -54,6 +54,7 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 - **Order**: Main order entity with auto-generated order numbers
 - **OrderItem**: Line items for orders (product + quantity)
 - **MRN**: Material Receipt Notes for quality approval
+- **OrderMRNImage**: MRN proof images with cloud storage integration
 - **Invoice**: Billing/invoice management
 - **AuditLog**: Audit trail for important actions
 - **DealerContext**: AI-enhanced relationship management with psychological assessment
@@ -92,10 +93,104 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 
 1. **Order Creation**: Create orders with dealer, vehicle, depot, and products
 2. **AI-Powered Dispatch Processing**: Upload dispatch table images for automated order extraction
-3. **MRN Process**: Quality check and approval workflow
-4. **Billing**: Invoice generation and payment tracking
-5. **Analytics**: Performance tracking and reporting with enhanced filtering
-6. **Proactive Dealer Management**: Daily recommendations for dealer outreach with complete order history
+3. **MRN Process**: Quality check and approval workflow with image proof upload
+4. **MRN Image Management**: Upload, view, and manage MRN proof images with cloud storage
+5. **Billing**: Invoice generation and payment tracking
+6. **Analytics**: Performance tracking and reporting with enhanced filtering
+7. **Proactive Dealer Management**: Daily recommendations for dealer outreach with complete order history
+
+## MRN Image Upload System
+
+### Overview
+The MRN Image Upload System provides secure cloud storage and management of Material Receipt Note proof images using Krutrim Storage (S3-compatible cloud service).
+
+### Key Features
+- **Drag-and-Drop Upload**: Modern web interface with drag-and-drop functionality
+- **Cloud Storage Integration**: Secure storage using Krutrim Storage with AWS Signature Version 4 authentication
+- **Presigned URLs**: Time-limited secure access URLs for viewing images without exposing credentials
+- **Image Management**: Full CRUD operations (Create, Read, Update, Delete) for image records
+- **Multiple Image Types**: Support for MRN Proof, Delivery Receipt, Quality Check, and Other image types
+- **Primary Image Selection**: Mark images as primary proof for quick identification
+- **Comprehensive Validation**: File type, size, and format validation (JPG, PNG, WEBP, max 10MB)
+- **Audit Trail**: Complete tracking of image uploads, modifications, and deletions
+
+### Technical Architecture
+
+#### Storage Layer (sylvia/storage.py)
+- **KrutrimStorageClient**: Custom S3-compatible client with AWS Signature Version 4 authentication
+- **Presigned URL Generation**: Secure, time-limited URLs (1-hour expiration) for image access
+- **File Validation**: Content type, file size, and extension validation
+- **Hierarchical Storage**: Organized storage structure: `sylvia/orders/{order_number}/mrn_images/{unique_id}_{filename}`
+
+#### API Layer (sylvia/api_views.py)
+- **OrderMRNImageViewSet**: Complete REST API for image management
+- **Upload Endpoints**: Secure image upload with authentication and validation
+- **Proxy Service**: Authenticated image serving for fallback scenarios
+- **Batch Operations**: Support for multiple image uploads per order
+
+#### Data Model (sylvia/models.py)
+- **OrderMRNImage**: Complete image metadata with foreign key relationship to orders
+- **Image Types**: Enumerated choices for different proof document types
+- **Storage Metadata**: Original filename, file size, content type, and storage key tracking
+- **Timestamps**: Upload timestamp and modification tracking
+
+### API Endpoints
+
+#### Image Management
+- `GET /api/v1/mrn-images/` - List all MRN images (filtered by user permissions)
+- `POST /api/v1/mrn-images/` - Create new image record
+- `GET /api/v1/mrn-images/{id}/` - Get image details
+- `PUT/PATCH /api/v1/mrn-images/{id}/` - Update image metadata
+- `DELETE /api/v1/mrn-images/{id}/` - Delete image from both database and cloud storage
+- `GET /api/v1/mrn-images/{id}/serve_image/` - Proxy image serving with authentication
+
+#### Order Integration
+- `POST /api/v1/orders/{id}/upload_mrn_image/` - Upload image directly to specific order
+- `GET /api/v1/orders/{id}/mrn_images/` - Get all images for specific order
+
+#### Utility Endpoints
+- `POST /api/v1/mrn-images/{id}/set_primary/` - Set image as primary proof for order
+- `GET /api/v1/mrn-images/by_order/?order_id=N` - Filter images by order
+- `GET /api/v1/mrn-images/by_type/?type=MRN_PROOF` - Filter images by type
+
+### Security Features
+- **Authentication Required**: All endpoints require valid authentication token
+- **AWS Signature Version 4**: Industry-standard cloud storage authentication
+- **Presigned URLs**: Secure, temporary access without exposing storage credentials
+- **File Validation**: Comprehensive validation prevents malicious file uploads
+- **Audit Logging**: Complete tracking of all image operations for accountability
+- **Permission-Based Access**: Users can only access images for orders they have permission to view
+
+### Cloud Storage Configuration
+
+#### Environment Variables
+- `KRUTRIM_STORAGE_ACCESS_KEY`: Krutrim Storage access key
+- `KRUTRIM_STORAGE_API_KEY`: Krutrim Storage API key (used as secret key)
+- `KRUTRIM_STORAGE_ENDPOINT`: Krutrim Storage endpoint URL
+- `KRUTRIM_STORAGE_BUCKET`: Storage bucket name for MRN images
+- `KRUTRIM_STORAGE_REGION`: Storage region (default: in-bangalore-1)
+
+#### Data Model Example
+```json
+{
+  "id": 1,
+  "order": 15,
+  "image_url": "https://blr1.kos.olakrutrimsvc.com/mrn-receipts-datastore/sylvia/orders/ORD000031/mrn_images/abc123_proof.jpg",
+  "secure_image_url": "https://blr1.kos.olakrutrimsvc.com/mrn-receipts-datastore/sylvia/orders/ORD000031/mrn_images/abc123_proof.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...",
+  "image_type": "MRN_PROOF",
+  "original_filename": "mrn_proof_photo.jpg",
+  "file_size": 2048576,
+  "upload_timestamp": "2024-01-01T10:00:00Z",
+  "description": "MRN completion proof photo",
+  "is_primary": true,
+  "storage_key": "sylvia/orders/ORD000031/mrn_images/abc123_mrn_proof_photo.jpg",
+  "content_type": "image/jpeg",
+  "created_by": {
+    "id": 1,
+    "username": "admin"
+  }
+}
+```
 
 ## MemoTab Cash Collection System
 
@@ -206,5 +301,10 @@ All MemoTab APIs require authentication via token or session. Use the same auth 
 - `DATABASE_URL`: PostgreSQL connection string (production)
 - `RAILWAY_ENVIRONMENT`: Deployment environment
 - `ANTHROPIC_API_KEY`: API key for Claude AI integration (dispatch table processing)
+- `KRUTRIM_STORAGE_ACCESS_KEY`: Krutrim Storage access key for cloud file storage
+- `KRUTRIM_STORAGE_API_KEY`: Krutrim Storage API key (used as secret key)
+- `KRUTRIM_STORAGE_ENDPOINT`: Krutrim Storage endpoint URL
+- `KRUTRIM_STORAGE_BUCKET`: Storage bucket name for MRN images
+- `KRUTRIM_STORAGE_REGION`: Storage region (default: in-bangalore-1)
 
 [Rest of the content remains the same...]

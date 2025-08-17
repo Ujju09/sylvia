@@ -215,6 +215,8 @@ CSP_IMG_SRC = (
     "'self'",
     "data:",
     "https:",
+    "https://mock-krutrim-storage.com",  # Mock storage for development
+    "https://*.krutrimcloud.com",  # Krutrim Cloud storage domains
 )
 CSP_FONT_SRC = (
     "'self'",
@@ -248,6 +250,18 @@ X_FRAME_OPTIONS = 'DENY'
 # Anthropic API configuration
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 
+# Krutrim Storage Configuration
+KRUTRIM_STORAGE_ACCESS_KEY = os.environ.get('KRUTRIM_STORAGE_ACCESS_KEY', '')
+KRUTRIM_STORAGE_API_KEY = os.environ.get('KRUTRIM_STORAGE_API_KEY', '')
+KRUTRIM_STORAGE_BUCKET = os.environ.get('KRUTRIM_STORAGE_BUCKET', 'mrn-receipts-datastore')
+KRUTRIM_STORAGE_ENDPOINT = os.environ.get('KRUTRIM_STORAGE_ENDPOINT', '')
+KRUTRIM_STORAGE_REGION = os.environ.get('KRUTRIM_STORAGE_REGION', 'in-bangalore-1')
+
+# File Upload Settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+
 # Logging configuration
 LOGGING = {
     'version': 1,
@@ -270,6 +284,11 @@ LOGGING = {
         'django.db.backends': {
             'handlers': ['console'],
             'level': 'WARNING',
+            'propagate': False,
+        },
+        'sylvia.storage': {
+            'handlers': ['console'],
+            'level': 'INFO',
             'propagate': False,
         },
     },

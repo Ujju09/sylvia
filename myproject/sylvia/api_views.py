@@ -9,14 +9,14 @@ from django.contrib.auth.models import User
 
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext
+    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
 )
 from .serializers import (
     DepotSerializer, ProductSerializer, DealerSerializer, VehicleSerializer,
     OrderSerializer, OrderCreateSerializer, OrderItemSerializer, MRNSerializer,
     InvoiceSerializer, AuditLogSerializer, AppSettingsSerializer,
     NotificationTemplateSerializer, DashboardStatsSerializer, DealerStatsSerializer,
-    ProductStatsSerializer, UserSerializer, DealerContextSerializer
+    ProductStatsSerializer, UserSerializer, DealerContextSerializer, OrderMRNImageSerializer
 )
 
 
@@ -189,6 +189,74 @@ class OrderViewSet(viewsets.ModelViewSet):
             {'error': 'Invalid status'}, 
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+    @action(detail=True, methods=['get'])
+    def mrn_images(self, request, pk=None):
+        """Get MRN images for specific order"""
+        order = self.get_object()
+        images = order.mrn_images.all()
+        serializer = OrderMRNImageSerializer(images, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def upload_mrn_image(self, request, pk=None):
+        """Upload MRN proof image for an order"""
+        from .storage import krutrim_storage
+        
+        order = self.get_object()
+        
+        if 'image' not in request.FILES:
+            return Response(
+                {'error': 'No image file provided'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        image_file = request.FILES['image']
+        image_type = request.data.get('image_type', 'MRN_PROOF')
+        description = request.data.get('description', '')
+        is_primary = request.data.get('is_primary', False)
+        
+        # Upload to Krutrim Storage
+        success, url_or_error, storage_key, metadata = krutrim_storage.upload_image(
+            image_file, order.order_number
+        )
+        
+        if not success:
+            return Response(
+                {'error': f'Upload failed: {url_or_error}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create OrderMRNImage record
+        image_record = OrderMRNImage.objects.create(
+            order=order,
+            image_url=url_or_error,
+            image_type=image_type,
+            original_filename=image_file.name,
+            file_size=image_file.size,
+            description=description,
+            is_primary=is_primary,
+            storage_key=storage_key,
+            content_type=image_file.content_type,
+            created_by=request.user
+        )
+        
+        # Create audit log
+        AuditLog.objects.create(
+            action='IMAGE_UPLOADED',
+            model_name='OrderMRNImage',
+            object_id=str(image_record.id),
+            user=request.user,
+            details={
+                'order_number': order.order_number,
+                'image_type': image_type,
+                'filename': image_file.name,
+                'file_size': image_file.size
+            }
+        )
+        
+        serializer = OrderMRNImageSerializer(image_record)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class OrderItemViewSet(viewsets.ModelViewSet):
@@ -200,6 +268,144 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         if order_id:
             return self.queryset.filter(order_id=order_id)
         return self.queryset
+
+
+class OrderMRNImageViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing MRN proof images"""
+    queryset = OrderMRNImage.objects.all().order_by('-upload_timestamp')
+    serializer_class = OrderMRNImageSerializer
+    permission_classes = [IsAuthenticated]
+    search_fields = ['order__order_number', 'original_filename', 'image_type']
+    ordering_fields = ['upload_timestamp', 'image_type', 'is_primary']
+    
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete image from both database and storage"""
+        from .storage import krutrim_storage
+        
+        image_record = self.get_object()
+        
+        # Delete from storage first
+        if image_record.storage_key:
+            success, message = krutrim_storage.delete_image(image_record.storage_key)
+            if not success:
+                return Response(
+                    {'error': f'Failed to delete from storage: {message}'}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        # Create audit log before deletion
+        AuditLog.objects.create(
+            action='IMAGE_DELETED',
+            model_name='OrderMRNImage',
+            object_id=str(image_record.id),
+            user=request.user,
+            details={
+                'order_number': image_record.order.order_number,
+                'image_type': image_record.image_type,
+                'filename': image_record.original_filename,
+                'storage_key': image_record.storage_key
+            }
+        )
+        
+        # Delete from database
+        return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'])
+    def by_order(self, request):
+        """Get all images for a specific order"""
+        order_id = request.query_params.get('order_id')
+        if not order_id:
+            return Response(
+                {'error': 'order_id parameter is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        images = self.queryset.filter(order_id=order_id)
+        serializer = self.get_serializer(images, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def set_primary(self, request, pk=None):
+        """Set image as primary MRN proof for the order"""
+        image_record = self.get_object()
+        
+        # Unset all other primary images for this order
+        OrderMRNImage.objects.filter(
+            order=image_record.order, 
+            is_primary=True
+        ).update(is_primary=False)
+        
+        # Set this image as primary
+        image_record.is_primary = True
+        image_record.save()
+        
+        serializer = self.get_serializer(image_record)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def by_type(self, request):
+        """Filter images by type"""
+        image_type = request.query_params.get('type', 'MRN_PROOF')
+        images = self.queryset.filter(image_type=image_type)
+        serializer = self.get_serializer(images, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def serve_image(self, request, pk=None):
+        """Serve image with proper authentication"""
+        from django.http import HttpResponse
+        from .storage import krutrim_storage
+        import requests
+        
+        try:
+            image_record = self.get_object()
+            
+            if not image_record.storage_key:
+                return Response(
+                    {'error': 'Image storage key not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Construct the image URL
+            image_url = f"{krutrim_storage.endpoint_url}/{krutrim_storage.bucket_name}/{image_record.storage_key}"
+            
+            # Create authenticated headers using AWS Signature Version 4
+            headers = krutrim_storage._create_auth_headers_v4(
+                method='GET', 
+                url=image_url, 
+                content_type=''
+            )
+            
+            # Fetch the image from Krutrim Storage
+            response = requests.get(image_url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                # Determine content type
+                content_type = image_record.content_type or 'image/jpeg'
+                
+                # Create HTTP response with image data
+                http_response = HttpResponse(
+                    response.content, 
+                    content_type=content_type
+                )
+                http_response['Content-Disposition'] = f'inline; filename="{image_record.original_filename}"'
+                http_response['Cache-Control'] = 'private, max-age=3600'  # Cache for 1 hour
+                
+                return http_response
+            else:
+                return Response(
+                    {'error': f'Failed to fetch image: HTTP {response.status_code}'}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Error serving image: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class MRNViewSet(viewsets.ModelViewSet):

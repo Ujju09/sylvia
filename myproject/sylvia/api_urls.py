@@ -4,7 +4,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 
 from .api_views import (
     DepotViewSet, ProductViewSet, DealerViewSet, VehicleViewSet,
-    OrderViewSet, OrderItemViewSet, MRNViewSet, InvoiceViewSet,
+    OrderViewSet, OrderItemViewSet, OrderMRNImageViewSet, MRNViewSet, InvoiceViewSet,
     AuditLogViewSet, AppSettingsViewSet, NotificationTemplateViewSet,
     DealerContextViewSet, dashboard_stats, dealer_analytics, product_analytics, 
     order_analytics, user_profile
@@ -22,6 +22,7 @@ router.register(r'dealers', DealerViewSet)
 router.register(r'vehicles', VehicleViewSet)
 router.register(r'orders', OrderViewSet)
 router.register(r'order-items', OrderItemViewSet)
+router.register(r'mrn-images', OrderMRNImageViewSet)
 router.register(r'mrns', MRNViewSet)
 router.register(r'invoices', InvoiceViewSet)
 router.register(r'audit-logs', AuditLogViewSet)

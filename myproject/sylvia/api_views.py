@@ -13,8 +13,7 @@ from .models import (
 )
 from .serializers import (
     DepotSerializer, ProductSerializer, DealerSerializer, VehicleSerializer,
-    OrderSerializer, OrderCreateSerializer, OrderItemSerializer, MRNSerializer,
-    InvoiceSerializer, AuditLogSerializer, AppSettingsSerializer,
+    OrderSerializer, OrderCreateSerializer, OrderItemSerializer, MRNSerializer, AuditLogSerializer, AppSettingsSerializer,
     NotificationTemplateSerializer, DashboardStatsSerializer, DealerStatsSerializer,
     ProductStatsSerializer, UserSerializer, DealerContextSerializer, OrderMRNImageSerializer
 )
@@ -450,52 +449,6 @@ class MRNViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(pending_mrns, many=True)
         return Response(serializer.data)
 
-
-class InvoiceViewSet(viewsets.ModelViewSet):
-    queryset = Invoice.objects.all().order_by('-invoice_date')
-    serializer_class = InvoiceSerializer
-    search_fields = ['invoice_number', 'order__order_number', 'status']
-    ordering_fields = ['invoice_date', 'due_date', 'total_amount']
-    
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-    
-    @action(detail=False, methods=['get'])
-    def overdue(self, request):
-        today = date.today()
-        overdue_invoices = self.queryset.filter(
-            due_date__lt=today,
-            status__in=['DRAFT', 'SENT']
-        )
-        serializer = self.get_serializer(overdue_invoices, many=True)
-        return Response(serializer.data)
-    
-    @action(detail=True, methods=['post'])
-    def mark_paid(self, request, pk=None):
-        invoice = self.get_object()
-        payment_amount = request.data.get('payment_amount', invoice.total_amount)
-        payment_date = request.data.get('payment_date', date.today())
-        
-        invoice.payment_received = payment_amount
-        invoice.payment_date = payment_date
-        invoice.status = 'PAID' if payment_amount >= invoice.total_amount else 'SENT'
-        invoice.save()
-        
-        # Create audit log
-        AuditLog.objects.create(
-            action='PAYMENT_RECEIVED',
-            model_name='Invoice',
-            object_id=str(invoice.id),
-            user=request.user,
-            details={
-                'invoice_number': invoice.invoice_number,
-                'payment_amount': str(payment_amount),
-                'payment_date': str(payment_date)
-            }
-        )
-        
-        serializer = self.get_serializer(invoice)
-        return Response(serializer.data)
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):

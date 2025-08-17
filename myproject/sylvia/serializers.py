@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
+    MRN, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
 )
 
 
@@ -92,20 +92,6 @@ class MRNSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'mrn_number', 'created_at', 'updated_at', 'created_by']
 
 
-class InvoiceSerializer(serializers.ModelSerializer):
-    created_by = UserSerializer(read_only=True)
-    balance_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, source='get_balance_amount')
-    
-    class Meta:
-        model = Invoice
-        fields = [
-            'id', 'invoice_number', 'invoice_date', 'due_date', 'subtotal',
-            'tax_amount', 'total_amount', 'status', 'payment_received',
-            'payment_date', 'balance_amount', 'created_at', 'updated_at', 'created_by'
-        ]
-        read_only_fields = ['id', 'invoice_number', 'created_at', 'updated_at', 'created_by', 'balance_amount']
-
-
 class OrderMRNImageSerializer(serializers.ModelSerializer):
     """Serializer for MRN proof images"""
     created_by = UserSerializer(read_only=True)
@@ -160,7 +146,6 @@ class OrderSerializer(serializers.ModelSerializer):
     
     order_items = OrderItemSerializer(many=True, read_only=True)
     mrn = MRNSerializer(read_only=True)
-    invoice = InvoiceSerializer(read_only=True)
     mrn_images = OrderMRNImageSerializer(many=True, read_only=True)
     primary_mrn_image = serializers.SerializerMethodField()
     

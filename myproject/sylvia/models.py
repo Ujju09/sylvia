@@ -209,55 +209,6 @@ class MRN(BaseModel):
     class Meta:
         ordering = ['-mrn_date']
 
-class Invoice(BaseModel):
-    """Invoice/Bill model"""
-    INVOICE_STATUS_CHOICES = [
-        ('DRAFT', 'Draft'),
-        ('SENT', 'Sent'),
-        ('PAID', 'Paid'),
-        ('OVERDUE', 'Overdue'),
-        ('CANCELLED', 'Cancelled'),
-    ]
-    
-    invoice_number = models.CharField(max_length=20, unique=True, editable=False)
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='invoice')
-    invoice_date = models.DateField(default=timezone.now)
-    due_date = models.DateField()
-    
-    # Financial fields
-    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
-    status = models.CharField(max_length=20, choices=INVOICE_STATUS_CHOICES, default='DRAFT')
-    
-    # Payment tracking
-    payment_received = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    payment_date = models.DateField(null=True, blank=True)
-    
-    def save(self, *args, **kwargs):
-        if not self.invoice_number:
-            today = timezone.now().date()
-            count = Invoice.objects.filter(invoice_date=today).count() + 1
-            self.invoice_number = f"INV{today.strftime('%Y%m%d')}{count:04d}"
-        
-        # Calculate due date if not provided
-        if not self.due_date:
-            self.due_date = self.invoice_date + timezone.timedelta(days=self.order.dealer.credit_days)
-        
-        super().save(*args, **kwargs)
-    
-    def __str__(self):
-        return f"{self.invoice_number} - {self.order.dealer.name}"
-    
-    def get_balance_amount(self):
-        """Calculate remaining balance"""
-        return self.total_amount - self.payment_received
-    
-    class Meta:
-        ordering = ['-invoice_date']
-
-
 
 class OrderMRNImage(BaseModel):
     """Model to store MRN proof images for orders"""

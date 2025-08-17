@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
+    MRN, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
 )
 
 @admin.register(Depot)
@@ -100,34 +100,6 @@ class MRNAdmin(admin.ModelAdmin):
             'fields': ('quality_checked', 'quality_remarks', 'approved_by')
         }),
     )
-
-@admin.register(Invoice)
-class InvoiceAdmin(admin.ModelAdmin):
-    list_display = ['invoice_number', 'order', 'invoice_date', 'due_date', 'total_amount', 'status', 'balance_amount']
-    list_filter = ['status', 'invoice_date', 'due_date']
-    search_fields = ['invoice_number', 'order__order_number', 'order__dealer__name']
-    ordering = ['-invoice_date']
-    readonly_fields = ['invoice_number', 'balance_amount']
-    
-    fieldsets = (
-        ('Invoice Information', {
-            'fields': ('invoice_number', 'order', 'invoice_date', 'due_date')
-        }),
-        ('Financial Details', {
-            'fields': ('subtotal', 'tax_amount', 'total_amount', 'status')
-        }),
-        ('Payment Information', {
-            'fields': ('payment_received', 'payment_date', 'balance_amount')
-        }),
-    )
-    
-    def balance_amount(self, obj):
-        balance = obj.get_balance_amount()
-        if balance > 0:
-            return format_html('<span style="color: red;">₹{}</span>', balance)
-        return format_html('<span style="color: green;">₹{}</span>', balance)
-    balance_amount.short_description = "Balance"
-
 
 
 @admin.register(AuditLog)

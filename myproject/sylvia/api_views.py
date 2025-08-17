@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
+    MRN, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
 )
 from .serializers import (
     DepotSerializer, ProductSerializer, DealerSerializer, VehicleSerializer,

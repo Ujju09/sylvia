@@ -217,6 +217,7 @@ CSP_IMG_SRC = (
     "https:",
     "https://mock-krutrim-storage.com",  # Mock storage for development
     "https://*.krutrimcloud.com",  # Krutrim Cloud storage domains
+    "https://*.kos.olakrutrimsvc.com",  # Krutrim Object Storage domains
 )
 CSP_FONT_SRC = (
     "'self'",

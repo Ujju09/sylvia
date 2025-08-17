@@ -18,6 +18,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 pytz==2025.2
 reportlab==4.4.2
+requests==2.32.4
 six==1.17.0
 sqlparse==0.5.3
 tzdata==2025.2

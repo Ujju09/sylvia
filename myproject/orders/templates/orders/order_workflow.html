@@ -56,6 +56,25 @@
             {% endfor %}
           </div>
         </div>
+        
+        <hr>
+        <div class="mb-3">
+          <label class="form-label">MRN Proof Images</label>
+          <div class="upload-zone border border-2 border-dashed rounded p-4 text-center bg-light" id="imageUploadZone" style="cursor: pointer; transition: all 0.3s ease;">
+            <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
+            <p class="mb-2 text-muted">Drop images here or click to upload</p>
+            <input type="file" id="mrnImages" name="mrn_images" multiple accept="image/*" class="d-none">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('mrnImages').click()">
+              <i class="fas fa-plus me-1"></i>Choose Files
+            </button>
+          </div>
+          <div id="imagePreview" class="mt-3 row"></div>
+          <small class="form-text text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Upload photos as proof that MRN has been completed. Supported formats: JPG, PNG, WEBP (Max 5MB each)
+          </small>
+        </div>
+        
         <button type="submit" class="btn btn-success float-end">Finish & Save</button>
       </form>
     </div>
@@ -82,6 +101,206 @@
       // Add visual feedback that the vehicle was pre-selected
       $('#vehicle').closest('.mb-3').prepend('<div class="alert alert-info alert-dismissible fade show mb-2" role="alert"><i class="fas fa-info-circle me-1"></i>Vehicle "{{ selected_vehicle.truck_number }}" has been pre-selected for you.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
     {% endif %}
+    
+    // Image upload functionality
+    let selectedFiles = [];
+    const uploadZone = document.getElementById('imageUploadZone');
+    const fileInput = document.getElementById('mrnImages');
+    const previewContainer = document.getElementById('imagePreview');
+    
+    // Click handler for upload zone
+    uploadZone.addEventListener('click', function() {
+      fileInput.click();
+    });
+    
+    // Drag and drop handlers
+    uploadZone.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      uploadZone.classList.add('border-primary', 'bg-primary-subtle');
+    });
+    
+    uploadZone.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      uploadZone.classList.remove('border-primary', 'bg-primary-subtle');
+    });
+    
+    uploadZone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      uploadZone.classList.remove('border-primary', 'bg-primary-subtle');
+      
+      const files = Array.from(e.dataTransfer.files);
+      handleFiles(files);
+    });
+    
+    // File input change handler
+    fileInput.addEventListener('change', function(e) {
+      const files = Array.from(e.target.files);
+      handleFiles(files);
+    });
+    
+    function handleFiles(files) {
+      files.forEach(file => {
+        if (validateFile(file)) {
+          selectedFiles.push(file);
+          addImagePreview(file);
+        }
+      });
+    }
+    
+    function validateFile(file) {
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Invalid file type: ${file.name}. Only JPG, PNG, and WEBP files are allowed.`);
+        return false;
+      }
+      
+      // Check file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        alert(`File too large: ${file.name}. Maximum size is 5MB.`);
+        return false;
+      }
+      
+      return true;
+    }
+    
+    function addImagePreview(file) {
+      const fileIndex = selectedFiles.length - 1;
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'col-md-3 col-sm-4 col-6 mb-3';
+        previewDiv.innerHTML = `
+          <div class="card">
+            <img src="${e.target.result}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="Preview">
+            <div class="card-body p-2">
+              <p class="card-text small mb-2">${file.name}</p>
+              <div class="mb-2">
+                <select class="form-select form-select-sm image-type-select" data-index="${fileIndex}">
+                  <option value="MRN_PROOF">MRN Proof</option>
+                  <option value="DELIVERY_RECEIPT">Delivery Receipt</option>
+                  <option value="QUALITY_CHECK">Quality Check</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input primary-checkbox" type="checkbox" data-index="${fileIndex}">
+                <label class="form-check-label small">Primary Image</label>
+              </div>
+              <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeImage(${fileIndex})">
+                <i class="fas fa-trash me-1"></i>Remove
+              </button>
+            </div>
+          </div>
+        `;
+        previewContainer.appendChild(previewDiv);
+      };
+      
+      reader.readAsDataURL(file);
+    }
+    
+    // Make removeImage function global
+    window.removeImage = function(index) {
+      selectedFiles.splice(index, 1);
+      updatePreviews();
+    };
+    
+    function updatePreviews() {
+      previewContainer.innerHTML = '';
+      selectedFiles.forEach((file, index) => {
+        addImagePreview(file);
+      });
+    }
+    
+    // Handle primary image selection (only one can be primary)
+    $(document).on('change', '.primary-checkbox', function() {
+      if (this.checked) {
+        $('.primary-checkbox').not(this).prop('checked', false);
+      }
+    });
+    
+    // Modify form submission to handle image uploads
+    $('#order-form').on('submit', function(e) {
+      if (selectedFiles.length > 0) {
+        e.preventDefault();
+        submitOrderWithImages();
+      }
+      // If no images, let the form submit normally
+    });
+    
+    function submitOrderWithImages() {
+      // First, submit the order form normally to create the order
+      const formData = new FormData(document.getElementById('order-form'));
+      
+      // Remove the image files from the main form data (we'll handle them separately)
+      formData.delete('mrn_images');
+      
+      $.ajax({
+        url: window.location.href,
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+          // Order created successfully, now upload images
+          if (response.order_id && selectedFiles.length > 0) {
+            uploadImagesForOrder(response.order_id);
+          } else {
+            // No images to upload, redirect or show success message
+            window.location.href = response.redirect_url || '/orders/';
+          }
+        },
+        error: function(xhr, status, error) {
+          alert('Error creating order: ' + error);
+        }
+      });
+    }
+    
+    function uploadImagesForOrder(orderId) {
+      let uploadPromises = [];
+      
+      selectedFiles.forEach((file, index) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // Get image type from the select box
+        const imageType = $(`.image-type-select[data-index="${index}"]`).val() || 'MRN_PROOF';
+        formData.append('image_type', imageType);
+        
+        // Check if this is the primary image
+        const isPrimary = $(`.primary-checkbox[data-index="${index}"]`).is(':checked');
+        formData.append('is_primary', isPrimary);
+        
+        formData.append('description', `MRN proof image - ${file.name}`);
+        
+        const uploadPromise = $.ajax({
+          url: `/api/v1/orders/${orderId}/upload_mrn_image/`,
+          method: 'POST',
+          data: formData,
+          processData: false,
+          contentType: false,
+          headers: {
+            'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+          }
+        });
+        
+        uploadPromises.push(uploadPromise);
+      });
+      
+      // Wait for all uploads to complete
+      Promise.all(uploadPromises)
+        .then(function(results) {
+          alert(`Order created successfully with ${results.length} images uploaded!`);
+          window.location.href = '/orders/';
+        })
+        .catch(function(error) {
+          console.error('Error uploading images:', error);
+          alert('Order created but some images failed to upload. Please check the order and try uploading images again.');
+          window.location.href = '/orders/';
+        });
+    }
   });
 </script>
 {% endblock %}

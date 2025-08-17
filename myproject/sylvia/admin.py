@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import (
     Depot, Product, Dealer, Vehicle, Order, OrderItem, 
-    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext
+    MRN, Invoice, AuditLog, AppSettings, NotificationTemplate, DealerContext, OrderMRNImage
 )
 
 @admin.register(Depot)
@@ -152,6 +152,10 @@ class NotificationTemplateAdmin(admin.ModelAdmin):
     ordering = ['name']
 
 
+@admin.register(OrderMRNImage)
+class OrderMRNImageAdmin(admin.ModelAdmin):
+    list_display = ['order',]
+    search_fields = ['order__order_number']
 
 @admin.register(DealerContext)
 class DealerContextAdmin(admin.ModelAdmin):

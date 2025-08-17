@@ -259,6 +259,46 @@ class Invoice(BaseModel):
 
 
 
+class OrderMRNImage(BaseModel):
+    """Model to store MRN proof images for orders"""
+    
+    ORDER_IMAGE_TYPE_CHOICES = [
+        ('MRN_PROOF', 'MRN Proof Document'),
+        ('DELIVERY_RECEIPT', 'Delivery Receipt'), 
+        ('QUALITY_CHECK', 'Quality Check Photo'),
+        ('OTHER', 'Other Documentation'),
+    ]
+    
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='mrn_images')
+    image_url = models.URLField(max_length=500, help_text="Krutrim Storage URL for the image")
+    image_type = models.CharField(max_length=20, choices=ORDER_IMAGE_TYPE_CHOICES, default='MRN_PROOF')
+    original_filename = models.CharField(max_length=255, blank=True)
+    file_size = models.PositiveIntegerField(null=True, blank=True, help_text="File size in bytes")
+    upload_timestamp = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(blank=True, help_text="Optional description of the image")
+    is_primary = models.BooleanField(default=False, help_text="Mark as primary MRN proof image")
+    
+    # Storage metadata
+    storage_key = models.CharField(max_length=255, blank=True, help_text="Krutrim storage key/path")
+    content_type = models.CharField(max_length=100, blank=True)
+    
+    def __str__(self):
+        return f"{self.order.order_number} - {self.get_image_type_display()}"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one primary image per order
+        if self.is_primary:
+            OrderMRNImage.objects.filter(order=self.order, is_primary=True).update(is_primary=False)
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        ordering = ['-upload_timestamp']
+        indexes = [
+            models.Index(fields=['order', '-upload_timestamp']),
+            models.Index(fields=['image_type', 'is_primary']),
+        ]
+
+
 class AuditLog(BaseModel):
     """Audit trail for important actions"""
     ACTION_CHOICES = [
@@ -269,6 +309,8 @@ class AuditLog(BaseModel):
         ('INVOICE_GENERATED', 'Invoice Generated'),
         ('PAYMENT_RECEIVED', 'Payment Received'),
         ('ORDER_CANCELLED', 'Order Cancelled'),
+        ('IMAGE_UPLOADED', 'MRN Image Uploaded'),
+        ('IMAGE_DELETED', 'MRN Image Deleted'),
     ]
     
     action = models.CharField(max_length=30, choices=ACTION_CHOICES)

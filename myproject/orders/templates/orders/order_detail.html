@@ -94,15 +94,6 @@
               
               <div class="card bg-light">
                 <div class="card-body">
-                  <div class="mb-3">
-                    <label class="form-label fw-bold">MRN Status</label>
-                    <div class="input-group">
-                      <span class="input-group-text">
-                        <i class="fas {% if mrn_status == 'APPROVED' %}fa-check-circle text-success{% elif mrn_status == 'REJECTED' %}fa-times-circle text-danger{% else %}fa-clock text-warning{% endif %}"></i>
-                      </span>
-                      <input type="text" class="form-control" value="{{ mrn_status }}" readonly>
-                    </div>
-                  </div>
                   
                   <div class="mb-3">
                     <label class="form-label fw-bold">Created By</label>

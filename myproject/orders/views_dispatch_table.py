@@ -161,7 +161,6 @@ def process_dispatch_image(request):
             response_text = message.content[0].text.strip()
             
             # Log the raw response for debugging
-            logger.info(f"Claude raw response: {response_text[:500]}...")
             
             # Parse JSON response
             try:

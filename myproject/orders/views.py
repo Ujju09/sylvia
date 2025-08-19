@@ -274,7 +274,6 @@ def update_order(request, order_id):
             for product_id, item in existing_items.items():
                 if product_id not in existing_product_ids and product_id not in products_to_update:
                     item.delete()
-                    logger.info(f"Removed product {item.product.name} from order {order.order_number} (not in DOM)")
             
             # Update existing products and add new products
             for product_id, quantity in products_to_update.items():
@@ -285,11 +284,9 @@ def update_order(request, order_id):
                     if quantity <= 0:
                         # Remove item if quantity is 0 or negative
                         item.delete()
-                        logger.info(f"Removed product {item.product.name} from order {order.order_number}")
                     else:
                         item.quantity = quantity
                         item.save()
-                        logger.info(f"Updated product {item.product.name} in order {order.order_number}: qty={quantity}")
                 elif product_id not in existing_items:
                     # This is a new product to add
                     if quantity > 0:  # Only add if quantity is positive
@@ -301,7 +298,6 @@ def update_order(request, order_id):
                                 quantity=quantity
                                 # No unit_price since we're not handling prices
                             )
-                            logger.info(f"Added new product {product.name} to order {order.order_number}: qty={quantity}")
                         except Product.DoesNotExist:
                             logger.warning(f"Attempted to add non-existent product ID {product_id} to order {order.order_number}")
                             continue

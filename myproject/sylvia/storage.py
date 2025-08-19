@@ -26,7 +26,6 @@ class KrutrimStorageClient:
         if not self.access_key or not self.secret_key or not self.endpoint_url:
             raise ValueError("Krutrim Storage credentials not properly configured. Please set KRUTRIM_STORAGE_ACCESS_KEY, KRUTRIM_STORAGE_API_KEY and KRUTRIM_STORAGE_ENDPOINT in your environment variables.")
         
-        logger.info("Krutrim Storage client initialized successfully")
     
     def _create_auth_headers_v4(self, method: str, url: str, content_type: str = 'application/octet-stream', payload_hash: str = None) -> dict:
         """Create AWS Signature Version 4 authorization headers for Krutrim Storage"""
@@ -182,7 +181,6 @@ class KrutrimStorageClient:
                         'storage_key': storage_key
                     }
                     
-                    logger.info(f"Successfully uploaded {file_obj.name} to {image_url}")
                     return True, image_url, storage_key, metadata
                 else:
                     error_msg = f"Krutrim Storage upload failed: HTTP {response.status_code} - {response.text}"
@@ -216,7 +214,6 @@ class KrutrimStorageClient:
                 )
                 
                 if response.status_code in [200, 204]:
-                    logger.info(f"Successfully deleted {storage_key}")
                     return True, "Image deleted successfully"
                 else:
                     error_msg = f"Krutrim Storage delete failed: HTTP {response.status_code} - {response.text}"
@@ -296,7 +293,6 @@ class KrutrimStorageClient:
             final_params = '&'.join([f'{k}={quote(str(v), safe="-_.~")}' for k, v in sorted(query_params.items())])
             presigned_url = f"{object_url}?{final_params}"
             
-            logger.info(f"Generated presigned URL for {storage_key} (expires in {expiration}s)")
             return presigned_url
             
         except Exception as e:

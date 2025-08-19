@@ -308,3 +308,4 @@ All MemoTab APIs require authentication via token or session. Use the same auth 
 - `KRUTRIM_STORAGE_REGION`: Storage region (default: in-bangalore-1)
 
 [Rest of the content remains the same...]
+- always use python3 to run commands

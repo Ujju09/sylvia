@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card">
+        <div class="card-body">
+          <!-- Breadcrumb Navigation -->
+          <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="{% url 'order_list' %}">Orders</a></li>
+              <li class="breadcrumb-item active" aria-current="page">{{ order.order_number }}</li>
+            </ol>
+          </nav>
+          
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="text-primary mb-0">Order Details</h3>
+            <div class="btn-group" role="group">
+              <a href="{% url 'update_order' order.id %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i> Edit Order
+              </a>
+              <a href="{% url 'order_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+              </a>
+            </div>
+          </div>
+          
+          <!-- Order Summary -->
+          <div class="alert alert-info mb-4">
+            <h5 class="alert-heading">Order Summary</h5>
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Order Number:</strong> {{ order.order_number }}</p>
+                <p class="mb-1"><strong>Dealer:</strong> {{ order.dealer.name }} ({{ order.dealer.code }})</p>
+                <p class="mb-1"><strong>Vehicle:</strong> {{ order.vehicle.truck_number }}</p>
+                <p class="mb-0"><strong>Depot:</strong> {{ order.depot.name }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Order Date:</strong> {{ order.order_date|date:'M d, Y' }}</p>
+                <p class="mb-1"><strong>Status:</strong> 
+                  <span class="badge {% if order.status == 'BILLED' %}bg-success{% elif order.status == 'MRN_CREATED' %}bg-warning{% else %}bg-secondary{% endif %}">
+                    {{ order.get_status_display }}
+                  </span>
+                </p>
+                <p class="mb-1"><strong>MRN Date:</strong> 
+                  {% if order.mrn_date %}{{ order.mrn_date|date:'M d, Y' }}{% else %}<span class="text-muted">Not set</span>{% endif %}
+                </p>
+                <p class="mb-0"><strong>Invoice Date:</strong> 
+                  {% if order.bill_date %}{{ order.bill_date|date:'M d, Y' }}{% else %}<span class="text-muted">Not set</span>{% endif %}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Left Column - Product Details -->
+            <div class="col-md-6">
+              <h5 class="text-secondary mb-3">Product Details</h5>
+              
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead class="table-dark">
+                    <tr>
+                      <th>Product</th>
+                      <th>Code</th>
+                      <th>Quantity</th>
+                      <th>Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for item in order.order_items.all %}
+                    <tr>
+                      <td>{{ item.product.name }}</td>
+                      <td>{{ item.product.code }}</td>
+                      <td>{{ item.quantity }}</td>
+                      <td>{{ item.product.unit }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                  <tfoot class="table-secondary">
+                    <tr>
+                      <th colspan="2">Total Quantity</th>
+                      <th>{{ order.get_total_quantity }}</th>
+                      <th>MT</th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Right Column - Order Status -->
+            <div class="col-md-6">
+              <h5 class="text-secondary mb-3">Order Status</h5>
+              
+              <div class="card bg-light">
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">MRN Status</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="fas {% if mrn_status == 'APPROVED' %}fa-check-circle text-success{% elif mrn_status == 'REJECTED' %}fa-times-circle text-danger{% else %}fa-clock text-warning{% endif %}"></i>
+                      </span>
+                      <input type="text" class="form-control" value="{{ mrn_status }}" readonly>
+                    </div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Created By</label>
+                    <input type="text" class="form-control" value="{{ order.created_by.username|default:'Unknown' }}" readonly>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Created At</label>
+                    <input type="text" class="form-control" value="{{ order.created_at|date:'M d, Y H:i' }}" readonly>
+                  </div>
+                  
+                  <div class="mb-0">
+                    <label class="form-label fw-bold">Last Updated</label>
+                    <input type="text" class="form-control" value="{{ order.updated_at|date:'M d, Y H:i' }}" readonly>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <hr class="my-4">
+          
+          <!-- MRN Images Section -->
+          <div class="row">
+            <div class="col-12">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-secondary mb-0">MRN Proof Images</h5>
+                <span class="badge bg-info" id="image-count-badge">Loading...</span>
+              </div>
+              
+              <div id="mrn-images-gallery">
+                <div class="row" id="images-container">
+                  <!-- Images will be loaded here via JavaScript -->
+                  <div class="col-12 text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+                    <p class="text-muted">Loading images...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageModalLabel">Image Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modalImage" src="" class="img-fluid" alt="Image Preview">
+        <div class="mt-3">
+          <h6 id="modalImageTitle"></h6>
+          <p id="modalImageDescription" class="text-muted"></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <a id="modalDownloadLink" href="" class="btn btn-primary" download>
+          <i class="fas fa-download"></i> Download
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global function to show image modal
+function showImageModal(imageUrl, filename, description) {
+  document.getElementById('modalImage').src = imageUrl;
+  document.getElementById('modalImageTitle').textContent = filename;
+  document.getElementById('modalImageDescription').textContent = description || 'No description available';
+  document.getElementById('modalDownloadLink').href = imageUrl;
+  document.getElementById('modalDownloadLink').download = filename;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Get order ID from the current URL
+  const orderId = '{{ order.id }}';
+  const imagesContainer = document.getElementById('images-container');
+  
+  // Load MRN images for this order
+  loadMRNImages();
+  
+  function loadMRNImages() {
+    fetch(`/api/v1/orders/${orderId}/mrn_images/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      }
+    })
+    .then(response => response.json())
+    .then(images => {
+      displayImages(images);
+    })
+    .catch(error => {
+      console.error('Error loading images:', error);
+      showErrorMessage();
+    });
+  }
+  
+  function displayImages(images) {
+    imagesContainer.innerHTML = '';
+    
+    if (images.length === 0) {
+      showNoImagesMessage();
+      return;
+    }
+    
+    // Update the image count badge
+    const countBadge = document.getElementById('image-count-badge');
+    if (countBadge) {
+      countBadge.textContent = `${images.length} image${images.length !== 1 ? 's' : ''}`;
+    }
+    
+    images.forEach(image => {
+      const imageDiv = document.createElement('div');
+      imageDiv.className = 'col-lg-3 col-md-4 col-sm-6 mb-4';
+      imageDiv.innerHTML = `
+        <div class="card h-100 shadow-sm">
+          <div class="position-relative">
+            <img src="${image.secure_image_url || image.image_url}" 
+                 class="card-img-top" 
+                 style="height: 200px; object-fit: cover; cursor: pointer;" 
+                 alt="MRN Proof"
+                 data-bs-toggle="modal" 
+                 data-bs-target="#imageModal"
+                 onclick="showImageModal('${image.secure_image_url || image.image_url}', '${escapeHtml(image.original_filename)}', '${escapeHtml(image.description || '')}')">
+            ${image.is_primary ? `
+            <span class="position-absolute top-0 end-0 m-2">
+              <span class="badge bg-success">
+                <i class="fas fa-star"></i> Primary
+              </span>
+            </span>
+            ` : ''}
+          </div>
+          <div class="card-body p-3">
+            <h6 class="card-title text-truncate" title="${escapeHtml(image.original_filename)}">
+              ${escapeHtml(image.original_filename)}
+            </h6>
+            <p class="card-text">
+              <small class="text-muted">
+                <i class="fas fa-tag"></i> ${escapeHtml(image.image_type.replace('_', ' '))}
+              </small>
+            </p>
+            ${image.description ? `
+            <p class="card-text small text-muted">
+              ${escapeHtml(image.description.length > 50 ? image.description.substring(0, 50) + '...' : image.description)}
+            </p>
+            ` : ''}
+            <div class="d-flex justify-content-between align-items-center">
+              <small class="text-muted">
+                <i class="fas fa-calendar"></i> ${formatDate(image.upload_timestamp)}
+              </small>
+              <small class="text-muted">
+                <i class="fas fa-file"></i> ${formatFileSize(image.file_size)}
+              </small>
+            </div>
+            ${image.created_by ? `
+            <div class="mt-2">
+              <small class="text-muted">
+                <i class="fas fa-user"></i> ${escapeHtml(image.created_by.username)}
+              </small>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      imagesContainer.appendChild(imageDiv);
+    });
+  }
+  
+  function showNoImagesMessage() {
+    // Update the image count badge
+    const countBadge = document.getElementById('image-count-badge');
+    if (countBadge) {
+      countBadge.textContent = '0 images';
+    }
+    
+    imagesContainer.innerHTML = `
+      <div class="col-12">
+        <div class="text-center py-5">
+          <i class="fas fa-images fa-3x text-muted mb-3"></i>
+          <h6 class="text-muted">No MRN images uploaded yet</h6>
+          <p class="text-muted small">Images will appear here once they are uploaded in the edit view.</p>
+          <a href="{% url 'update_order' order.id %}" class="btn btn-outline-primary">
+            <i class="fas fa-plus"></i> Upload Images
+          </a>
+        </div>
+      </div>
+    `;
+  }
+  
+  function showErrorMessage() {
+    // Update the image count badge
+    const countBadge = document.getElementById('image-count-badge');
+    if (countBadge) {
+      countBadge.textContent = 'Error';
+      countBadge.className = 'badge bg-warning';
+    }
+    
+    imagesContainer.innerHTML = `
+      <div class="col-12">
+        <div class="text-center py-5">
+          <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+          <h6 class="text-warning">Error loading images</h6>
+          <p class="text-muted small">There was an error loading the MRN images. Please try refreshing the page.</p>
+          <button class="btn btn-outline-primary" onclick="loadMRNImages()">
+            <i class="fas fa-refresh"></i> Retry
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Utility functions
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+  
+  function formatFileSize(bytes) {
+    if (!bytes) return 'Unknown size';
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 Bytes';
+    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  }
+  
+  // Initialize tooltips if Bootstrap is available
+  if (typeof bootstrap !== 'undefined') {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  }
+});
+</script>
+{% endblock %}

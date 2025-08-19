@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.core.paginator import Paginator
-from sylvia.models import Vehicle, Dealer, Product, Order, OrderItem, Depot, AppSettings, MRN
+from sylvia.models import Vehicle, Dealer, Product, Order, OrderItem, Depot, AppSettings, MRN, OrderMRNImage
 from sylvia.forms import VehicleForm, DealerForm, ProductForm, DepotForm
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
@@ -195,6 +195,20 @@ def login_view(request):
 def logout_view(request):
     auth_logout(request)
     return redirect('login')
+
+@login_required
+def order_detail(request, order_id):
+    """View to display order details with MRN images"""
+    order = get_object_or_404(Order, id=order_id)
+    mrn = getattr(order, 'mrn', None)
+    mrn_status = mrn.status if mrn else 'PENDING'
+    
+    context = {
+        'order': order,
+        'mrn_status': mrn_status,
+    }
+    return render(request, 'orders/order_detail.html', context)
+
 
 @login_required
 def update_order(request, order_id):

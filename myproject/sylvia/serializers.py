@@ -158,7 +158,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'dealer', 'dealer_id', 'vehicle', 'vehicle_id',
             'depot', 'depot_id', 'order_date', 'mrn_date', 'bill_date',
             'dispatch_date', 'delivery_date', 'status', 'remarks',
-            'whatsapp_sent', 'whatsapp_sent_at', 'order_items', 'mrn', 'invoice',
+            'whatsapp_sent', 'whatsapp_sent_at', 'order_items', 'mrn',
             'mrn_images', 'primary_mrn_image', 'total_quantity', 'total_value', 
             'created_at', 'updated_at', 'created_by'
         ]

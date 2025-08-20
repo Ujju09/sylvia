@@ -230,8 +230,8 @@ class NotificationTemplateSerializer(serializers.ModelSerializer):
 # Dashboard/Analytics serializers
 class DashboardStatsSerializer(serializers.Serializer):
     orders_created_today = serializers.IntegerField()
-    mrn_approved_today = serializers.IntegerField()
     orders_billed_today = serializers.IntegerField()
+    mrn_created_today = serializers.IntegerField()
     total_orders = serializers.IntegerField()
     pending_orders = serializers.IntegerField()
     completed_orders = serializers.IntegerField()

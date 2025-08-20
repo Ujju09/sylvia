@@ -583,9 +583,9 @@ def dashboard_stats(request):
     today = date.today()
     
     stats = {
-        'orders_created_today': Order.objects.filter(order_date__date=today).count(),
-        'mrn_approved_today': MRN.objects.filter(mrn_date=today, status='APPROVED').count(),
-        'orders_billed_today': Order.objects.filter(bill_date=today).count(),
+        'orders_created_today': Order.objects.filter(created_at__date=today).count(),
+        'orders_billed_today': Order.objects.filter(updated_at__date=today, status='BILLED').count(),
+        'mrn_created_today': Order.objects.filter(updated_at__date=today, status='MRN_CREATED').count(),
         'total_orders': Order.objects.count(),
         'pending_orders': Order.objects.filter(status__in=['PENDING', 'CONFIRMED']).count(),
         'completed_orders': Order.objects.filter(status='DELIVERED').count(),

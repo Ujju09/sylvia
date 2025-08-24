@@ -3,6 +3,34 @@
 <div class="container py-5">
   <div class="row justify-content-center">
     <div class="col-md-10">
+      <!-- Data Audit Reminder Banner -->
+      {% if audit_reminder.show_reminder %}
+      <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert" id="auditReminderBanner">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h5 class="alert-heading mb-2">
+              <i class="fas fa-calendar-check me-2"></i>Monthly Data Audit Reminder
+            </h5>
+            <p class="mb-2">
+              <strong>{{ audit_reminder.days_remaining }} day{{ audit_reminder.days_remaining|pluralize }} remaining</strong> 
+              in {{ audit_reminder.month_name }} {{ audit_reminder.year }}. Time to prepare for monthly data audits and sanitization.
+            </p>
+            <div class="mb-2">
+              <small class="text-dark">
+                <i class="fas fa-check-circle me-1"></i>Review order data accuracy<br>
+                <i class="fas fa-check-circle me-1"></i>Clean up duplicate entries<br>
+                <i class="fas fa-check-circle me-1"></i>Verify MRN and billing completeness<br>
+                <i class="fas fa-check-circle me-1"></i>Update dealer and vehicle information
+              </small>
+            </div>
+          </div>
+          <div class="col-md-4 text-end">
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="text-center mb-5">
         <h1 class="display-4 mb-3">{{ app_settings.site_title|default:"Move People ― Move Mountains" }}</h1>
         <p class="lead">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong></p>

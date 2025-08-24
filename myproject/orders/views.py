@@ -18,6 +18,29 @@ import pandas as pd
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
+
+def check_audit_reminder():
+    """Check if audit reminder should be shown (last 7 days of month)"""
+    today = timezone.now().date()
+    year = today.year
+    month = today.month
+    
+    # Get last day of current month
+    last_day_of_month = calendar.monthrange(year, month)[1]
+    
+    # Calculate if we're in the last 7 days
+    days_until_end = last_day_of_month - today.day
+
+    if days_until_end <= 7:  # Last 7 days of month (0-6 days remaining)
+        return {
+            'show_reminder': True,
+            'days_remaining': days_until_end + 1,
+            'month_name': calendar.month_name[month],
+            'year': year
+        }
+    
+    return {'show_reminder': False}
+
 logger = logging.getLogger(__name__)
 
 @login_required
@@ -153,6 +176,9 @@ def home(request):
     dealers_served_today = Order.objects.filter(created_at__date=today).values('dealer').distinct().count()
     vehicles_loaded_today = Order.objects.filter(created_at__date=today).values('vehicle').distinct().count()
 
+    # Check for audit reminder
+    audit_reminder = check_audit_reminder()
+
     context = {
         'app_settings': {
             'site_title': settings.get('site_title', 'Move People ― Move Mountains'),
@@ -171,6 +197,7 @@ def home(request):
             'total_quantity': round(float(total_quantity_week), 2) if total_quantity_week else 0,
         },
         'current_date': today,
+        'audit_reminder': audit_reminder,
     }
     return render(request, 'home.html', context)
 

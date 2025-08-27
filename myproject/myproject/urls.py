@@ -22,7 +22,9 @@ from orders.views import home, login_view, logout_view
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('orders/', include('orders.urls')),
+    path('godown/', include('godown.urls')),  # Godown web interface routes
     path('api/v1/', include('sylvia.api_urls')),  # API routes (includes MemoTab)
+    # path('api/v1/godown/', include('godown.api_urls')),  # Godown API routes - disabled until new API views created
     path('', home, name='home'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),

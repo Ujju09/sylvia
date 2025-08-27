@@ -1,0 +1,647 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-exchange-alt text-primary"></i>
+                        Crossover Record Details
+                    </h2>
+                    <p class="text-muted mb-0">Complete information for crossover: <strong>{{ crossover.crossover_id }}</strong></p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'crossover_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                    <a href="{% url 'crossover_update' crossover.crossover_id %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <button class="btn btn-info" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-left-primary">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Crossover ID</div>
+                    <div class="h6 mb-0 text-primary">{{ crossover.crossover_id }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-left-info">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Requested Bags</div>
+                    <div class="h5 mb-0 text-info">{{ crossover.requested_bags }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-left-success">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Transferred Bags</div>
+                    <div class="h5 mb-0 text-success">{{ crossover.actual_transferred_bags }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-left-warning">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Completion</div>
+                    <div class="h5 mb-0 text-warning">{{ completion_percentage }}%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Source Order Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-truck-loading text-primary"></i>
+                        Source Transit Order
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item mb-3">
+                                <label class="info-label">E-way Bill Number:</label>
+                                <div class="info-value">{{ crossover.source_order_transit.eway_bill_number }}</div>
+                            </div>
+                            <div class="info-item mb-3">
+                                <label class="info-label">Godown:</label>
+                                <div class="info-value">
+                                    <strong>{{ crossover.source_order_transit.godown.name }}</strong>
+                                    <br><small class="text-muted">{{ crossover.source_order_transit.godown.code }} | {{ crossover.source_order_transit.godown.city }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item mb-3">
+                                <label class="info-label">Transit Status:</label>
+                                <div class="info-value">
+                                    <span class="badge bg-success fs-6">
+                                        <i class="fas fa-check-circle"></i> {{ crossover.source_order_transit.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="info-item mb-3">
+                                <label class="info-label">Arrival Date:</label>
+                                <div class="info-value">
+                                    {% if crossover.source_order_transit.actual_arrival_date %}
+                                        {{ crossover.source_order_transit.actual_arrival_date|date:"F d, Y g:i A" }}
+                                    {% else %}
+                                        <span class="text-muted">Not arrived</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Transit Order Summary -->
+                    <div class="card bg-light mt-3">
+                        <div class="card-body">
+                            <h6><i class="fas fa-info-circle"></i> Transit Order Summary</h6>
+                            <div class="row text-center">
+                                <div class="col-3">
+                                    <div class="h6 text-primary">{{ crossover.source_order_transit.expected_total_bags }}</div>
+                                    <small>Expected</small>
+                                </div>
+                                <div class="col-3">
+                                    <div class="h6 text-info">{{ crossover.source_order_transit.actual_received_bags }}</div>
+                                    <small>Received</small>
+                                </div>
+                                <div class="col-3">
+                                    <div class="h6 text-success">{{ crossover.source_order_transit.good_bags }}</div>
+                                    <small>Good</small>
+                                </div>
+                                <div class="col-3">
+                                    <div class="h6 text-warning">{{ crossover.source_order_transit.crossover_bags }}</div>
+                                    <small>Crossover</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destination & Product Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shipping-fast text-success"></i>
+                        Destination & Product Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item mb-3">
+                                <label class="info-label">Destination Dealer:</label>
+                                <div class="info-value">
+                                    <strong>{{ crossover.destination_dealer.name }}</strong>
+                                    <br><small class="text-muted">{{ crossover.destination_dealer.code }}</small>
+                                    {% if crossover.destination_dealer.city %}
+                                        <br><small class="text-muted">{{ crossover.destination_dealer.city }}, {{ crossover.destination_dealer.state }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if crossover.destination_dealer.contact_person %}
+                                <div class="info-item mb-3">
+                                    <label class="info-label">Contact Person:</label>
+                                    <div class="info-value">{{ crossover.destination_dealer.contact_person }}</div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item mb-3">
+                                <label class="info-label">Product:</label>
+                                <div class="info-value">
+                                    <strong>{{ crossover.product.name }}</strong>
+                                    <br><small class="text-muted">{{ crossover.product.code }} | {{ crossover.product.unit }}</small>
+                                </div>
+                            </div>
+                            {% if crossover.destination_dealer.phone %}
+                                <div class="info-item mb-3">
+                                    <label class="info-label">Phone:</label>
+                                    <div class="info-value">{{ crossover.destination_dealer.phone }}</div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quantity Analysis -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator text-warning"></i>
+                        Quantity Analysis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Progress Bar -->
+                    <div class="progress-container mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Requested: {{ crossover.requested_bags }}</span>
+                            <span class="text-muted">Transferred: {{ crossover.actual_transferred_bags }}</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 25px;">
+                            {% if crossover.requested_bags > 0 %}
+                                {% widthratio crossover.actual_transferred_bags crossover.requested_bags 100 as completion_width %}
+                                <div class="progress-bar {% if completion_width == 100 %}bg-success{% elif completion_width > 0 %}bg-warning{% else %}bg-secondary{% endif %}" 
+                                     role="progressbar" style="width: {{ completion_width }}%"
+                                     aria-valuenow="{{ completion_width }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ completion_width }}%
+                                </div>
+                            {% else %}
+                                <div class="progress-bar bg-secondary" role="progressbar" style="width: 0%">0%</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Detailed Breakdown -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Category</th>
+                                        <th class="text-center">Count</th>
+                                        <th class="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><i class="fas fa-clipboard-list text-primary"></i> Requested Bags</td>
+                                        <td class="text-center"><strong>{{ crossover.requested_bags }}</strong></td>
+                                        <td class="text-center">
+                                            <span class="badge bg-primary">Planned</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="{% if crossover.actual_transferred_bags >= crossover.requested_bags %}table-success{% elif crossover.actual_transferred_bags > 0 %}table-warning{% endif %}">
+                                        <td><i class="fas fa-check-circle text-success"></i> Actual Transferred</td>
+                                        <td class="text-center"><strong>{{ crossover.actual_transferred_bags }}</strong></td>
+                                        <td class="text-center">
+                                            {% if crossover.actual_transferred_bags >= crossover.requested_bags %}
+                                                <span class="badge bg-success">Complete</span>
+                                            {% elif crossover.actual_transferred_bags > 0 %}
+                                                <span class="badge bg-warning">Partial</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% if crossover.actual_transferred_bags < crossover.requested_bags %}
+                                        <tr class="table-info">
+                                            <td><i class="fas fa-hourglass-half text-info"></i> Remaining</td>
+                                            <td class="text-center"><strong>{{ crossover.requested_bags}}
+                                                {{crossover.actual_transferred_bags }}</strong></td>
+                                            <td class="text-center">
+                                                <span class="badge bg-info">Pending</span>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-4">
+                            <!-- Completion Status -->
+                            <div class="card bg-{% if completion_percentage == 100 %}success{% elif completion_percentage > 0 %}warning{% else %}secondary{% endif %} text-white">
+                                <div class="card-body text-center">
+                                    <div class="h2">{{ completion_percentage }}%</div>
+                                    <div>
+                                        {% if completion_percentage == 100 %}
+                                            <i class="fas fa-check-circle fa-2x"></i>
+                                            <br>Complete
+                                        {% elif completion_percentage > 0 %}
+                                            <i class="fas fa-hourglass-half fa-2x"></i>
+                                            <br>In Progress
+                                        {% else %}
+                                            <i class="fas fa-clock fa-2x"></i>
+                                            <br>Pending
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Section -->
+            {% if crossover.crossover_notes %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-sticky-note text-info"></i>
+                            Notes & Remarks
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ crossover.crossover_notes|linebreaks }}</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Related Crossovers -->
+            {% if related_crossovers %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-link text-secondary"></i>
+                            Other Crossovers from Same Source Order
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Crossover ID</th>
+                                        <th>Dealer</th>
+                                        <th>Product</th>
+                                        <th>Requested</th>
+                                        <th>Transferred</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for related in related_crossovers %}
+                                        <tr style="cursor: pointer;" onclick="window.location.href='{% url 'crossover_detail' related.crossover_id %}'">
+                                            <td>{{ related.crossover_id }}</td>
+                                            <td>{{ related.destination_dealer.name }}</td>
+                                            <td>{{ related.product.name }}</td>
+                                            <td>{{ related.requested_bags }}</td>
+                                            <td>{{ related.actual_transferred_bags }}</td>
+                                            <td>
+                                                {% if related.requested_bags > 0 %}
+                                                    {% widthratio related.actual_transferred_bags related.requested_bags 100 as related_completion %}
+                                                    {% if related_completion == 100 %}
+                                                        <span class="badge bg-success">Complete</span>
+                                                    {% elif related_completion > 0 %}
+                                                        <span class="badge bg-warning">{{ related_completion }}%</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Pending</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Pending</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-bolt text-warning"></i>
+                        Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'crossover_update' crossover.crossover_id %}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Edit Details
+                        </a>
+                        {% if crossover.actual_transferred_bags < crossover.requested_bags %}
+                            <button class="btn btn-success" onclick="updateTransferStatus()">
+                                <i class="fas fa-check"></i> Update Transfer Status
+                            </button>
+                        {% endif %}
+                        <button class="btn btn-info" onclick="window.print()">
+                            <i class="fas fa-print"></i> Print Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Record Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle text-info"></i>
+                        Record Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="info-item mb-3">
+                        <label class="info-label">Created On:</label>
+                        <div class="info-value">{{ crossover.created_at|date:"F d, Y g:i A" }}</div>
+                    </div>
+                    {% if crossover.created_by %}
+                        <div class="info-item mb-3">
+                            <label class="info-label">Created By:</label>
+                            <div class="info-value">{{ crossover.created_by.get_full_name|default:crossover.created_by.username }}</div>
+                        </div>
+                    {% endif %}
+                    <div class="info-item mb-3">
+                        <label class="info-label">Last Updated:</label>
+                        <div class="info-value">{{ crossover.updated_at|date:"F d, Y g:i A" }}</div>
+                    </div>
+                    {% if crossover.approved_date %}
+                        <div class="info-item mb-3">
+                            <label class="info-label">Approved On:</label>
+                            <div class="info-value">{{ crossover.approved_date|date:"F d, Y g:i A" }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Supervisor Information -->
+            {% if crossover.supervised_by %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-user-tie text-success"></i>
+                            Supervisor
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-item">
+                            <div class="info-value">
+                                <strong>{{ crossover.supervised_by.get_full_name|default:crossover.supervised_by.username }}</strong>
+                                <br><small class="text-muted">Crossover Supervisor</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Status Timeline -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-timeline text-primary"></i>
+                        Status Timeline
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item completed">
+                            <div class="timeline-marker bg-success">
+                                <i class="fas fa-plus"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6 class="timeline-title">Crossover Created</h6>
+                                <p class="timeline-description">{{ crossover.created_at|date:"M d, Y g:i A" }}</p>
+                            </div>
+                        </div>
+                        
+                        {% if crossover.approved_date %}
+                            <div class="timeline-item completed">
+                                <div class="timeline-marker bg-success">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">Approved</h6>
+                                    <p class="timeline-description">{{ crossover.approved_date|date:"M d, Y g:i A" }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if crossover.actual_transferred_bags >= crossover.requested_bags %}
+                            <div class="timeline-item completed">
+                                <div class="timeline-marker bg-success">
+                                    <i class="fas fa-truck"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">Transfer Complete</h6>
+                                    <p class="timeline-description">All bags transferred</p>
+                                </div>
+                            </div>
+                        {% elif crossover.actual_transferred_bags > 0 %}
+                            <div class="timeline-item pending">
+                                <div class="timeline-marker bg-warning">
+                                    <i class="fas fa-hourglass-half"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">Partial Transfer</h6>
+                                    <p class="timeline-description">{{ crossover.actual_transferred_bags }}/{{ crossover.requested_bags }} bags</p>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="timeline-item pending">
+                                <div class="timeline-marker bg-secondary">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">Pending Transfer</h6>
+                                    <p class="timeline-description">Awaiting transfer</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styles for detail view */
+.border-left-primary { border-left: 4px solid #007bff !important; }
+.border-left-success { border-left: 4px solid #28a745 !important; }
+.border-left-warning { border-left: 4px solid #ffc107 !important; }
+.border-left-info { border-left: 4px solid #17a2b8 !important; }
+
+.info-item {
+    margin-bottom: 1rem;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #495057;
+    margin-top: 0.25rem;
+}
+
+.progress-container {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 1rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -2.5rem;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+}
+
+.timeline-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-description {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.timeline-item.completed .timeline-title {
+    color: #28a745;
+}
+
+.timeline-item.pending .timeline-title {
+    color: #ffc107;
+}
+
+/* Print styles */
+@media print {
+    .btn-group, .card-header .btn, .timeline {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa !important;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .info-value {
+        font-size: 1rem;
+    }
+    
+    .timeline {
+        padding-left: 1.5rem;
+    }
+    
+    .timeline-marker {
+        left: -2rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        font-size: 0.7rem;
+    }
+}
+</style>
+
+<script>
+function updateTransferStatus() {
+    const currentTransferred = {{ crossover.actual_transferred_bags }};
+    const requested = {{ crossover.requested_bags }};
+    
+    const newAmount = prompt(`Current transferred: ${currentTransferred} bags\nEnter new transferred amount (max ${requested}):`, currentTransferred);
+    
+    if (newAmount !== null && !isNaN(newAmount) && newAmount >= 0 && newAmount <= requested) {
+        // Redirect to edit page with pre-filled data
+        // In a real implementation, you might want to use AJAX to update this
+        const editUrl = "{% url 'crossover_update' crossover.crossover_id %}";
+        window.location.href = editUrl + `?transferred=${newAmount}`;
+    } else if (newAmount !== null) {
+        alert('Please enter a valid number between 0 and ' + requested);
+    }
+}
+</script>
+{% endblock %}

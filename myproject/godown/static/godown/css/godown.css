@@ -1,0 +1,319 @@
+/* Godown Operations CSS */
+
+/* Status badges */
+.status-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-in-transit { background-color: #0dcaf0; }
+.status-arrived { background-color: #198754; }
+.status-processing { background-color: #fd7e14; }
+.status-completed { background-color: #20c997; }
+.status-pending { background-color: #6c757d; }
+.status-requested { background-color: #0d6efd; }
+.status-approved { background-color: #20c997; }
+.status-inventory_allocated { background-color: #fd7e14; }
+.status-loading_in_progress { background-color: #ffc107; color: #000; }
+.status-cancelled { background-color: #dc3545; }
+.status-delivered { background-color: #198754; }
+.status-issued { background-color: #0dcaf0; }
+.status-crossover { background-color: #6f42c1; }
+.status-independent { background-color: #0d6efd; }
+.status-loading_based { background-color: #fd7e14; }
+
+/* Action buttons */
+.action-button {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.table-actions .btn-group {
+    white-space: nowrap;
+}
+
+/* Filter cards */
+.filter-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.filter-card .card-body {
+    padding: 1rem;
+}
+
+/* Dashboard cards */
+.summary-card {
+    border-left: 4px solid #0d6efd;
+}
+
+/* Timeline styles */
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -0.5rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content {
+    padding-left: 1.5rem;
+}
+
+/* Loading progress indicators */
+.loading-progress {
+    height: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+/* Inventory status indicators */
+.inventory-status {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+}
+
+.inventory-status.available { background-color: #198754; }
+.inventory-status.allocated { background-color: #ffc107; }
+.inventory-status.damaged { background-color: #dc3545; }
+.inventory-status.exhausted { background-color: #6c757d; }
+
+/* Priority indicators */
+.priority-urgent { color: #dc3545 !important; }
+.priority-high { color: #fd7e14 !important; }
+.priority-medium { color: #0d6efd !important; }
+.priority-low { color: #6c757d !important; }
+
+/* Godown specific utilities */
+.fifo-indicator {
+    font-size: 0.7rem;
+    background: linear-gradient(45deg, #198754, #20c997);
+    color: white;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.crossover-indicator {
+    font-size: 0.7rem;
+    background: linear-gradient(45deg, #ffc107, #fd7e14);
+    color: #000;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+}
+
+/* Quantity displays */
+.quantity-display {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Print styles */
+@media print {
+    .no-print, .btn, .action-button, .filter-card {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+    
+    .page-break {
+        page-break-before: always;
+    }
+    
+    body {
+        font-size: 12px !important;
+    }
+    
+    .table {
+        font-size: 11px !important;
+    }
+    
+    .h3, .h4, .h5, .h6 {
+        font-size: 14px !important;
+    }
+    
+    .timeline-marker {
+        box-shadow: none !important;
+        border: 1px solid #000 !important;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-actions .btn-group {
+        flex-direction: column;
+    }
+    
+    .action-button {
+        margin-bottom: 0.25rem;
+    }
+    
+    .timeline {
+        padding-left: 1rem;
+    }
+    
+    .timeline-content {
+        padding-left: 1rem;
+    }
+}
+
+/* Dashboard specific styles */
+.dashboard-stat-card {
+    transition: transform 0.2s;
+}
+
+.dashboard-stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    opacity: 0.8;
+}
+
+/* Form enhancements */
+.form-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    background-color: #f8f9fa;
+}
+
+.form-section h6 {
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Real-time updates */
+.real-time-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: #198754;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Alert enhancements */
+.alert-dismissible .btn-close {
+    padding: 0.5rem;
+}
+
+/* Navigation breadcrumb */
+.breadcrumb-item a {
+    text-decoration: none;
+    color: #6c757d;
+}
+
+.breadcrumb-item a:hover {
+    color: #0d6efd;
+}
+
+/* Loading spinner overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 3rem;
+    height: 3rem;
+    border: 0.25rem solid #f3f4f6;
+    border-top: 0.25rem solid #0d6efd;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Toast notification positioning */
+.toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1050;
+}
+
+/* Data table enhancements */
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.075);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Progress bars */
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Card hover effects */
+.card-hover {
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card-hover:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}

@@ -57,7 +57,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'sylvia', 
     'orders',
-    'memotab',  
+    'memotab',
+    'godown',
 
 ]
 

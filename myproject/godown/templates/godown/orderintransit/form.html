@@ -1,0 +1,765 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-10 offset-lg-1">
+            <!-- Page Header -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-0">
+                                <i class="fas fa-plus-circle"></i>
+                                {{ title }}
+                            </h4>
+                            <p class="mb-0 mt-1 opacity-75">Follow the steps below to record transit order details</p>
+                        </div>
+                        <a href="{% url 'orderintransit_list' %}" class="btn btn-light">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <div class="step-indicator active">
+                                <span class="step-number">1</span>
+                                <div class="step-title">Transport Details</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="step-indicator">
+                                <span class="step-number">2</span>
+                                <div class="step-title">Arrival Info</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="step-indicator">
+                                <span class="step-number">3</span>
+                                <div class="step-title">Bag Counts</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="step-indicator">
+                                <span class="step-number">4</span>
+                                <div class="step-title">Final Details</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form method="post" id="transitForm">
+                {% csrf_token %}
+                
+                <!-- Form Errors -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Please fix these issues:</h6>
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Step 1: Transport Details -->
+                <div class="card mb-4 form-step" id="step-1">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-shipping-fast text-primary"></i>
+                            Step 1: Transport Details
+                        </h5>
+                        <small class="text-muted">Enter E-way bill and transport document information</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.eway_bill_number.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.eway_bill_number.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.eway_bill_number }}
+                                    {% if form.eway_bill_number.errors %}
+                                        <div class="text-danger small mt-1">{{ form.eway_bill_number.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.eway_bill_number.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.transport_document_number.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.transport_document_number.label }}
+                                        <span class="text-muted">(Optional)</span>
+                                    </label>
+                                    {{ form.transport_document_number }}
+                                    {% if form.transport_document_number.errors %}
+                                        <div class="text-danger small mt-1">{{ form.transport_document_number.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.transport_document_number.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-primary btn-lg" onclick="nextStep(2)">
+                                Continue to Arrival Info <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Arrival Information -->
+                <div class="card mb-4 form-step" id="step-2" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-map-marker-alt text-success"></i>
+                            Step 2: Arrival Information
+                        </h5>
+                        <small class="text-muted">Select godown location and arrival details</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.godown.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.godown.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.godown }}
+                                    {% if form.godown.errors %}
+                                        <div class="text-danger small mt-1">{{ form.godown.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.godown.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.actual_arrival_date.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.actual_arrival_date.label }}
+                                    </label>
+                                    {{ form.actual_arrival_date }}
+                                    {% if form.actual_arrival_date.errors %}
+                                        <div class="text-danger small mt-1">{{ form.actual_arrival_date.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.actual_arrival_date.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.status.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.status.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.status }}
+                                    {% if form.status.errors %}
+                                        <div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.status.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary btn-lg" onclick="prevStep(1)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="button" class="btn btn-primary btn-lg" onclick="nextStep(3)">
+                                Continue to Bag Counts <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Bag Counts -->
+                <div class="card mb-4 form-step" id="step-3" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-boxes text-warning"></i>
+                            Step 3: Product Details
+                        </h5>
+                        <small class="text-muted">Enter product quantities and quality information</small>
+                    </div>
+                    <div class="card-body">
+                       
+
+                        <!-- Product Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.product.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.product.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.product }}
+                                    {% if form.product.errors %}
+                                        <div class="text-danger small mt-1">{{ form.product.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.product.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                         <!-- Expected and Actual Bags -->
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.expected_total_bags.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.expected_total_bags.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.expected_total_bags }}
+                                    {% if form.expected_total_bags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.expected_total_bags.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.expected_total_bags.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.actual_received_bags.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.actual_received_bags.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.actual_received_bags }}
+                                    {% if form.actual_received_bags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.actual_received_bags.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.actual_received_bags.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Discrepancy Alert -->
+                        <div class="alert alert-info" id="discrepancy-alert" style="display: none;">
+                            <h6><i class="fas fa-calculator"></i> Quantity Analysis</h6>
+                            <div id="discrepancy-content"></div>
+                        </div>
+
+                        <!-- Good and Damaged Bags -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.good_bags.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.good_bags.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.good_bags }}
+                                    {% if form.good_bags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.good_bags.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.good_bags.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.damaged_bags.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.damaged_bags.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.damaged_bags }}
+                                    {% if form.damaged_bags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.damaged_bags.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.damaged_bags.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validation Alert -->
+                        <div class="alert alert-warning" id="validation-alert" style="display: none;">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Validation Check</h6>
+                            <div id="validation-content"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary btn-lg" onclick="prevStep(2)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="button" class="btn btn-primary btn-lg" onclick="nextStep(4)">
+                                Continue to Final Details <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Final Details -->
+                <div class="card mb-4 form-step" id="step-4" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-circle text-success"></i>
+                            Step 4: Final Details
+                        </h5>
+                        <small class="text-muted">Crossover requirements and additional notes</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Crossover Section -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        {{ form.crossover_required }}
+                                        <label for="{{ form.crossover_required.id_for_label }}" class="form-check-label fw-bold">
+                                            {{ form.crossover_required.label }}
+                                        </label>
+                                        {% if form.crossover_required.errors %}
+                                            <div class="text-danger small mt-1">{{ form.crossover_required.errors.0 }}</div>
+                                        {% endif %}
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle"></i>
+                                            {{ form.crossover_required.help_text }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row" id="crossover-section" style="{% if form.crossover_required.value %}display: block;{% else %}display: none;{% endif %}">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.crossover_bags.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.crossover_bags.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.crossover_bags }}
+                                    {% if form.crossover_bags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.crossover_bags.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.crossover_bags.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes Section -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.arrival_notes.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.arrival_notes.label }}
+                                    </label>
+                                    {{ form.arrival_notes }}
+                                    {% if form.arrival_notes.errors %}
+                                        <div class="text-danger small mt-1">{{ form.arrival_notes.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.arrival_notes.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Section -->
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-clipboard-check"></i> Summary</h6>
+                                <div class="row text-center">
+                                    <div class="col-3">
+                                        <div class="h5 text-primary" id="summary-expected">-</div>
+                                        <small>Expected</small>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="h5 text-info" id="summary-received">-</div>
+                                        <small>Received</small>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="h5 text-success" id="summary-good">-</div>
+                                        <small>Good</small>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="h5 text-warning" id="summary-storage">-</div>
+                                        <small>For Storage</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-secondary btn-lg" onclick="prevStep(3)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-save"></i> {{ submit_text }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Step Indicator Styles */
+.step-indicator {
+    position: relative;
+    padding: 1rem 0;
+}
+
+.step-indicator::before {
+    content: '';
+    position: absolute;
+    top: 2rem;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: #dee2e6;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+.step-indicator:last-child::before {
+    display: none;
+}
+
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    background: #6c757d;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 1.2rem;
+    position: relative;
+    z-index: 2;
+}
+
+.step-indicator.active .step-number {
+    background: #007bff;
+}
+
+.step-indicator.completed .step-number {
+    background: #28a745;
+}
+
+.step-title {
+    margin-top: 0.5rem;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.step-indicator.active .step-title {
+    color: #007bff;
+}
+
+.step-indicator.completed .step-title {
+    color: #28a745;
+}
+
+/* Form Styles */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.form-label {
+    color: #495057;
+    font-size: 0.95rem;
+}
+
+.form-control, .form-select {
+    border: 2px solid #e9ecef;
+    padding: 0.75rem;
+    font-size: 1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-control-lg {
+    border-width: 3px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.form-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+    color: #856404 !important;
+}
+
+.text-info {
+    color: #17a2b8 !important;
+}
+
+.text-primary {
+    color: #007bff !important;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .step-indicator {
+        padding: 0.5rem 0;
+    }
+    
+    .step-number {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .step-title {
+        font-size: 0.9rem;
+    }
+    
+    .btn-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+    
+    .form-control-lg {
+        font-size: 1rem;
+    }
+}
+</style>
+
+<script>
+// Form step navigation
+function nextStep(step) {
+    // Validate current step before proceeding
+    if (step === 2 && !validateStep1()) return;
+    if (step === 3 && !validateStep2()) return;
+    if (step === 4 && !validateStep3()) return;
+    
+    // Hide all steps
+    document.querySelectorAll('.form-step').forEach(el => el.style.display = 'none');
+    
+    // Show target step
+    document.getElementById('step-' + step).style.display = 'block';
+    
+    // Update step indicators
+    updateStepIndicators(step);
+}
+
+function prevStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.form-step').forEach(el => el.style.display = 'none');
+    
+    // Show target step
+    document.getElementById('step-' + step).style.display = 'block';
+    
+    // Update step indicators
+    updateStepIndicators(step);
+}
+
+function updateStepIndicators(currentStep) {
+    document.querySelectorAll('.step-indicator').forEach((el, index) => {
+        el.classList.remove('active', 'completed');
+        if (index + 1 < currentStep) {
+            el.classList.add('completed');
+        } else if (index + 1 === currentStep) {
+            el.classList.add('active');
+        }
+    });
+}
+
+function validateStep1() {
+    const ewayBill = document.getElementById('{{ form.eway_bill_number.id_for_label }}').value;
+    if (!ewayBill || ewayBill.length < 12) {
+        alert('Please enter a valid E-way bill number');
+        return false;
+    }
+    return true;
+}
+
+function validateStep2() {
+    const godown = document.getElementById('{{ form.godown.id_for_label }}').value;
+    if (!godown) {
+        alert('Please select a godown location');
+        return false;
+    }
+    return true;
+}
+
+function validateStep3() {
+    
+    const expected = parseInt(document.getElementById('{{ form.expected_total_bags.id_for_label }}').value) || 0;
+    const actual = parseInt(document.getElementById('{{ form.actual_received_bags.id_for_label }}').value) || 0;
+    const good = parseInt(document.getElementById('{{ form.good_bags.id_for_label }}').value) || 0;
+    const damaged = parseInt(document.getElementById('{{ form.damaged_bags.id_for_label }}').value) || 0;
+    
+    if (expected <= 0) {
+        alert('Please enter expected total bags');
+        return false;
+    }
+    
+    if (good + damaged !== actual) {
+        alert('Good bags + Damaged bags must equal Actual received bags');
+        return false;
+    }
+    
+    return true;
+}
+
+// Auto-calculations
+document.addEventListener('DOMContentLoaded', function() {
+    const expectedInput = document.getElementById('{{ form.expected_total_bags.id_for_label }}');
+    const actualInput = document.getElementById('{{ form.actual_received_bags.id_for_label }}');
+    const goodInput = document.getElementById('{{ form.good_bags.id_for_label }}');
+    const damagedInput = document.getElementById('{{ form.damaged_bags.id_for_label }}');
+    const crossoverRequiredInput = document.getElementById('{{ form.crossover_required.id_for_label }}');
+    const crossoverBagsInput = document.getElementById('{{ form.crossover_bags.id_for_label }}');
+    
+    // Calculate discrepancy
+    function calculateDiscrepancy() {
+        const expected = parseInt(expectedInput.value) || 0;
+        const actual = parseInt(actualInput.value) || 0;
+        
+        if (expected > 0 && actual > 0) {
+            const discrepancy = expected - actual;
+            const percentage = Math.abs(discrepancy) / expected * 100;
+            
+            let content = '';
+            if (discrepancy > 0) {
+                content = `<div class="text-danger">Shortage: ${discrepancy} bags (${percentage.toFixed(1)}%)</div>`;
+            } else if (discrepancy < 0) {
+                content = `<div class="text-success">Excess: ${Math.abs(discrepancy)} bags (${percentage.toFixed(1)}%)</div>`;
+            } else {
+                content = `<div class="text-success">Perfect match: No discrepancy</div>`;
+            }
+            
+            document.getElementById('discrepancy-content').innerHTML = content;
+            document.getElementById('discrepancy-alert').style.display = 'block';
+        } else {
+            document.getElementById('discrepancy-alert').style.display = 'none';
+        }
+    }
+    
+    // Validate bag quantities
+    function validateBags() {
+        const actual = parseInt(actualInput.value) || 0;
+        const good = parseInt(goodInput.value) || 0;
+        const damaged = parseInt(damagedInput.value) || 0;
+        const crossover = parseInt(crossoverBagsInput.value) || 0;
+        
+        if (actual > 0 && (good > 0 || damaged > 0)) {
+            const total = good + damaged;
+            const storage = good - crossover;
+            
+            let content = '';
+            let alertClass = 'alert-success';
+            
+            if (total !== actual) {
+                content = `<div class="text-warning">Good (${good}) + Damaged (${damaged}) = ${total}, but received ${actual} bags</div>`;
+                alertClass = 'alert-warning';
+            } else if (crossover > good) {
+                content = `<div class="text-danger">Crossover bags (${crossover}) cannot exceed good bags (${good})</div>`;
+                alertClass = 'alert-danger';
+            } else {
+                content = `<div class="text-success">Perfect: ${total} bags accounted for correctly</div>`;
+            }
+            
+            document.getElementById('validation-content').innerHTML = content;
+            document.getElementById('validation-alert').className = `alert ${alertClass}`;
+            document.getElementById('validation-alert').style.display = 'block';
+            
+            // Update summary
+            document.getElementById('summary-expected').textContent = parseInt(expectedInput.value) || 0;
+            document.getElementById('summary-received').textContent = actual;
+            document.getElementById('summary-good').textContent = good;
+            document.getElementById('summary-storage').textContent = Math.max(0, storage);
+        }
+    }
+    
+    // Show/hide crossover section
+    function toggleCrossover() {
+        const crossoverSection = document.getElementById('crossover-section');
+        if (crossoverRequiredInput.checked) {
+            crossoverSection.style.display = 'block';
+            // Make sure the input field is also visible
+            crossoverBagsInput.style.display = 'block';
+        } else {
+            crossoverSection.style.display = 'none';
+            crossoverBagsInput.value = '0';
+        }
+        validateBags();
+    }
+    
+    // Event listeners
+    expectedInput.addEventListener('input', calculateDiscrepancy);
+    actualInput.addEventListener('input', function() {
+        calculateDiscrepancy();
+        validateBags();
+    });
+    goodInput.addEventListener('input', validateBags);
+    damagedInput.addEventListener('input', validateBags);
+    crossoverRequiredInput.addEventListener('change', toggleCrossover);
+    crossoverBagsInput.addEventListener('input', validateBags);
+    
+    // Initialize
+    calculateDiscrepancy();
+    validateBags();
+    toggleCrossover();
+});
+</script>
+{% endblock %}

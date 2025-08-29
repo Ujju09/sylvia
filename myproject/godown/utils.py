@@ -34,12 +34,15 @@ class LedgerCalculator:
         )
         
         aggregates = ledger_entries.aggregate(
-            total_inward=Sum('inward_quantity') or 0,
-            total_outward=Sum('outward_quantity') or 0
+            total_inward=Sum('inward_quantity') ,
+            total_outward=Sum('outward_quantity') 
         )
-        
-        return aggregates['total_inward'] - aggregates['total_outward']
-    
+
+        total_inward = aggregates['total_inward'] or 0
+        total_outward = aggregates['total_outward'] or 0
+
+        return total_inward - total_outward
+
     @classmethod
     def calculate_balance_for_date(cls, godown, product, target_date) -> Dict:
         """
@@ -54,16 +57,19 @@ class LedgerCalculator:
         )
         
         aggregates = ledger_entries.aggregate(
-            total_inward=Sum('inward_quantity') or 0,
-            total_outward=Sum('outward_quantity') or 0
+            total_inward=Sum('inward_quantity') ,
+            total_outward=Sum('outward_quantity')
         )
-        
-        balance = aggregates['total_inward'] - aggregates['total_outward']
-        
+
+        total_inward = aggregates['total_inward'] or 0
+        total_outward = aggregates['total_outward'] or 0
+
+        balance = total_inward - total_outward
+
         return {
             'balance': balance,
-            'total_inward': aggregates['total_inward'],
-            'total_outward': aggregates['total_outward'],
+            'total_inward': total_inward,
+            'total_outward': total_outward,
             'calculation_date': target_date,
             'last_transaction_date': ledger_entries.aggregate(
                 last_date=Max('transaction_date')
@@ -95,32 +101,38 @@ class LedgerCalculator:
             type_entries = period_entries.filter(transaction_type=transaction_type)
             if type_entries.exists():
                 aggregates = type_entries.aggregate(
-                    inward=Sum('inward_quantity') or 0,
-                    outward=Sum('outward_quantity') or 0,
+                    inward=Sum('inward_quantity'),
+                    outward=Sum('outward_quantity'),
                     count=type_entries.count()
                 )
+                inward_quantity = aggregates['inward'] or 0
+                outward_quantity = aggregates['outward'] or 0
+
                 movement_breakdown[transaction_type] = {
                     'display_name': display_name,
-                    'inward_quantity': aggregates['inward'],
-                    'outward_quantity': aggregates['outward'],
-                    'net_movement': aggregates['inward'] - aggregates['outward'],
+                    'inward_quantity': inward_quantity,
+                    'outward_quantity': outward_quantity,
+                    'net_movement': inward_quantity - outward_quantity,
                     'transaction_count': aggregates['count']
                 }
         
         # Total movements
         total_aggregates = period_entries.aggregate(
-            total_inward=Sum('inward_quantity') or 0,
-            total_outward=Sum('outward_quantity') or 0
+            total_inward=Sum('inward_quantity'),
+            total_outward=Sum('outward_quantity')
         )
-        
-        closing_balance = opening_data['balance'] + total_aggregates['total_inward'] - total_aggregates['total_outward']
-        
+
+        total_inward = total_aggregates['total_inward'] or 0
+        total_outward = total_aggregates['total_outward'] or 0
+
+        closing_balance = opening_data['balance'] + total_inward - total_outward
+
         return {
             'period': {'start_date': start_date, 'end_date': end_date},
             'opening_balance': opening_data['balance'],
-            'total_inward': total_aggregates['total_inward'],
-            'total_outward': total_aggregates['total_outward'],
-            'net_movement': total_aggregates['total_inward'] - total_aggregates['total_outward'],
+            'total_inward': total_inward,
+            'total_outward': total_outward,
+            'net_movement': total_inward - total_outward,
             'closing_balance': closing_balance,
             'movement_breakdown': movement_breakdown,
             'transaction_count': period_entries.count()
@@ -141,12 +153,15 @@ class LedgerCalculator:
             product=product,
             status='ACTIVE'
         ).aggregate(
-            total_available=Sum('good_bags_available') or 0,
-            total_reserved=Sum('good_bags_reserved') or 0
+            total_available=Sum('good_bags_available'),
+            total_reserved=Sum('good_bags_reserved')
         )
-        
-        inventory_total = batch_balance['total_available'] + batch_balance['total_reserved']
-        
+
+        total_available = batch_balance['total_available'] or 0
+        total_reserved = batch_balance['total_reserved'] or 0
+
+        inventory_total = total_available + total_reserved
+
         # Calculate variance
         variance = inventory_total - ledger_balance
         
@@ -214,16 +229,19 @@ class DailyBalanceManager:
         )
         
         day_aggregates = day_entries.aggregate(
-            inward=Sum('inward_quantity') or 0,
-            outward=Sum('outward_quantity') or 0
+            inward=Sum('inward_quantity') ,
+            outward=Sum('outward_quantity')
         )
+
+        inward_quantity = day_aggregates['inward'] or 0
+        outward_quantity = day_aggregates['outward'] or 0
         
         # Update balance record
         existing_balance.opening_balance = opening_balance
-        existing_balance.total_inward = day_aggregates['inward']
-        existing_balance.total_outward = day_aggregates['outward']
-        existing_balance.closing_balance = opening_balance + day_aggregates['inward'] - day_aggregates['outward']
-        
+        existing_balance.total_inward = inward_quantity
+        existing_balance.total_outward = outward_quantity
+        existing_balance.closing_balance = opening_balance + inward_quantity - outward_quantity
+
         # Get batch information
         active_batches = GodownInventory.objects.filter(
             godown=godown,
@@ -239,12 +257,15 @@ class DailyBalanceManager:
             
             # Quality breakdown
             quality_aggregates = active_batches.aggregate(
-                good_bags=Sum('good_bags_available') or 0,
-                damaged_bags=Sum('damaged_bags') or 0
+                good_bags=Sum('good_bags_available') ,
+                damaged_bags=Sum('damaged_bags') 
             )
-            existing_balance.good_condition_bags = quality_aggregates['good_bags']
-            existing_balance.damaged_bags = quality_aggregates['damaged_bags']
-        
+
+            good_bags = quality_aggregates['good_bags'] or 0
+            damaged_bags = quality_aggregates['damaged_bags'] or 0
+            existing_balance.good_condition_bags = good_bags
+            existing_balance.damaged_bags = damaged_bags
+
         # Get last transaction ID for reference
         last_transaction = day_entries.last()
         if last_transaction:
@@ -444,9 +465,12 @@ class VarianceDetector:
         
         # Financial impact
         total_impact = variances.aggregate(
-            total_impact=Sum('estimated_value_impact') or Decimal('0.00')
+            total_impact=Sum('estimated_value_impact')
         )['total_impact']
-        
+
+        if not total_impact:
+            total_impact = Decimal('0.00')
+
         # Resolution metrics
         resolved_variances = variances.filter(status__in=['RESOLVED', 'WRITTEN_OFF'])
         if resolved_variances.exists():
@@ -495,8 +519,8 @@ def get_inventory_audit_summary(godown=None, product=None, date_range_days=30) -
     transactions = GodownInventoryLedger.objects.filter(**filters)
     transaction_summary = transactions.aggregate(
         total_transactions=transactions.count(),
-        total_inward=Sum('inward_quantity') or 0,
-        total_outward=Sum('outward_quantity') or 0
+        total_inward=Sum('inward_quantity'),
+        total_outward=Sum('outward_quantity') 
     )
     
     # Current balances

@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     GodownLocation, OrderInTransit, GodownInventory, CrossoverRecord,
     LoadingRequest, DeliveryChallan, DeliveryChallanItem, ChallanItemBatchMapping,
-    NotificationLog, NotificationRecipient
+    NotificationLog, NotificationRecipient, GodownInventoryLedger, LedgerBatchMapping,
+    GodownDailyBalance, InventoryVariance
 )
 
 
@@ -132,44 +133,56 @@ class CrossoverRecordAdmin(admin.ModelAdmin):
 @admin.register(LoadingRequest)
 class LoadingRequestAdmin(admin.ModelAdmin):
     list_display = [
-        'loading_request_id', 'dealer', 'vehicle', 'product', 'status', 'priority',
-        'requested_bags', 'allocated_bags', 'loaded_bags',
-        'requested_date', 'required_by_date'
+        'loading_request_id', 'godown', 'dealer', 'product',
+        'requested_bags', 'loaded_bags', 'get_completion_status', 'created_at'
     ]
     list_filter = [
-        'status', 'priority', 'godown', 'product', 'dealer',
-        'requested_date', 'required_by_date'
+        'godown', 'product', 'dealer', 'supervised_by', 'created_at'
     ]
     search_fields = [
-        'loading_request_id', 'dealer__name', 'vehicle__truck_number',
-        'product__name', 'special_instructions'
+        'loading_request_id', 'dealer__name', 'dealer__code',
+        'product__name', 'godown__name', 'special_instructions', 'loading_notes'
     ]
     readonly_fields = [
-        'loading_request_id', 'requested_date', 'created_at', 'updated_at', 'created_by'
+        'loading_request_id', 'created_at', 'updated_at', 'created_by'
     ]
-    ordering = ['-requested_date']
+    ordering = ['-created_at']
     
+    def get_completion_status(self, obj):
+        """Show completion status with color coding"""
+        if obj.requested_bags == 0:
+            return "N/A"
+        
+        completion = (obj.loaded_bags / obj.requested_bags) * 100
+        
+        if completion >= 100:
+            return f"✅ Complete ({completion:.0f}%)"
+        elif completion > 0:
+            return f"🟡 Partial ({completion:.0f}%)"
+        else:
+            return "⏳ Pending"
+    
+    get_completion_status.short_description = 'Status'
+    get_completion_status.admin_order_field = 'loaded_bags'
+
     fieldsets = (
         ('Basic Information', {
-            'fields': ('loading_request_id', 'godown', 'status', 'priority')
+            'fields': ('loading_request_id', 'godown', 'supervised_by')
         }),
         ('Request Details', {
-            'fields': ('dealer', 'vehicle', 'product')
+            'fields': ('dealer', 'product')
         }),
         ('Quantities', {
-            'fields': ('requested_bags', 'allocated_bags', 'loaded_bags')
-        }),
-        ('Timeline', {
-            'fields': (
-                'requested_date', 'required_by_date', 'approved_date',
-                'loading_start_time', 'loading_completion_time'
-            )
-        }),
-        ('Authorization', {
-            'fields': ('requested_by', 'approved_by', 'supervised_by')
+            'fields': ('requested_bags', 'loaded_bags'),
+            'description': 'Enter the number of bags requested and actually loaded'
         }),
         ('Instructions & Notes', {
             'fields': ('special_instructions', 'loading_notes'),
+            'classes': ('collapse',),
+            'description': 'Additional information about the loading operation'
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at', 'created_by'),
             'classes': ('collapse',)
         })
     )
@@ -307,3 +320,233 @@ class NotificationRecipientAdmin(admin.ModelAdmin):
 
 # Add inline to NotificationLog admin
 NotificationLogAdmin.inlines = [NotificationRecipientInline]
+
+
+class LedgerBatchMappingInline(admin.TabularInline):
+    model = LedgerBatchMapping
+    extra = 0
+    readonly_fields = ['batch_balance_before', 'batch_balance_after', 'created_at', 'created_by']
+
+
+@admin.register(GodownInventoryLedger)
+class GodownInventoryLedgerAdmin(admin.ModelAdmin):
+    list_display = [
+        'transaction_id', 'transaction_type', 'godown', 'product',
+        'inward_quantity', 'outward_quantity', 'balance_after_transaction',
+        'entry_status', 'transaction_date'
+    ]
+    list_filter = [
+        'transaction_type', 'entry_status', 'godown', 'product',
+        'transaction_date', 'is_system_generated', 'approval_required'
+    ]
+    search_fields = [
+        'transaction_id', 'godown__name', 'product__name',
+        'reference_document', 'transaction_notes'
+    ]
+    readonly_fields = [
+        'transaction_id', 'balance_after_transaction', 'created_at', 'updated_at', 'created_by'
+    ]
+    ordering = ['-transaction_date', '-created_at']
+    inlines = [LedgerBatchMappingInline]
+    
+    fieldsets = (
+        ('Transaction Details', {
+            'fields': ('transaction_id', 'transaction_type', 'transaction_date', 'entry_status')
+        }),
+        ('Location & Product', {
+            'fields': ('godown', 'product')
+        }),
+        ('Quantities', {
+            'fields': ('inward_quantity', 'outward_quantity', 'balance_after_transaction')
+        }),
+        ('Source Documents', {
+            'fields': (
+                'source_order_transit', 'source_loading_request',
+                'source_crossover', 'source_challan'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Authorization', {
+            'fields': ('authorized_by', 'approval_required', 'approved_at')
+        }),
+        ('Documentation', {
+            'fields': ('reference_document', 'transaction_notes', 'quality_notes', 'condition_at_transaction')
+        }),
+        ('System Tracking', {
+            'fields': ('is_system_generated', 'parent_transaction'),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at', 'created_by'),
+            'classes': ('collapse',)
+        })
+    )
+
+
+@admin.register(LedgerBatchMapping)
+class LedgerBatchMappingAdmin(admin.ModelAdmin):
+    list_display = [
+        'ledger_entry', 'inventory_batch', 'quantity_affected',
+        'batch_balance_before', 'batch_balance_after'
+    ]
+    list_filter = [
+        'ledger_entry__transaction_type', 'inventory_batch__godown',
+        'inventory_batch__product'
+    ]
+    search_fields = [
+        'ledger_entry__transaction_id', 'inventory_batch__batch_id'
+    ]
+    readonly_fields = ['created_at', 'updated_at', 'created_by']
+    ordering = ['inventory_batch__received_date']
+
+
+@admin.register(GodownDailyBalance)
+class GodownDailyBalanceAdmin(admin.ModelAdmin):
+    list_display = [
+        'balance_date', 'godown', 'product', 'opening_balance',
+        'total_inward', 'total_outward', 'closing_balance',
+        'physical_count', 'variance_quantity', 'balance_status'
+    ]
+    list_filter = [
+        'balance_date', 'godown', 'product', 'balance_status',
+        'count_verification_date', 'is_auto_calculated'
+    ]
+    search_fields = [
+        'godown__name', 'product__name', 'count_verified_by__username',
+        'verification_notes', 'discrepancy_reason'
+    ]
+    readonly_fields = [
+        'closing_balance', 'variance_quantity', 'calculation_timestamp',
+        'created_at', 'updated_at', 'created_by'
+    ]
+    ordering = ['-balance_date', 'godown__name', 'product__name']
+    
+    def get_variance_display(self, obj):
+        """Display variance with color coding"""
+        if obj.variance_quantity == 0:
+            return "✅ No Variance"
+        elif obj.variance_quantity > 0:
+            return f"📈 Excess: +{obj.variance_quantity}"
+        else:
+            return f"📉 Shortage: {obj.variance_quantity}"
+    
+    get_variance_display.short_description = 'Variance'
+    get_variance_display.admin_order_field = 'variance_quantity'
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('balance_date', 'godown', 'product', 'balance_status')
+        }),
+        ('Calculated Balance', {
+            'fields': ('opening_balance', 'total_inward', 'total_outward', 'closing_balance')
+        }),
+        ('Physical Verification', {
+            'fields': (
+                'physical_count', 'count_verified_by', 'count_verification_date',
+                'variance_quantity'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Batch Analysis', {
+            'fields': ('active_batches_count', 'oldest_batch_age_days'),
+            'classes': ('collapse',)
+        }),
+        ('Quality Assessment', {
+            'fields': ('good_condition_bags', 'damaged_bags', 'expired_bags'),
+            'classes': ('collapse',)
+        }),
+        ('System Information', {
+            'fields': (
+                'calculation_timestamp', 'last_transaction_id', 'is_auto_calculated'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Notes', {
+            'fields': ('verification_notes', 'discrepancy_reason'),
+            'classes': ('collapse',)
+        })
+    )
+
+
+@admin.register(InventoryVariance)
+class InventoryVarianceAdmin(admin.ModelAdmin):
+    list_display = [
+        'variance_id', 'variance_type', 'godown', 'product',
+        'variance_quantity', 'priority_level', 'status',
+        'variance_date', 'get_variance_direction'
+    ]
+    list_filter = [
+        'variance_type', 'status', 'priority_level', 'godown', 'product',
+        'variance_date', 'resolved_at'
+    ]
+    search_fields = [
+        'variance_id', 'godown__name', 'product__name',
+        'investigation_notes', 'root_cause', 'resolution_action'
+    ]
+    readonly_fields = [
+        'variance_id', 'variance_quantity', 'investigation_started_at',
+        'root_cause_identified_at', 'resolved_at', 'created_at', 'updated_at', 'created_by'
+    ]
+    ordering = ['-variance_date', '-created_at']
+    
+    def get_variance_direction(self, obj):
+        """Display variance direction with color coding"""
+        if obj.variance_quantity > 0:
+            return f"📈 Excess: +{obj.variance_quantity}"
+        elif obj.variance_quantity < 0:
+            return f"📉 Shortage: {obj.variance_quantity}"
+        else:
+            return "⚖️ Balanced"
+    
+    get_variance_direction.short_description = 'Variance'
+    get_variance_direction.admin_order_field = 'variance_quantity'
+    
+    def get_priority_display(self, obj):
+        """Display priority with visual indicators"""
+        priority_icons = {
+            'LOW': '🟢',
+            'MEDIUM': '🟡',
+            'HIGH': '🟠',
+            'CRITICAL': '🔴'
+        }
+        return f"{priority_icons.get(obj.priority_level, '')} {obj.get_priority_level_display()}"
+    
+    get_priority_display.short_description = 'Priority'
+    get_priority_display.admin_order_field = 'priority_level'
+    
+    fieldsets = (
+        ('Variance Information', {
+            'fields': ('variance_id', 'variance_type', 'variance_date', 'status', 'priority_level')
+        }),
+        ('Location & Product', {
+            'fields': ('godown', 'product', 'related_daily_balance')
+        }),
+        ('Quantities', {
+            'fields': ('expected_quantity', 'actual_quantity', 'variance_quantity', 'estimated_value_impact')
+        }),
+        ('Investigation', {
+            'fields': (
+                'investigation_started_at', 'investigated_by', 'investigation_notes'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Root Cause Analysis', {
+            'fields': ('root_cause', 'root_cause_identified_at'),
+            'classes': ('collapse',)
+        }),
+        ('Resolution', {
+            'fields': (
+                'resolution_action', 'resolved_at', 'resolved_by',
+                'preventive_measures', 'adjustment_ledger_entry'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Escalation', {
+            'fields': ('escalated_to', 'escalated_at'),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at', 'created_by'),
+            'classes': ('collapse',)
+        })
+    )

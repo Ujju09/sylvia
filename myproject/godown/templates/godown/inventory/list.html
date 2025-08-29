@@ -2,22 +2,26 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid mt-4 my-4">
+<div class="container-fluid mt-4">
     <!-- Page Header -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2 class="mb-1">
-                        <i class="fas fa-truck-loading text-primary"></i>
-                        Orders in Transit
+                        <i class="fas fa-box text-primary"></i>
+                        Godown Inventory
                     </h2>
-                    <p class="text-muted mb-0">Track incoming shipments and their status</p>
+                    <p class="text-muted mb-0">Manage inventory</p>
                 </div>
                 <div>
-                    <a href="{% url 'orderintransit_create' %}" class="btn btn-primary btn-lg">
+                    <a href="{% url 'godown_inventory_create' %}" class="btn btn-success btn-lg me-2">
                         <i class="fas fa-plus"></i>
-                        New Transit Order
+                        New Inventory Item
+                    </a>
+                    <a href="{% url 'godown_inventory_dashboard' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-chart-bar"></i>
+                        Dashboard
                     </a>
                 </div>
             </div>
@@ -30,9 +34,12 @@
             <div class="col-lg-3 col-md-6">
                 <div class="dashboard-card card-hover h-100" data-status="all">
                     <div class="card-body d-flex align-items-center">
+                        <div class="status-icon me-3">
+                            <i class="fas fa-clipboard-list fa-2x text-primary"></i>
+                        </div>
                         <div class="flex-grow-1">
                             <div class="status-count h2 mb-1 text-primary fw-bold">{{ summary_stats.total_records|default:0 }}</div>
-                            <div class="status-label text-muted mb-0">Total Orders</div>
+                            <div class="status-label text-muted mb-0">Total Inventory Records</div>
                             <div class="status-trend small text-success mt-1">
                                 <i class="fas fa-arrow-up"></i> Active tracking
                             </div>
@@ -41,39 +48,46 @@
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="dashboard-card card-hover h-100 cursor-pointer" data-status="IN_TRANSIT">
+                <div class="dashboard-card card-hover h-100 cursor-pointer" data-status="ACTIVE">
                     <div class="card-body d-flex align-items-center">
-                       
+                        <div class="status-icon me-3">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
                         <div class="flex-grow-1">
-                            <div class="status-count h2 mb-1 text-warning fw-bold">
+                            <div class="status-count h2 mb-1 text-success fw-bold">
                                 {% for status in status_counts %}
-                                    {% if status.status == 'IN_TRANSIT' %}{{ status.count }}{% endif %}
+                                    {% if status.status == 'ACTIVE' %}{{ status.count }}{% endif %}
                                 {% empty %}0{% endfor %}
                             </div>
-                            <div class="status-label text-muted mb-0">In Transit</div>
-                            <div class="status-trend small text-warning mt-1">
-                                <i class="fas fa-clock"></i> En route to destination
+                            <div class="status-label text-muted mb-0">Active Stock</div>
+                            <div class="status-trend small text-success mt-1">
+                                <i class="fas fa-check"></i> Ready for use
                             </div>
                         </div>
-                        <div class="quick-filter-btn" data-filter="IN_TRANSIT">
+                        <div class="quick-filter-btn" data-filter="ACTIVE">
                             <i class="fas fa-filter text-muted"></i>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="dashboard-card card-hover h-100 cursor-pointer" data-status="ARRIVED">
+                <div class="dashboard-card card-hover h-100 cursor-pointer" data-status="RESERVED">
                     <div class="card-body d-flex align-items-center">
+                        <div class="status-icon me-3">
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
                         <div class="flex-grow-1">
-                            <div class="status-count h2 mb-1 text-success fw-bold">
+                            <div class="status-count h2 mb-1 text-warning fw-bold">
                                 {% for status in status_counts %}
-                                    {% if status.status == 'ARRIVED' %}{{ status.count }}{% endif %}
+                                    {% if status.status == 'RESERVED' %}{{ status.count }}{% endif %}
                                 {% empty %}0{% endfor %}
                             </div>
-                            <div class="status-label text-muted mb-0">Arrived</div>
-                            
+                            <div class="status-label text-muted mb-0">Reserved</div>
+                            <div class="status-trend small text-warning mt-1">
+                                <i class="fas fa-clock"></i> Reserved for loading
+                            </div>
                         </div>
-                        <div class="quick-filter-btn" data-filter="ARRIVED">
+                        <div class="quick-filter-btn" data-filter="RESERVED">
                             <i class="fas fa-filter text-muted"></i>
                         </div>
                     </div>
@@ -82,12 +96,14 @@
             <div class="col-lg-3 col-md-6">
                 <div class="dashboard-card card-hover h-100" data-status="total-bags">
                     <div class="card-body d-flex align-items-center">
-                        
+                        <div class="status-icon me-3">
+                            <i class="fas fa-boxes fa-2x text-info"></i>
+                        </div>
                         <div class="flex-grow-1">
-                            <div class="status-count h2 mb-1 text-info fw-bold">{{ summary_stats.total_received_bags|default:0 }}</div>
-                            <div class="status-label text-muted mb-0">Total Bags</div>
+                            <div class="status-count h2 mb-1 text-info fw-bold">{{ summary_stats.total_bags_available|default:0 }}</div>
+                            <div class="status-label text-muted mb-0">Available Bags</div>
                             <div class="status-trend small text-info mt-1">
-                                <i class="fas fa-cubes"></i> Received inventory
+                                <i class="fas fa-cubes"></i> Ready for dispatch
                             </div>
                         </div>
                     </div>
@@ -104,7 +120,7 @@
                     <i class="fas fa-search me-2"></i>Search & Filter
                 </h6>
                 <div class="filter-actions">
-                    {% if search_query or status_filter or godown_filter or date_from or date_to %}
+                    {% if search_query  or godown_filter %}
                         <a href="?" class="btn btn-sm btn-outline-secondary me-2" title="Clear all filters">
                             <i class="fas fa-times"></i> Clear
                         </a>
@@ -125,7 +141,7 @@
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                             <input type="text" class="form-control" id="q" name="q" 
                                    value="{{ search_query }}" 
-                                   placeholder="Search E-way bill, dispatch ID, transport number..."
+                                   placeholder="Search Godown, Product..."
                                    autocomplete="off">
                             {% if search_query %}
                                 <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('q').value=''; this.form.submit();">
@@ -135,16 +151,16 @@
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-select" id="status" name="status" onchange="updateFilterCount()">
-                            <option value="">All Status</option>
-                            {% for value, label in status_choices %}
-                                <option value="{{ value }}" {% if value == status_filter %}selected{% endif %}>
-                                    {{ label }}
+                        <select class="form-select" id="product" name="product" onchange="updateFilterCount()">
+                            <option value="">All Products</option>
+                            {% for product in product_choices %}
+                                <option value="{{ product.id }}" {% if product.id|stringformat:"s" == product_filter %}selected{% endif %}>
+                                    {{ product.name }} ({{ product.code }})
                                 </option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <select class="form-select" id="godown" name="godown" onchange="updateFilterCount()">
                             <option value="">All Godowns</option>
                             {% for godown in godown_choices %}
@@ -152,6 +168,16 @@
                                     {{ godown.name }} ({{ godown.code }})
                                 </option>
                             {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="status" name="status" onchange="updateFilterCount()">
+                            <option value="">All Status</option>
+                            <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
+                            <option value="RESERVED" {% if status_filter == 'RESERVED' %}selected{% endif %}>Reserved</option>
+                            <option value="ALLOCATED" {% if status_filter == 'ALLOCATED' %}selected{% endif %}>Allocated</option>
+                            <option value="EXPIRED" {% if status_filter == 'EXPIRED' %}selected{% endif %}>Expired</option>
+                            <option value="DAMAGED" {% if status_filter == 'DAMAGED' %}selected{% endif %}>Damaged</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -195,17 +221,17 @@
             <div class="quick-filters mt-3">
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge bg-light text-dark me-2">Quick filters:</span>
-                    <button type="button" class="btn btn-sm btn-outline-warning quick-filter-btn" data-filter="IN_TRANSIT">
-                        <i class="fas fa-truck"></i> In Transit
+                    <button type="button" class="btn btn-sm btn-outline-success quick-filter-btn" data-filter="ACTIVE">
+                        <i class="fas fa-check-circle"></i> Active Stock
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-success quick-filter-btn" data-filter="ARRIVED">
-                        <i class="fas fa-check-circle"></i> Arrived
+                    <button type="button" class="btn btn-sm btn-outline-warning quick-filter-btn" data-filter="RESERVED">
+                        <i class="fas fa-clock"></i> Reserved
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-info quick-filter-btn" data-filter="today">
                         <i class="fas fa-calendar-day"></i> Today
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary quick-filter-btn" data-filter="issues">
-                        <i class="fas fa-exclamation-triangle"></i> With Issues
+                    <button type="button" class="btn btn-sm btn-outline-danger quick-filter-btn" data-filter="DAMAGED">
+                        <i class="fas fa-exclamation-triangle"></i> Damaged
                     </button>
                 </div>
             </div>
@@ -217,7 +243,7 @@
         <div class="card-header bg-light">
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 text-primary">
-                    <i class="fas fa-list me-2"></i>Transit Orders
+                    <i class="fas fa-list me-2"></i>Inventory
                     <span class="badge bg-primary ms-2">{{ page_obj.paginator.count }} total</span>
                 </h6>
                 <div class="view-controls">
@@ -239,20 +265,17 @@
                 <!-- Card View (Mobile-First) -->
                 <div id="cards-view" class="transit-cards p-3">
                     <div class="row g-3">
-                        {% for order in page_obj %}
+                        {% for inventory in page_obj %}
                             <div class="col-lg-6 col-xl-4">
-                                <div class="transit-card card card-hover h-100" data-order-id="{{ order.dispatch_id }}">
+                                <div class="transit-card card card-hover h-100" data-order-id="{{ inventory.batch_id }}">
                                     <div class="card-body">
                                         <!-- Header with Status -->
                                         <div class="d-flex justify-content-between align-items-start mb-3">
                                             <div class="order-id">
-                                                <h6 class="mb-1 text-primary fw-bold">{{ order.eway_bill_number }}</h6>
-                                                {% if order.transport_document_number %}
-                                                    <small class="text-muted">{{ order.transport_document_number }}</small>
-                                                {% endif %}
+                                                <h6 class="mb-1 text-primary fw-bold">{{ inventory.product.name }}</h6>
                                             </div>
                                             <div class="status-badge">
-                                                {% if order.status == 'IN_TRANSIT' %}
+                                                {% comment %} {% if inventory.status == 'IN_TRANSIT' %}
                                                     <span class="badge bg-warning text-dark status-badge-lg">
                                                         <i class="fas fa-truck me-1"></i>In Transit
                                                     </span>
@@ -264,7 +287,7 @@
                                                     <span class="badge bg-danger status-badge-lg">
                                                         <i class="fas fa-times-circle me-1"></i>Cancelled
                                                     </span>
-                                                {% endif %}
+                                                {% endif %} {% endcomment %}
                                             </div>
                                         </div>
                                         
@@ -273,8 +296,8 @@
                                             <div class="d-flex align-items-center">
                                                 <i class="fas fa-warehouse text-primary me-2"></i>
                                                 <div>
-                                                    <strong>{{ order.godown.name }}</strong>
-                                                    <small class="text-muted d-block">{{ order.godown.code }}</small>
+                                                    <strong>{{ inventory.godown.name }}</strong>
+                                                    <small class="text-muted d-block">{{ inventory.godown.code }}</small>
                                                 </div>
                                             </div>
                                         </div>
@@ -284,23 +307,14 @@
                                             <div class="row g-2">
                                                 <div class="col-6">
                                                     <div class="metric-box text-center p-2 border rounded">
-                                                        <div class="metric-value h5 mb-1 text-primary">{{ order.expected_total_bags }}</div>
-                                                        <div class="metric-label small text-muted">Expected</div>
+                                                        <div class="metric-value h5 mb-1 text-primary">{{ inventory.total_bags_received }}</div>
+                                                        <div class="metric-label small text-muted">Total Bags Received</div>
                                                     </div>
                                                 </div>
                                                 <div class="col-6">
                                                     <div class="metric-box text-center p-2 border rounded">
-                                                        <div class="metric-value h5 mb-1">{{ order.actual_received_bags }}</div>
-                                                        <div class="metric-label small text-muted">Received</div>
-                                                        {% if order.shortage_bags > 0 %}
-                                                            <div class="metric-alert small text-danger">
-                                                                <i class="fas fa-exclamation-triangle"></i> {{ order.shortage_bags }} short
-                                                            </div>
-                                                        {% elif order.excess_bags > 0 %}
-                                                            <div class="metric-alert small text-success">
-                                                                <i class="fas fa-plus"></i> {{ order.excess_bags }} excess
-                                                            </div>
-                                                        {% endif %}
+                                                        <div class="metric-value h5 mb-1">{{ inventory.good_bags_available }}</div>
+                                                        <div class="metric-label small text-muted">Good Bags</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -310,21 +324,14 @@
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <div class="quality-item">
                                                         <span class="badge bg-success-subtle text-success">
-                                                            <i class="fas fa-check me-1"></i>{{ order.good_bags }} Good
+                                                            <i class="fas fa-check me-1"></i>{{ inventory.good_bags_available }} Good
                                                         </span>
                                                     </div>
                                                     <div class="quality-item">
                                                         <span class="badge bg-danger-subtle text-danger">
-                                                            <i class="fas fa-times me-1"></i>{{ order.damaged_bags }} Damaged
+                                                            <i class="fas fa-times me-1"></i>{{ inventory.damaged_bags }} Damaged
                                                         </span>
                                                     </div>
-                                                    {% if order.crossover_required %}
-                                                        <div class="quality-item">
-                                                            <span class="badge bg-info-subtle text-info">
-                                                                <i class="fas fa-exchange-alt me-1"></i>{{ order.crossover_bags }} Crossover
-                                                            </span>
-                                                        </div>
-                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </div>
@@ -334,11 +341,11 @@
                                             <div class="d-flex align-items-center">
                                                 <i class="fas fa-calendar-alt text-muted me-2"></i>
                                                 <div>
-                                                    {% if order.actual_arrival_date %}
-                                                        <strong>{{ order.actual_arrival_date|date:"M d, Y" }}</strong>
-                                                        <small class="text-muted d-block">{{ order.actual_arrival_date|time:"g:i A" }}</small>
+                                                    {% if inventory.received_date %}
+                                                        <strong>{{ inventory.received_date|date:"M d, Y" }}</strong>
+                                                        <small class="text-muted d-block">{{ inventory.received_date|time:"g:i A" }}</small>
                                                     {% else %}
-                                                        <span class="text-muted">Not arrived yet</span>
+                                                        <span class="text-muted">Not received yet</span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -346,11 +353,11 @@
                                         
                                         <!-- Action Buttons -->
                                         <div class="card-actions d-grid gap-2 d-md-flex">
-                                            <a href="{% url 'orderintransit_detail' order.dispatch_id %}" 
+                                            <a href="{% url 'godown_inventory_detail' inventory.batch_id %}" 
                                                class="btn btn-primary btn-sm flex-fill">
                                                 <i class="fas fa-eye me-1"></i>View Details
                                             </a>
-                                            <a href="{% url 'orderintransit_update' order.dispatch_id %}" 
+                                            <a href="{% url 'godown_inventory_update' inventory.batch_id %}" 
                                                class="btn btn-warning btn-sm flex-fill">
                                                 <i class="fas fa-edit me-1"></i>Edit
                                             </a>
@@ -367,86 +374,102 @@
                     <table class="table table-hover mb-0">
                         <thead class="table-dark sticky-top">
                             <tr>
-                                <th>E-way Bill</th>
-                                <th>Status</th>
+                                <th>Batch ID</th>
+                                <th>Product</th>
                                 <th>Godown</th>
-                                <th>Expected Bags</th>
-                                <th>Received Bags</th>
+                                <th>Status</th>
+                                <th>Total Bags</th>
                                 <th>Good/Damaged</th>
-                                <th>Arrival Date</th>
+                                <th>Received Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for order in page_obj %}
-                                <tr class="table-row-hover" data-order-id="{{ order.dispatch_id }}">
+                            {% for inventory in page_obj %}
+                                <tr class="table-row-hover" data-inventory-id="{{ inventory.batch_id }}">
                                     <td>
-                                        <strong>{{ order.eway_bill_number }}</strong>
-                                        {% if order.transport_document_number %}
-                                            <br><small class="text-muted">{{ order.transport_document_number }}</small>
+                                        <strong class="text-primary">{{ inventory.batch_id }}</strong>
+                                        {% if inventory.storage_location %}
+                                            <br><small class="text-muted">{{ inventory.storage_location }}</small>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if order.status == 'IN_TRANSIT' %}
-                                            <span class="badge bg-warning text-dark fs-6">
-                                                <i class="fas fa-truck"></i> In Transit
-                                            </span>
-                                        {% elif order.status == 'ARRIVED' %}
+                                        <strong>{{ inventory.product.name }}</strong>
+                                        {% if inventory.product.code %}
+                                            <br><small class="text-muted">Code: {{ inventory.product.code }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ inventory.godown.name }}</strong>
+                                        <br><small class="text-muted">{{ inventory.godown.code }} - {{ inventory.godown.city }}</small>
+                                    </td>
+                                    <td>
+                                        {% if inventory.status == 'ACTIVE' %}
                                             <span class="badge bg-success fs-6">
-                                                <i class="fas fa-check-circle"></i> Arrived
+                                                <i class="fas fa-check-circle"></i> Active
                                             </span>
-                                        {% elif order.status == 'CANCELLED' %}
+                                        {% elif inventory.status == 'RESERVED' %}
+                                            <span class="badge bg-warning text-dark fs-6">
+                                                <i class="fas fa-clock"></i> Reserved
+                                            </span>
+                                        {% elif inventory.status == 'DAMAGED' %}
                                             <span class="badge bg-danger fs-6">
-                                                <i class="fas fa-times-circle"></i> Cancelled
+                                                <i class="fas fa-exclamation-triangle"></i> Damaged
                                             </span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <strong>{{ order.godown.name }}</strong>
-                                        <br><small class="text-muted">{{ order.godown.code }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="h6 text-primary quantity-display">{{ order.expected_total_bags }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="h6 quantity-display">{{ order.actual_received_bags }}</span>
-                                        {% if order.shortage_bags > 0 %}
-                                            <br><small class="text-danger">
-                                                <i class="fas fa-exclamation-triangle"></i> {{ order.shortage_bags }} short
-                                            </small>
-                                        {% elif order.excess_bags > 0 %}
-                                            <br><small class="text-success">
-                                                <i class="fas fa-plus"></i> {{ order.excess_bags }} excess
-                                            </small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="text-success fw-bold">{{ order.good_bags }}</span> / 
-                                        <span class="text-danger fw-bold">{{ order.damaged_bags }}</span>
-                                        {% if order.crossover_required %}
-                                            <br><small class="text-info">
-                                                <i class="fas fa-exchange-alt"></i> {{ order.crossover_bags }} crossover
-                                            </small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if order.actual_arrival_date %}
-                                            {{ order.actual_arrival_date|date:"M d, Y" }}
-                                            <br><small class="text-muted">{{ order.actual_arrival_date|time:"g:i A" }}</small>
+                                        {% elif inventory.status == 'ALLOCATED' %}
+                                            <span class="badge bg-info fs-6">
+                                                <i class="fas fa-truck"></i> Allocated
+                                            </span>
                                         {% else %}
-                                            <span class="text-muted">Not arrived</span>
+                                            <span class="badge bg-secondary fs-6">{{ inventory.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="h6 text-primary quantity-display">{{ inventory.total_bags_received }}</span>
+                                        {% if inventory.good_bags_reserved > 0 %}
+                                            <br><small class="text-warning">
+                                                <i class="fas fa-lock"></i> {{ inventory.good_bags_reserved }} reserved
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="text-success fw-bold">{{ inventory.good_bags_available }}</span> / 
+                                        <span class="text-danger fw-bold">{{ inventory.damaged_bags }}</span>
+                                        {% if inventory.damaged_bags > 0 %}
+                                            {% with damage_percent=inventory.damaged_bags|floatformat:0|add:0 total_percent=inventory.total_bags_received|floatformat:0|add:0 %}
+                                                {% if total_percent > 0 %}
+                                                    {% widthratio damage_percent total_percent 100 as damage_rate %}
+                                                    <br><small class="text-danger">
+                                                        <i class="fas fa-exclamation-triangle"></i> {{ damage_rate }}% damage
+                                                    </small>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if inventory.received_date %}
+                                            {{ inventory.received_date|date:"M d, Y" }}
+                                            <br><small class="text-muted">{{ inventory.received_date|time:"g:i A" }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Not received</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <a href="{% url 'orderintransit_detail' order.dispatch_id %}" 
+                                            <a href="{% url 'godown_inventory_detail' inventory.batch_id %}" 
                                                class="btn btn-sm btn-outline-primary" title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{% url 'orderintransit_update' order.dispatch_id %}" 
+                                            <a href="{% url 'godown_inventory_update' inventory.batch_id %}" 
                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            {% if inventory.order_in_transit %}
+                                                <a href="{% url 'orderintransit_detail' inventory.order_in_transit.dispatch_id %}" 
+                                                   class="btn btn-sm btn-outline-info" title="View Transit Order">
+                                                    <i class="fas fa-truck"></i>
+                                                </a>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -461,7 +484,7 @@
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.previous_page_number }}">
                                         Previous
                                     </a>
                                 </li>
@@ -474,14 +497,14 @@
                                     </li>
                                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                        <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ num }}">{{ num }}</a>
                                     </li>
                                 {% endif %}
                             {% endfor %}
 
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.next_page_number }}">
                                         Next
                                     </a>
                                 </li>
@@ -495,21 +518,21 @@
                     <div class="empty-icon mb-4">
                         <i class="fas fa-truck-loading fa-4x text-muted"></i>
                     </div>
-                    <h4 class="text-muted mb-2">No Transit Orders Found</h4>
+                    <h4 class="text-muted mb-2">No Inventory Records Found</h4>
                     {% if search_query or status_filter or godown_filter or date_from or date_to %}
-                        <p class="text-muted mb-3">No orders match your current filters. Try adjusting your search criteria.</p>
+                        <p class="text-muted mb-3">No inventory match your current filters. Try adjusting your search criteria.</p>
                         <div class="d-flex justify-content-center gap-2">
                             <a href="?" class="btn btn-outline-secondary">
                                 <i class="fas fa-times"></i> Clear Filters
                             </a>
-                            <a href="{% url 'orderintransit_create' %}" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Create Transit Order
+                            <a href="{% url 'godown_inventory_create' %}" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Create Inventory Record
                             </a>
                         </div>
                     {% else %}
-                        <p class="text-muted mb-3">Create your first transit order to get started tracking shipments.</p>
-                        <a href="{% url 'orderintransit_create' %}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-plus me-2"></i>Create First Transit Order
+                        <p class="text-muted mb-3">Create your first inventory record to get started.</p>
+                        <a href="{% url 'godown_inventory_create' %}" class="btn btn-success btn-lg">
+                            <i class="fas fa-plus me-2"></i>Create First Inventory Record
                         </a>
                     {% endif %}
                 </div>
@@ -813,7 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableView = document.getElementById('table-view');
     
     // Load saved view preference
-    const savedView = localStorage.getItem('transit-view-mode') || 'cards';
+    const savedView = localStorage.getItem('inventory-view-mode') || 'cards';
     if (savedView === 'table') {
         tableViewBtn.checked = true;
         cardsView.style.display = 'none';
@@ -824,7 +847,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.checked) {
             cardsView.style.display = 'block';
             tableView.style.display = 'none';
-            localStorage.setItem('transit-view-mode', 'cards');
+            localStorage.setItem('inventory-view-mode', 'cards');
         }
     });
     
@@ -832,7 +855,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.checked) {
             cardsView.style.display = 'none';
             tableView.style.display = 'block';
-            localStorage.setItem('transit-view-mode', 'table');
+            localStorage.setItem('inventory-view-mode', 'table');
         }
     });
     
@@ -840,7 +863,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.dashboard-card[data-status]').forEach(card => {
         card.addEventListener('click', function() {
             const status = this.dataset.status;
-            if (status === 'IN_TRANSIT' || status === 'ARRIVED') {
+            if (status === 'ACTIVE' || status === 'RESERVED') {
                 const statusSelect = document.getElementById('status');
                 statusSelect.value = status;
                 document.getElementById('filterForm').submit();
@@ -858,8 +881,9 @@ document.addEventListener('DOMContentLoaded', function() {
             form.reset();
             
             switch(filter) {
-                case 'IN_TRANSIT':
-                case 'ARRIVED':
+                case 'ACTIVE':
+                case 'RESERVED':
+                case 'DAMAGED':
                     document.getElementById('status').value = filter;
                     break;
                 case 'today':

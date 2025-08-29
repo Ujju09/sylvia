@@ -8,9 +8,123 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 import json
 
-from .models import OrderInTransit, GodownLocation, CrossoverRecord, GodownInventory
-from .forms import OrderInTransitForm, CrossoverRecordForm
+from .models import OrderInTransit, GodownLocation, CrossoverRecord, GodownInventory, LoadingRequest
+from .forms import OrderInTransitForm, CrossoverRecordForm, GodownInventoryForm, LoadingRecordForm
 from sylvia.models import Product, Dealer
+
+
+@login_required
+def godown_home(request):
+    """
+    Main dashboard view for godown operations with comprehensive statistics and quick access links
+    """
+    today = timezone.now().date()
+    week_ago = today - timezone.timedelta(days=7)
+    
+    # Quick overview statistics
+    total_orders_in_transit = OrderInTransit.objects.count()
+    arrived_today = OrderInTransit.objects.filter(
+        status='ARRIVED',
+        actual_arrival_date__date=today
+    ).count()
+    
+    pending_in_transit = OrderInTransit.objects.filter(status='IN_TRANSIT').count()
+    
+    # Inventory summary
+    active_inventory = GodownInventory.objects.filter(status='ACTIVE')
+    total_available_bags = active_inventory.aggregate(
+        total=Sum('good_bags_available')
+    )['total'] or 0
+    
+    total_reserved_bags = active_inventory.aggregate(
+        total=Sum('good_bags_reserved')
+    )['total'] or 0
+    
+    # Low stock products (less than 50 bags available)
+    low_stock_products = active_inventory.values(
+        'product__name', 'product__code'
+    ).annotate(
+        total_bags=Sum('good_bags_available')
+    ).filter(total_bags__lt=50).count()
+    
+    # Recent loading activities
+    recent_loading_requests = LoadingRequest.objects.select_related(
+        'dealer', 'product', 'godown'
+    ).order_by('-created_at')[:8]
+    
+    # Today's loading statistics
+    today_loadings = LoadingRequest.objects.filter(created_at__date=today)
+    today_loading_count = today_loadings.count()
+    today_bags_requested = today_loadings.aggregate(
+        total=Sum('requested_bags')
+    )['total'] or 0
+    today_bags_loaded = today_loadings.aggregate(
+        total=Sum('loaded_bags')
+    )['total'] or 0
+    
+    # Crossover activities this week
+    recent_crossovers = CrossoverRecord.objects.select_related(
+        'destination_dealer', 'product', 'source_order_transit'
+    ).filter(created_at__date__gte=week_ago).order_by('-created_at')[:5]
+    
+    weekly_crossovers_count = CrossoverRecord.objects.filter(
+        created_at__date__gte=week_ago
+    ).count()
+    
+    # Recent orders in transit
+    recent_transit_orders = OrderInTransit.objects.select_related(
+        'godown', 'product'
+    ).order_by('-created_at')[:5]
+    
+    # Godown-wise inventory summary
+    godown_summaries = active_inventory.values(
+        'godown__name', 'godown__code'
+    ).annotate(
+        total_bags=Sum('good_bags_available'),
+        total_products=Count('product', distinct=True)
+    ).filter(total_bags__gt=0).order_by('-total_bags')[:5]
+    
+    # Critical alerts
+    critical_alerts = []
+    
+    # Add low stock alerts
+    if low_stock_products > 0:
+        critical_alerts.append({
+            'type': 'warning',
+            'message': f'{low_stock_products} product(s) have low stock (< 50 bags)',
+            'action': 'Check Inventory',
+            'url': '/godown/inventory/'
+        })
+    
+    # Add pending transit orders
+    if pending_in_transit > 5:
+        critical_alerts.append({
+            'type': 'info',
+            'message': f'{pending_in_transit} orders are currently in transit',
+            'action': 'View Transit Orders',
+            'url': '/godown/transit/'
+        })
+    
+    context = {
+        'total_orders_in_transit': total_orders_in_transit,
+        'arrived_today': arrived_today,
+        'pending_in_transit': pending_in_transit,
+        'total_available_bags': total_available_bags,
+        'total_reserved_bags': total_reserved_bags,
+        'low_stock_products': low_stock_products,
+        'recent_loading_requests': recent_loading_requests,
+        'today_loading_count': today_loading_count,
+        'today_bags_requested': today_bags_requested,
+        'today_bags_loaded': today_bags_loaded,
+        'recent_crossovers': recent_crossovers,
+        'weekly_crossovers_count': weekly_crossovers_count,
+        'recent_transit_orders': recent_transit_orders,
+        'godown_summaries': godown_summaries,
+        'critical_alerts': critical_alerts,
+        'today_date': today,
+    }
+    
+    return render(request, 'godown/home.html', context)
 
 
 @login_required
@@ -115,15 +229,14 @@ def orderintransit_create(request):
     """Create a new OrderInTransit record"""
     
     if request.method == 'POST':
-        form = OrderInTransitForm(request.POST)
+        form = OrderInTransitForm(request.POST, user=request.user)
         if form.is_valid():
-            order = form.save(commit=False)
-            order.created_by = request.user
-            order.save()
+            order = form.save()  # This will trigger the atomic transaction with all related records
             
             messages.success(
                 request, 
-                f'Order in Transit "{order.eway_bill_number}" has been created successfully!'
+                f'Order in Transit "{order.eway_bill_number}" has been created successfully! '
+                f'Related inventory and crossover records have been created automatically.'
             )
             return redirect('orderintransit_detail', dispatch_id=order.dispatch_id)
         else:
@@ -147,11 +260,9 @@ def orderintransit_update(request, dispatch_id):
     order = get_object_or_404(OrderInTransit, dispatch_id=dispatch_id)
     
     if request.method == 'POST':
-        form = OrderInTransitForm(request.POST, instance=order)
+        form = OrderInTransitForm(request.POST, instance=order, user=request.user)
         if form.is_valid():
-            updated_order = form.save(commit=False)
-            updated_order.updated_at = timezone.now()
-            updated_order.save()
+            updated_order = form.save()  # Form handles the save logic, won't create duplicates for updates
             
             messages.success(
                 request, 
@@ -505,3 +616,471 @@ def get_available_bags(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+
+# =============================================================================
+# GodownInventory VIEWS
+# =============================================================================
+
+
+@login_required
+def godown_inventory_dashboard(request):
+    """Dashboard view with inventory summaries"""
+    
+    # Get all active inventory
+    active_inventory = GodownInventory.objects.filter(status='ACTIVE')
+    
+    # Product-wise inventory summary (only show products with available stock)
+    product_summaries = active_inventory.values(
+        'product__name', 'product__code'
+    ).annotate(
+        total_bags=Sum('good_bags_available'),
+        total_batches=Count('batch_id'),
+        total_godowns=Count('godown', distinct=True)
+    ).filter(total_bags__gt=0).order_by('-total_bags')
+    
+    # Godown-wise inventory summary
+    godown_summaries = active_inventory.values(
+        'godown__name', 'godown__code'
+    ).annotate(
+        total_bags=Sum('good_bags_available'),
+        total_products=Count('product', distinct=True),
+        total_batches=Count('batch_id')
+    ).filter(total_bags__gt=0).order_by('-total_bags')
+    
+    # Overall statistics
+    summary_stats = active_inventory.aggregate(
+        total_inventory_entries=Count('batch_id'),
+        total_bags_available=Sum('good_bags_available'),
+        total_bags_received=Sum('total_bags_received'),
+        total_damaged_bags=Sum('damaged_bags'),
+        total_reserved_bags=Sum('good_bags_reserved'),
+        unique_products=Count('product', distinct=True),
+        unique_godowns=Count('godown', distinct=True)
+    )
+    
+    # Recent inventory additions (last 10)
+    recent_additions = GodownInventory.objects.select_related(
+        'product', 'godown', 'order_in_transit'
+    ).order_by('-received_date')[:10]
+    
+    # Low stock alerts (products with less than 50 bags)
+    low_stock_products = product_summaries.filter(total_bags__lt=50)
+    
+    context = {
+        'product_summaries': product_summaries,
+        'godown_summaries': godown_summaries,
+        'summary_stats': summary_stats,
+        'recent_additions': recent_additions,
+        'low_stock_products': low_stock_products,
+        'title': 'Godown Inventory Dashboard'
+    }
+    
+    return render(request, 'godown/inventory/dashboard.html', context)
+
+
+@login_required
+def godown_inventory_list(request):
+    """List all GodownInventory items with search and filtering"""
+
+    # Get filter parameters
+    godown_filter = request.GET.get('godown', '')
+    product_filter = request.GET.get('product', '')
+    status_filter = request.GET.get('status', '')
+    search_query = request.GET.get('q', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Start with all records
+    inventory_items = GodownInventory.objects.select_related(
+        'product', 'godown', 'order_in_transit'
+    ).order_by('-received_date')
+
+    # Apply filters
+    if godown_filter:
+        inventory_items = inventory_items.filter(godown_id=godown_filter)
+    
+    if product_filter:
+        inventory_items = inventory_items.filter(product_id=product_filter)
+        
+    if status_filter:
+        inventory_items = inventory_items.filter(status=status_filter)
+    
+    if search_query:
+        inventory_items = inventory_items.filter(
+            Q(batch_id__icontains=search_query) |
+            Q(product__name__icontains=search_query) |
+            Q(godown__name__icontains=search_query) |
+            Q(order_in_transit__eway_bill_number__icontains=search_query)
+        )
+    
+    if date_from:
+        inventory_items = inventory_items.filter(received_date__date__gte=date_from)
+    
+    if date_to:
+        inventory_items = inventory_items.filter(received_date__date__lte=date_to)
+
+    # Calculate summary statistics for the filtered results
+    summary_stats = inventory_items.aggregate(
+        total_records=Count('batch_id'),
+        total_bags_available=Sum('good_bags_available'),
+        total_bags_received=Sum('total_bags_received'),
+        total_damaged_bags=Sum('damaged_bags'),
+        total_reserved_bags=Sum('good_bags_reserved')
+    )
+    
+    # Status counts for dashboard cards
+    status_counts = inventory_items.values('status').annotate(
+        count=Count('batch_id')
+    ).order_by('status')
+
+    # Unique product and godown
+    product_choices = Product.objects.filter(is_active=True).order_by('name')
+    godown_choices = GodownLocation.objects.filter(is_active=True).order_by('name')
+
+    # Pagination
+    paginator = Paginator(inventory_items, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'godown_filter': godown_filter,
+        'product_filter': product_filter,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'date_from': date_from,
+        'date_to': date_to,
+        'summary_stats': summary_stats,
+        'status_counts': status_counts,
+        'product_choices': product_choices,
+        'godown_choices': godown_choices,
+        'title': 'Godown Inventory List'
+    }
+    return render(request, 'godown/inventory/list.html', context)
+
+
+@login_required
+def godown_inventory_create(request):
+    """Create a new GodownInventory item"""
+
+    if request.method == 'POST':
+        form = GodownInventoryForm(request.POST)
+        if form.is_valid():
+            inventory = form.save(commit=False)
+            inventory.created_by = request.user
+            inventory.save()
+            messages.success(request, 'Godown inventory item created successfully.')
+            return redirect('godown_inventory_list')
+        else:
+            messages.error(request, 'Error creating godown inventory item.')
+    else:
+        form = GodownInventoryForm()
+
+    context = {
+        'form': form,
+        'title': 'Create Godown Inventory Item',
+        'submit_text': 'Create Inventory'
+    }
+    return render(request, 'godown/inventory/form.html', context)
+
+
+@login_required
+def godown_inventory_detail(request, batch_id):
+    """Display detailed view of a specific GodownInventory batch"""
+    
+    inventory = get_object_or_404(GodownInventory, batch_id=batch_id)
+    
+    # Calculate metrics
+    total_bags_accounted = inventory.good_bags_available + inventory.good_bags_reserved + inventory.damaged_bags
+    utilization_percentage = 0
+    if inventory.total_bags_received > 0:
+        utilization_percentage = (total_bags_accounted / inventory.total_bags_received) * 100
+    
+    availability_percentage = 0
+    if inventory.good_bags_available > 0 and inventory.total_bags_received > 0:
+        availability_percentage = (inventory.good_bags_available / inventory.total_bags_received) * 100
+    
+    # Get related batches from same transit order
+    related_batches = GodownInventory.objects.filter(
+        order_in_transit=inventory.order_in_transit
+    ).exclude(batch_id=batch_id).select_related('product', 'godown')
+    
+    # Get other batches of same product in same godown
+    similar_batches = GodownInventory.objects.filter(
+        product=inventory.product,
+        godown=inventory.godown,
+        status='ACTIVE'
+    ).exclude(batch_id=batch_id)[:5]
+    
+    context = {
+        'inventory': inventory,
+        'utilization_percentage': round(utilization_percentage, 1),
+        'availability_percentage': round(availability_percentage, 1),
+        'total_bags_accounted': total_bags_accounted,
+        'related_batches': related_batches,
+        'similar_batches': similar_batches,
+        'title': f'Inventory Details - {inventory.batch_id}'
+    }
+    
+    return render(request, 'godown/inventory/detail.html', context)
+
+
+@login_required
+def godown_inventory_update(request, batch_id):
+    """Update an existing GodownInventory item"""
+    
+    inventory = get_object_or_404(GodownInventory, batch_id=batch_id)
+    
+    if request.method == 'POST':
+        form = GodownInventoryForm(request.POST, instance=inventory)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Godown inventory item updated successfully.')
+            return redirect('godown_inventory_detail', batch_id=batch_id)
+        else:
+            messages.error(request, 'Error updating godown inventory item.')
+    else:
+        form = GodownInventoryForm(instance=inventory)
+
+    context = {
+        'form': form,
+        'inventory': inventory,
+        'title': f'Update Inventory - {inventory.batch_id}',
+        'submit_text': 'Update Inventory'
+    }
+    return render(request, 'godown/inventory/form.html', context)
+
+
+# =============================================================================
+# LOADING RECORD VIEWS - Simplified for minimally skilled users
+# =============================================================================
+
+@login_required
+def loading_record_list(request):
+    """List all Loading Records with simple search and filtering"""
+    
+    # Get filter parameters
+    godown_filter = request.GET.get('godown', '')
+    dealer_filter = request.GET.get('dealer', '')
+    search_query = request.GET.get('q', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Start with all records
+    loading_records = LoadingRequest.objects.select_related(
+        'godown', 'dealer', 'product', 'supervised_by', 'created_by'
+    ).order_by('-created_at')
+    
+    # Apply filters
+    if godown_filter:
+        loading_records = loading_records.filter(godown_id=godown_filter)
+    
+    if dealer_filter:
+        loading_records = loading_records.filter(dealer_id=dealer_filter)
+    
+    if search_query:
+        loading_records = loading_records.filter(
+            Q(loading_request_id__icontains=search_query) |
+            Q(dealer__name__icontains=search_query) |
+            Q(product__name__icontains=search_query) |
+            Q(godown__name__icontains=search_query)
+        )
+    
+    if date_from:
+        loading_records = loading_records.filter(created_at__date__gte=date_from)
+    
+    if date_to:
+        loading_records = loading_records.filter(created_at__date__lte=date_to)
+    
+    # Calculate summary statistics
+    summary_stats = loading_records.aggregate(
+        total_records=Count('loading_request_id'),
+        total_requested_bags=Sum('requested_bags'),
+        total_loaded_bags=Sum('loaded_bags'),
+    )
+    
+    # Completion percentage
+    if summary_stats['total_requested_bags'] and summary_stats['total_loaded_bags']:
+        completion_percentage = (summary_stats['total_loaded_bags'] / summary_stats['total_requested_bags']) * 100
+    else:
+        completion_percentage = 0
+    summary_stats['completion_percentage'] = round(completion_percentage, 1)
+    
+    # Get choices for filter dropdowns
+    godown_choices = GodownLocation.objects.filter(is_active=True).order_by('name')
+    dealer_choices = Dealer.objects.filter(is_active=True).order_by('name')
+    
+    # Pagination
+    paginator = Paginator(loading_records, 15)  # Show 15 records per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'godown_filter': godown_filter,
+        'dealer_filter': dealer_filter,
+        'search_query': search_query,
+        'date_from': date_from,
+        'date_to': date_to,
+        'summary_stats': summary_stats,
+        'godown_choices': godown_choices,
+        'dealer_choices': dealer_choices,
+        'title': 'Loading Records'
+    }
+    
+    return render(request, 'godown/loadingrecord/list.html', context)
+
+
+@login_required
+def loading_record_create(request):
+    """Create a new Loading Record with step-by-step interface"""
+    
+    if request.method == 'POST':
+        form = LoadingRecordForm(request.POST)
+        if form.is_valid():
+            loading_record = form.save(commit=False)
+            loading_record.created_by = request.user
+            loading_record.save()
+            
+            messages.success(
+                request, 
+                f'Loading Record "{loading_record.loading_request_id}" has been created successfully! '
+                f'{loading_record.loaded_bags} bags loaded for {loading_record.dealer.name}.'
+            )
+            return redirect('loading_record_detail', loading_request_id=loading_record.loading_request_id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = LoadingRecordForm()
+    
+    context = {
+        'form': form,
+        'title': 'New Loading Record',
+        'submit_text': 'Save Loading Record',
+        'help_text': 'Fill out this simple form to record a loading operation'
+    }
+    
+    return render(request, 'godown/loadingrecord/form.html', context)
+
+
+@login_required
+def loading_record_detail(request, loading_request_id):
+    """Display detailed view of a specific Loading Record"""
+    
+    loading_record = get_object_or_404(LoadingRequest, loading_request_id=loading_request_id)
+    
+    # Calculate completion metrics
+    completion_percentage = 0
+    if loading_record.requested_bags > 0:
+        completion_percentage = (loading_record.loaded_bags / loading_record.requested_bags) * 100
+    
+    # Calculate difference
+    bags_difference = loading_record.loaded_bags - loading_record.requested_bags
+    
+    # Get recent loading records for same dealer
+    recent_records = LoadingRequest.objects.filter(
+        dealer=loading_record.dealer
+    ).exclude(loading_request_id=loading_record.loading_request_id).select_related(
+        'product', 'godown'
+    ).order_by('-created_at')[:5]
+    
+    context = {
+        'loading_record': loading_record,
+        'completion_percentage': round(completion_percentage, 1),
+        'bags_difference': bags_difference,
+        'recent_records': recent_records,
+        'title': f'Loading Record - {loading_record.loading_request_id}'
+    }
+    
+    return render(request, 'godown/loadingrecord/detail.html', context)
+
+
+@login_required
+def loading_record_update(request, loading_request_id):
+    """Update an existing Loading Record"""
+    
+    loading_record = get_object_or_404(LoadingRequest, loading_request_id=loading_request_id)
+    
+    if request.method == 'POST':
+        form = LoadingRecordForm(request.POST, instance=loading_record)
+        if form.is_valid():
+            updated_record = form.save(commit=False)
+            updated_record.updated_at = timezone.now()
+            updated_record.save()
+            
+            messages.success(
+                request, 
+                f'Loading Record "{updated_record.loading_request_id}" has been updated successfully!'
+            )
+            return redirect('loading_record_detail', loading_request_id=updated_record.loading_request_id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = LoadingRecordForm(instance=loading_record)
+    
+    context = {
+        'form': form,
+        'loading_record': loading_record,
+        'title': f'Update Loading Record - {loading_record.loading_request_id}',
+        'submit_text': 'Update Record',
+        'help_text': 'Make changes to this loading record'
+    }
+    
+    return render(request, 'godown/loadingrecord/form.html', context)
+
+
+@login_required
+def loading_record_dashboard(request):
+    """Simple dashboard showing key loading metrics"""
+    
+    # Today's records
+    today = timezone.now().date()
+    today_records = LoadingRequest.objects.filter(created_at__date=today)
+    
+    # This week's records
+    week_ago = today - timezone.timedelta(days=7)
+    week_records = LoadingRequest.objects.filter(created_at__date__gte=week_ago)
+    
+    # Key metrics
+    total_records = LoadingRequest.objects.count()
+    today_count = today_records.count()
+    week_count = week_records.count()
+    
+    # Bag metrics
+    today_stats = today_records.aggregate(
+        requested=Sum('requested_bags'),
+        loaded=Sum('loaded_bags')
+    )
+    
+    week_stats = week_records.aggregate(
+        requested=Sum('requested_bags'),
+        loaded=Sum('loaded_bags')
+    )
+    
+    # Recent records (last 10)
+    recent_records = LoadingRequest.objects.select_related(
+        'dealer', 'product', 'godown', 'supervised_by'
+    ).order_by('-created_at')[:10]
+    
+    # Top dealers by loading volume
+    top_dealers = LoadingRequest.objects.values(
+        'dealer__name', 'dealer__code'
+    ).annotate(
+        total_loads=Count('loading_request_id'),
+        total_bags=Sum('loaded_bags')
+    ).order_by('-total_bags')[:5]
+    
+    context = {
+        'total_records': total_records,
+        'today_count': today_count,
+        'week_count': week_count,
+        'today_stats': today_stats,
+        'week_stats': week_stats,
+        'recent_records': recent_records,
+        'top_dealers': top_dealers,
+        'title': 'Loading Records Dashboard'
+    }
+    
+    return render(request, 'godown/loadingrecord/dashboard.html', context)

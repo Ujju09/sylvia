@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+
+<div class="container-fluid px-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center py-3 mb-4 border-bottom">
+        <div>
+            <h1 class="h2 text-primary">
+                <i class="fas fa-warehouse me-2"></i>
+                Godown Operations Dashboard
+            </h1>
+            <p class="text-muted mb-0">
+                <i class="fas fa-calendar-day me-1"></i>
+                {{ today_date|date:"l, F d, Y" }} | 
+                <span class="real-time-indicator"></span>
+                Live Updates
+            </p>
+        </div>
+        <div class="text-end">
+            <small class="text-muted">Welcome, {{ user.get_full_name|default:user.username }}</small>
+        </div>
+    </div>
+
+    <!-- Critical Alerts Banner -->
+    {% if critical_alerts %}
+    <div class="alert-banner show mb-4">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <div class="flex-grow-1">
+                {% for alert in critical_alerts %}
+                    <div class="d-flex justify-content-between align-items-center {% if not forloop.last %}mb-2{% endif %}">
+                        <span>{{ alert.message }}</span>
+                        <a href="{{ alert.url }}" class="btn btn-sm btn-light">{{ alert.action }}</a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions Bar -->
+    <div class="quick-actions-bar mb-4">
+        <h6 class="text-muted mb-3">
+            <i class="fas fa-bolt me-1"></i>
+            Quick Actions
+        </h6>
+        <div class="d-flex flex-wrap gap-3">
+            <a href="{% url 'loading_record_create' %}" class="btn-quick-action primary">
+                <i class="fas fa-truck-loading"></i>
+                New Loading
+            </a>
+            <a href="{% url 'godown_inventory_list' %}" class="btn-quick-action secondary">
+                <i class="fas fa-boxes"></i>
+                Check Stock
+            </a>
+            <a href="{% url 'crossover_create' %}" class="btn-quick-action secondary">
+                <i class="fas fa-exchange-alt"></i>
+                New Crossover
+            </a>
+            <a href="{% url 'orderintransit_create' %}" class="btn-quick-action secondary">
+                <i class="fas fa-truck-moving"></i>
+                Record Transit
+            </a>
+            <a href="{% url 'godown_inventory_create' %}" class="btn-quick-action secondary">
+                <i class="fas fa-plus-circle"></i>
+                Add Inventory
+            </a>
+        </div>
+    </div>
+
+    <!-- Key Metrics Row -->
+    <div class="metrics-row mb-5">
+        <div class="metric-card urgent card-hover">
+            <h3>Today's Arrivals</h3>
+            <div class="metric-value">{{ arrived_today }}</div>
+            <div class="metric-label">Orders Arrived</div>
+            <a href="{% url 'orderintransit_list' %}?status=ARRIVED&date_from={{ today_date|date:'Y-m-d' }}" class="stretched-link"></a>
+        </div>
+        
+        <div class="metric-card {% if low_stock_products > 0 %}warning{% else %}success{% endif %} card-hover">
+            <h3>Stock Status</h3>
+            <div class="metric-value">{{ low_stock_products }}</div>
+            <div class="metric-label">Low Stock Items</div>
+            <a href="{% url 'godown_inventory_list' %}" class="stretched-link"></a>
+        </div>
+        
+        <div class="metric-card info card-hover">
+            <h3>In Transit</h3>
+            <div class="metric-value">{{ pending_in_transit }}</div>
+            <div class="metric-label">Orders Moving</div>
+            <a href="{% url 'orderintransit_list' %}?status=IN_TRANSIT" class="stretched-link"></a>
+        </div>
+        
+        <div class="metric-card success card-hover">
+            <h3>Available Stock</h3>
+            <div class="metric-value">{{ total_available_bags|floatformat:0 }}</div>
+            <div class="metric-label">Bags Ready</div>
+            <a href="{% url 'godown_inventory_dashboard' %}" class="stretched-link"></a>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+        <!-- Left Column - Operational Activities -->
+        <div class="dashboard-column primary">
+            
+            <!-- Navigation Cards -->
+            <div class="widget-card mb-4">
+                <h4>
+                    <i class="fas fa-tachometer-alt me-2"></i>
+                    Operations Center
+                </h4>
+                <div class="row g-3">
+                    <!-- Orders in Transit -->
+                    <div class="col-md-6">
+                        <div class="nav-card card h-100 card-hover">
+                            <div class="card-body text-center">
+                                <i class="fas fa-truck-moving stat-icon text-primary mb-2"></i>
+                                <h6 class="card-title">Orders in Transit</h6>
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'orderintransit_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                                    <a href="{% url 'orderintransit_create' %}" class="btn btn-sm btn-primary">Add New</a>
+                                    <a href="{% url 'orderintransit_dashboard' %}" class="btn btn-sm btn-info">Dashboard</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Management -->
+                    <div class="col-md-6">
+                        <div class="nav-card card h-100 card-hover">
+                            <div class="card-body text-center">
+                                <i class="fas fa-warehouse stat-icon text-success mb-2"></i>
+                                <h6 class="card-title">Inventory</h6>
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'godown_inventory_list' %}" class="btn btn-sm btn-outline-success">View Stock</a>
+                                    <a href="{% url 'godown_inventory_create' %}" class="btn btn-sm btn-success">Add Stock</a>
+                                    <a href="{% url 'godown_inventory_dashboard' %}" class="btn btn-sm btn-info">Dashboard</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Records -->
+                    <div class="col-md-6">
+                        <div class="nav-card card h-100 card-hover">
+                            <div class="card-body text-center">
+                                <i class="fas fa-truck-loading stat-icon text-warning mb-2"></i>
+                                <h6 class="card-title">Loading Operations</h6>
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'loading_record_list' %}" class="btn btn-sm btn-outline-warning">View Records</a>
+                                    <a href="{% url 'loading_record_create' %}" class="btn btn-sm btn-warning">New Loading</a>
+                                    <a href="{% url 'loading_record_dashboard' %}" class="btn btn-sm btn-info">Dashboard</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Crossover Operations -->
+                    <div class="col-md-6">
+                        <div class="nav-card card h-100 card-hover">
+                            <div class="card-body text-center">
+                                <i class="fas fa-exchange-alt stat-icon text-danger mb-2"></i>
+                                <h6 class="card-title">Crossover</h6>
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'crossover_list' %}" class="btn btn-sm btn-outline-danger">View All</a>
+                                    <a href="{% url 'crossover_create' %}" class="btn btn-sm btn-danger">New Crossover</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Loading Summary -->
+            <div class="widget-card mb-4">
+                <h4>
+                    <i class="fas fa-calendar-day me-2"></i>
+                    Today's Loading Activity
+                </h4>
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-4">
+                        <div class="text-center">
+                            <div class="h4 text-primary quantity-display">{{ today_loading_count }}</div>
+                            <small class="text-muted">Loading Records</small>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="text-center">
+                            <div class="h4 text-warning quantity-display">{{ today_bags_requested|floatformat:0 }}</div>
+                            <small class="text-muted">Bags Requested</small>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="text-center">
+                            <div class="h4 text-success quantity-display">{{ today_bags_loaded|floatformat:0 }}</div>
+                            <small class="text-muted">Bags Loaded</small>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if today_bags_requested > 0 %}
+                <div class="loading-progress">
+                    <div class="progress">
+                        <div class="progress-bar bg-success" style="width: {% widthratio today_bags_loaded today_bags_requested 100 %}%"></div>
+                    </div>
+                    <small class="text-muted">
+                        {% widthratio today_bags_loaded today_bags_requested 100 %}% completion rate today
+                    </small>
+                </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{% url 'loading_record_list' %}?date_from={{ today_date|date:'Y-m-d' }}" class="btn btn-sm btn-primary">
+                        View Today's Records <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Loading Requests -->
+            <div class="widget-card">
+                <h4>
+                    <i class="fas fa-clock me-2"></i>
+                    Recent Loading Requests
+                </h4>
+                {% if recent_loading_requests %}
+                <div class="loading-list">
+                    {% for loading in recent_loading_requests %}
+                    <div class="loading-item d-flex justify-content-between align-items-center mb-2">
+                        <div class="loading-info">
+                            <div class="fw-bold">{{ loading.dealer.name }}</div>
+                            <small class="text-muted">
+                                {{ loading.product.name }} | 
+                                {{ loading.requested_bags }} bags requested |
+                                <span class="quantity-display">{{ loading.loaded_bags }} loaded</span>
+                            </small>
+                        </div>
+                        <div class="loading-action">
+                            <a href="{% url 'loading_record_detail' loading.loading_request_id %}" 
+                               class="btn btn-sm btn-outline-primary">
+                                View
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No recent loading requests</p>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="{% url 'loading_record_list' %}" class="btn btn-sm btn-primary">
+                        View All Loading Records <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Monitoring & Analytics -->
+        <div class="dashboard-column secondary">
+            
+            <!-- Recent Transit Orders -->
+            <div class="widget-card mb-4">
+                <h4>
+                    <i class="fas fa-shipping-fast me-2"></i>
+                    Recent Transit Orders
+                </h4>
+                {% if recent_transit_orders %}
+                <div class="transit-list">
+                    {% for order in recent_transit_orders %}
+                    <div class="transit-item d-flex justify-content-between align-items-center mb-3">
+                        <div class="transit-info">
+                            <div class="fw-bold">{{ order.eway_bill_number }}</div>
+                            <small class="text-muted">
+                                {{ order.godown.name }} |
+                                {% if order.product %}{{ order.product.name }}{% endif %} |
+                                {{ order.expected_total_bags }} bags expected
+                            </small>
+                            <br>
+                            <span class="status-badge badge status-{{ order.status|lower }}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="transit-action">
+                            <a href="{% url 'orderintransit_detail' order.dispatch_id %}" 
+                               class="btn btn-sm btn-outline-primary">
+                                View
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No recent transit orders</p>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="{% url 'orderintransit_list' %}" class="btn btn-sm btn-primary">
+                        View All Transit Orders <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Godown Summary -->
+            <div class="widget-card mb-4">
+                <h4>
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    Godown Inventory Summary
+                </h4>
+                {% if godown_summaries %}
+                <div class="godown-summary-list">
+                    {% for summary in godown_summaries %}
+                    <div class="godown-summary-item d-flex justify-content-between align-items-center mb-2">
+                        <div class="godown-info">
+                            <div class="fw-bold">{{ summary.godown__name }}</div>
+                            <small class="text-muted">{{ summary.total_products }} products available</small>
+                        </div>
+                        <div class="godown-metrics text-end">
+                            <div class="h6 text-success quantity-display mb-0">{{ summary.total_bags|floatformat:0 }}</div>
+                            <small class="text-muted">bags</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No inventory data available</p>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="{% url 'godown_inventory_dashboard' %}" class="btn btn-sm btn-primary">
+                        View Inventory Dashboard <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Weekly Crossover Activity -->
+            <div class="widget-card">
+                <h4>
+                    <i class="fas fa-sync-alt me-2"></i>
+                    This Week's Crossovers
+                </h4>
+                <div class="crossover-summary text-center mb-3">
+                    <div class="h3 text-primary">{{ weekly_crossovers_count }}</div>
+                    <small class="text-muted">Crossover operations completed this week</small>
+                </div>
+                
+                {% if recent_crossovers %}
+                <div class="crossover-list">
+                    <h6 class="text-muted mb-2">Recent Activity</h6>
+                    {% for crossover in recent_crossovers %}
+                    <div class="crossover-item mb-2">
+                        <div class="d-flex justify-content-between">
+                            <div class="crossover-info">
+                                <div class="fw-bold text-truncate">{{ crossover.destination_dealer.name }}</div>
+                                <small class="text-muted">
+                                    {{ crossover.product.name }} | {{ crossover.actual_transferred_bags }} bags
+                                </small>
+                            </div>
+                            <small class="text-muted">{{ crossover.approved_date|date:"M d" }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No crossovers this week</p>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{% url 'crossover_list' %}" class="btn btn-sm btn-primary">
+                        View All Crossovers <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Simple real-time updates simulation
+function updateTimestamp() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString();
+    document.querySelectorAll('.real-time-indicator').forEach(element => {
+        element.title = `Last updated: ${timeString}`;
+    });
+}
+
+// Update timestamp every 30 seconds
+setInterval(updateTimestamp, 30000);
+updateTimestamp();
+</script>
+{% endblock %}

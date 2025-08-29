@@ -369,6 +369,22 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.crossover_dealer.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.crossover_dealer.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.crossover_dealer }}
+                                    {% if form.crossover_dealer.errors %}
+                                        <div class="text-danger small mt-1">{{ form.crossover_dealer.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.crossover_dealer.help_text }}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Notes Section -->
@@ -390,26 +406,110 @@
                             </div>
                         </div>
 
-                        <!-- Summary Section -->
-                        <div class="card bg-light">
+                        <!-- Automatic Records Summary Section -->
+                        <div class="card bg-light border-success">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="fas fa-magic"></i> Automatic Record Creation Summary</h6>
+                                <small class="opacity-75">The following records will be created automatically when you save this form</small>
+                            </div>
                             <div class="card-body">
-                                <h6><i class="fas fa-clipboard-check"></i> Summary</h6>
-                                <div class="row text-center">
+                                
+                                <!-- Bag Distribution Summary -->
+                                <div class="row text-center mb-3">
                                     <div class="col-3">
                                         <div class="h5 text-primary" id="summary-expected">-</div>
-                                        <small>Expected</small>
+                                        <small class="text-muted">Expected</small>
                                     </div>
                                     <div class="col-3">
                                         <div class="h5 text-info" id="summary-received">-</div>
-                                        <small>Received</small>
+                                        <small class="text-muted">Received</small>
                                     </div>
                                     <div class="col-3">
                                         <div class="h5 text-success" id="summary-good">-</div>
-                                        <small>Good</small>
+                                        <small class="text-muted">Good Bags</small>
                                     </div>
                                     <div class="col-3">
-                                        <div class="h5 text-warning" id="summary-storage">-</div>
-                                        <small>For Storage</small>
+                                        <div class="h5 text-warning" id="summary-damaged">-</div>
+                                        <small class="text-muted">Damaged</small>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <!-- Godown Inventory Record -->
+                                <div class="mb-3" id="inventory-summary">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-warehouse text-primary me-2"></i>
+                                        <h6 class="mb-0 text-primary">Godown Inventory Record</h6>
+                                    </div>
+                                    <div class="bg-white p-3 rounded border">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <strong>Storage Location:</strong> <span id="inventory-godown">-</span><br>
+                                                <strong>Product:</strong> <span id="inventory-product">-</span>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Bags for Storage:</strong> <span id="inventory-bags" class="text-success fw-bold">-</span><br>
+                                                <strong>Status:</strong> <span class="badge bg-success">Active Stock</span>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i>
+                                                This will create a new inventory batch with FIFO tracking and automatic ledger entry
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Crossover Record -->
+                                <div class="mb-3" id="crossover-summary" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-exchange-alt text-warning me-2"></i>
+                                        <h6 class="mb-0 text-warning">Crossover Record</h6>
+                                    </div>
+                                    <div class="bg-white p-3 rounded border border-warning">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <strong>Destination Dealer:</strong> <span id="crossover-dealer-name">-</span><br>
+                                                <strong>Product:</strong> <span id="crossover-product">-</span>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Crossover Bags:</strong> <span id="crossover-bags-count" class="text-warning fw-bold">-</span><br>
+                                                <strong>Status:</strong> <span class="badge bg-warning text-dark">Ready for Transfer</span>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i>
+                                                This will create an approved crossover record and automatic ledger entry for FIFO compliance
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- No Crossover Message -->
+                                <div class="mb-3" id="no-crossover-message">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-exchange-alt text-muted me-2"></i>
+                                        <h6 class="mb-0 text-muted">No Crossover Required</h6>
+                                    </div>
+                                    <div class="bg-white p-3 rounded border">
+                                        <p class="mb-0 text-muted">
+                                            <i class="fas fa-info-circle"></i>
+                                            All bags will go to storage. No crossover record will be created.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Action Summary -->
+                                <div class="alert alert-info mb-0">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-bolt text-info me-2"></i>
+                                        <div>
+                                            <strong>Atomic Transaction:</strong> All records will be created in a single database transaction. 
+                                            If any step fails, all changes will be rolled back to maintain data consistency.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -669,6 +769,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const damagedInput = document.getElementById('{{ form.damaged_bags.id_for_label }}');
     const crossoverRequiredInput = document.getElementById('{{ form.crossover_required.id_for_label }}');
     const crossoverBagsInput = document.getElementById('{{ form.crossover_bags.id_for_label }}');
+    const crossoverDealerInput = document.getElementById('{{ form.crossover_dealer.id_for_label }}');
+    const godownInput = document.getElementById('{{ form.godown.id_for_label }}');
+    const productInput = document.getElementById('{{ form.product.id_for_label }}');
     
     // Calculate discrepancy
     function calculateDiscrepancy() {
@@ -723,11 +826,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('validation-alert').className = `alert ${alertClass}`;
             document.getElementById('validation-alert').style.display = 'block';
             
-            // Update summary
+            // Update basic summary
             document.getElementById('summary-expected').textContent = parseInt(expectedInput.value) || 0;
             document.getElementById('summary-received').textContent = actual;
             document.getElementById('summary-good').textContent = good;
-            document.getElementById('summary-storage').textContent = Math.max(0, storage);
+            document.getElementById('summary-damaged').textContent = parseInt(damagedInput.value) || 0;
         }
     }
     
@@ -736,13 +839,60 @@ document.addEventListener('DOMContentLoaded', function() {
         const crossoverSection = document.getElementById('crossover-section');
         if (crossoverRequiredInput.checked) {
             crossoverSection.style.display = 'block';
-            // Make sure the input field is also visible
+            // Make sure the input fields are also visible
             crossoverBagsInput.style.display = 'block';
+            crossoverDealerInput.style.display = 'block';
         } else {
             crossoverSection.style.display = 'none';
             crossoverBagsInput.value = '0';
+            crossoverDealerInput.value = '';
         }
         validateBags();
+        updateDetailedSummary();
+    }
+    
+    // Update detailed summary section
+    function updateDetailedSummary() {
+        const good = parseInt(goodInput.value) || 0;
+        const crossover = parseInt(crossoverBagsInput.value) || 0;
+        const storage = Math.max(0, good - crossover);
+        
+        // Get text values for display
+        const godownText = godownInput.options[godownInput.selectedIndex]?.text || '-';
+        const productText = productInput.options[productInput.selectedIndex]?.text || '-';
+        const dealerText = crossoverDealerInput.options[crossoverDealerInput.selectedIndex]?.text || '-';
+        
+        // Update inventory summary
+        document.getElementById('inventory-godown').textContent = godownText;
+        document.getElementById('inventory-product').textContent = productText;
+        document.getElementById('inventory-bags').textContent = storage + ' bags';
+        
+        // Show/hide crossover summary
+        const crossoverSummary = document.getElementById('crossover-summary');
+        const noCrossoverMessage = document.getElementById('no-crossover-message');
+        
+        if (crossoverRequiredInput.checked && crossover > 0 && crossoverDealerInput.value) {
+            // Show crossover summary
+            crossoverSummary.style.display = 'block';
+            noCrossoverMessage.style.display = 'none';
+            
+            // Update crossover details
+            document.getElementById('crossover-dealer-name').textContent = dealerText;
+            document.getElementById('crossover-product').textContent = productText;
+            document.getElementById('crossover-bags-count').textContent = crossover + ' bags';
+        } else {
+            // Show no crossover message
+            crossoverSummary.style.display = 'none';
+            noCrossoverMessage.style.display = 'block';
+        }
+        
+        // Hide inventory summary if no bags for storage
+        const inventorySummary = document.getElementById('inventory-summary');
+        if (storage <= 0) {
+            inventorySummary.style.display = 'none';
+        } else {
+            inventorySummary.style.display = 'block';
+        }
     }
     
     // Event listeners
@@ -750,16 +900,30 @@ document.addEventListener('DOMContentLoaded', function() {
     actualInput.addEventListener('input', function() {
         calculateDiscrepancy();
         validateBags();
+        updateDetailedSummary();
     });
-    goodInput.addEventListener('input', validateBags);
-    damagedInput.addEventListener('input', validateBags);
+    goodInput.addEventListener('input', function() {
+        validateBags();
+        updateDetailedSummary();
+    });
+    damagedInput.addEventListener('input', function() {
+        validateBags();
+        updateDetailedSummary();
+    });
     crossoverRequiredInput.addEventListener('change', toggleCrossover);
-    crossoverBagsInput.addEventListener('input', validateBags);
+    crossoverBagsInput.addEventListener('input', function() {
+        validateBags();
+        updateDetailedSummary();
+    });
+    crossoverDealerInput.addEventListener('change', updateDetailedSummary);
+    godownInput.addEventListener('change', updateDetailedSummary);
+    productInput.addEventListener('change', updateDetailedSummary);
     
     // Initialize
     calculateDiscrepancy();
     validateBags();
     toggleCrossover();
+    updateDetailedSummary();
 });
 </script>
 {% endblock %}

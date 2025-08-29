@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-chart-bar text-success"></i>
+                        {{ title }}
+                    </h2>
+                    <p class="text-muted mb-0">Complete overview of godown inventory across all locations</p>
+                </div>
+                <div>
+                    <a href="{% url 'godown_inventory_create' %}" class="btn btn-success btn-lg me-2">
+                        <i class="fas fa-plus"></i>
+                        Add Inventory
+                    </a>
+                    <a href="{% url 'godown_inventory_list' %}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-list"></i>
+                        View All
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0 fw-bold">{{ summary_stats.total_inventory_entries|default:0 }}</div>
+                            <div>Total Inventory Records</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-clipboard-list fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0 fw-bold">{{ summary_stats.total_bags_available|default:0 }}</div>
+                            <div>Available Bags</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-boxes fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0 fw-bold">{{ summary_stats.unique_products|default:0 }}</div>
+                            <div>Product Types</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-cube fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="h3 mb-0 fw-bold">{{ summary_stats.unique_godowns|default:0 }}</div>
+                            <div>Active Godowns</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-warehouse fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock Alerts -->
+    {% if low_stock_products %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+                <div>
+                    <strong>Low Stock Alert!</strong>
+                    {{ low_stock_products.count }} product(s) have less than 50 bags available.
+                    <a href="{% url 'godown_inventory_list' %}?low_stock=true" class="alert-link">View Details</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Product-wise Inventory Summary -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie text-primary me-2"></i>
+                        Product-wise Inventory
+                        <span class="badge bg-primary ms-2">{{ product_summaries.count }} products</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if product_summaries %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Available Bags</th>
+                                        <th class="text-center">Batches</th>
+                                        <th class="text-center">Godowns</th>
+                                        <th class="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for product in product_summaries %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="product-icon me-3">
+                                                    <i class="fas fa-cube text-primary"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold">{{ product.product__name }}</div>
+                                                    <small class="text-muted">{{ product.product__code }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="h6 text-success fw-bold">{{ product.total_bags }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-light text-dark">{{ product.total_batches }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info">{{ product.total_godowns }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if product.total_bags < 50 %}
+                                                <span class="badge bg-warning">Low Stock</span>
+                                            {% elif product.total_bags < 20 %}
+                                                <span class="badge bg-danger">Critical</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Good</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No inventory data available</h5>
+                            <p class="text-muted">Start by adding inventory records to see product summaries</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Godown-wise Summary -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-warehouse text-info me-2"></i>
+                        Godown Summary
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if godown_summaries %}
+                        {% for godown in godown_summaries %}
+                        <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                            <div>
+                                <div class="fw-bold">{{ godown.godown__name }}</div>
+                                <small class="text-muted">{{ godown.godown__code }}</small>
+                                <div class="small text-info">{{ godown.total_products }} products</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="h6 text-success fw-bold mb-0">{{ godown.total_bags }} bags</div>
+                                <small class="text-muted">{{ godown.total_batches }} batches</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-warehouse fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No godown data</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Additions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock text-warning me-2"></i>
+                        Recent Inventory Additions
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_additions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Batch ID</th>
+                                        <th>Product</th>
+                                        <th>Godown</th>
+                                        <th class="text-center">Total Bags</th>
+                                        <th class="text-center">Available</th>
+                                        <th>Received Date</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in recent_additions %}
+                                    <tr>
+                                        <td>
+                                            <span class="fw-bold text-primary">{{ item.batch_id }}</span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div class="fw-bold">{{ item.product.name }}</div>
+                                                <small class="text-muted">{{ item.product.code }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div class="fw-bold">{{ item.godown.name }}</div>
+                                                <small class="text-muted">{{ item.godown.code }}</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="h6 fw-bold">{{ item.total_bags_received }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="h6 text-success fw-bold">{{ item.good_bags_available }}</span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                {{ item.received_date|date:"M d, Y" }}
+                                                <small class="d-block text-muted">{{ item.received_date|time:"g:i A" }}</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'godown_inventory_detail' item.batch_id %}" 
+                                                   class="btn btn-outline-primary" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'godown_inventory_update' item.batch_id %}" 
+                                                   class="btn btn-outline-warning" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No recent additions</h5>
+                            <p class="text-muted">Inventory additions will appear here once you start adding records</p>
+                            <a href="{% url 'godown_inventory_create' %}" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>Add First Inventory
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.product-icon {
+    opacity: 0.8;
+}
+
+.table th {
+    font-weight: 600;
+    border-bottom-width: 1px;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .h3 {
+        font-size: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+}
+</style>
+{% endblock %}

@@ -130,6 +130,11 @@ class OrderInTransit(BaseModel):
         default=0,
         help_text="Number of bags allocated for cross-over"
     )
+    crossover_dealer = models.ForeignKey(
+        'sylvia.Dealer', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='incoming_crossovers',
+        help_text="Dealer who will receive the crossover goods"
+    )
     
     # Notes and remarks
     arrival_notes = models.TextField(
@@ -318,7 +323,7 @@ class CrossoverRecord(BaseModel):
     # Destination details
     destination_dealer = models.ForeignKey(
         'sylvia.Dealer', on_delete=models.CASCADE, related_name='crossover_deliveries',
-        help_text="Dealer receiving the crossover goods"
+        help_text="Dealer receiving the crossover goods", blank=True,null=True
     )
    
     
@@ -414,10 +419,7 @@ class LoadingRequest(BaseModel):
         'sylvia.Dealer', on_delete=models.CASCADE, related_name='loading_requests',
         help_text="Dealer for whom loading is requested"
     )
-    vehicle = models.ForeignKey(
-        'sylvia.Vehicle', on_delete=models.CASCADE, related_name='loading_requests',
-        help_text="Vehicle to be loaded"
-    )
+  
     product = models.ForeignKey(
         'sylvia.Product', on_delete=models.CASCADE, related_name='loading_requests'
     )
@@ -426,55 +428,42 @@ class LoadingRequest(BaseModel):
     requested_bags = models.PositiveIntegerField(
         help_text="Number of bags requested for loading"
     )
-    allocated_bags = models.PositiveIntegerField(
-        default=0,
-        help_text="Bags allocated from inventory (may be from multiple batches)"
-    )
+    
     loaded_bags = models.PositiveIntegerField(
         default=0,
         help_text="Actual bags loaded onto vehicle"
     )
     
     # Status and priority
-    status = models.CharField(
-        max_length=25, choices=LOADING_STATUS_CHOICES, default='REQUESTED'
-    )
-    priority = models.CharField(
-        max_length=10, choices=PRIORITY_CHOICES, default='MEDIUM'
-    )
+    # status = models.CharField(
+    #     max_length=25, choices=LOADING_STATUS_CHOICES, default='REQUESTED'
+    # )
+    # priority = models.CharField(
+    #     max_length=10, choices=PRIORITY_CHOICES, default='MEDIUM'
+    # )
     
     # Timing
-    requested_date = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When loading was requested"
-    )
-    required_by_date = models.DateTimeField(
-        help_text="When loading must be completed by"
-    )
-    approved_date = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When request was approved"
-    )
-    loading_start_time = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When loading process started"
-    )
-    loading_completion_time = models.DateTimeField(
-        null=True, blank=True,
-        help_text="When loading was completed"
-    )
+    # requested_date = models.DateTimeField(
+    #     auto_now_add=True,
+    #     help_text="When loading was requested"
+    # )
+    # required_by_date = models.DateTimeField(
+    #     help_text="When loading must be completed by"
+    # )
+    # approved_date = models.DateTimeField(
+    #     null=True, blank=True,
+    #     help_text="When request was approved"
+    # )
+    # loading_start_time = models.DateTimeField(
+    #     null=True, blank=True,
+    #     help_text="When loading process started"
+    # )
+    # loading_completion_time = models.DateTimeField(
+    #     null=True, blank=True,
+    #     help_text="When loading was completed"
+    # )
     
     # Authorization
-    requested_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='requested_loadings',
-        help_text="User who made the loading request"
-    )
-    approved_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='approved_loadings',
-        help_text="User who approved the loading request"
-    )
     supervised_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='supervised_loadings',
@@ -505,13 +494,12 @@ class LoadingRequest(BaseModel):
         return f"{self.loading_request_id} - {self.dealer.name} ({self.requested_bags} bags)"
     
     class Meta:
-        ordering = ['-requested_date']
-        verbose_name = "Loading Request"
-        verbose_name_plural = "Loading Requests"
+        ordering = ['-created_at']
+        verbose_name = "Loading Records"
+        verbose_name_plural = "Loading Records"
         indexes = [
-            models.Index(fields=['status', 'priority', 'required_by_date']),
-            models.Index(fields=['dealer', 'status']),
-            models.Index(fields=['godown', 'status']),
+            models.Index(fields=['dealer']),
+            models.Index(fields=['godown']),
             models.Index(fields=['loading_request_id']),
         ]
 
@@ -872,3 +860,654 @@ class NotificationRecipient(BaseModel):
     class Meta:
         unique_together = ['notification', 'user']
         ordering = ['-created_at']
+
+
+class GodownInventoryLedger(BaseModel):
+    """
+    Complete transaction-based inventory ledger for audit compliance and real-time stock tracking.
+    Records every inward and outward movement with full traceability.
+    """
+    
+    TRANSACTION_TYPES = [
+        ('INWARD_RECEIPT', 'Stock Receipt from Transit'),
+        ('INWARD_ADJUSTMENT', 'Manual Stock Addition'),
+        ('INWARD_RETURN', 'Returned Stock'),
+        ('INWARD_OPENING', 'Opening Balance Entry'),
+        ('OUTWARD_LOADING', 'Loading Request Fulfillment'),
+        ('OUTWARD_CROSSOVER', 'Crossover Transfer'),
+        ('OUTWARD_DAMAGE', 'Damage/Waste Writeoff'),
+        ('OUTWARD_ADJUSTMENT', 'Manual Stock Reduction'),
+        ('OUTWARD_CLOSING', 'Closing Balance Entry'),
+        ('BALANCE_ADJUSTMENT', 'System Balance Correction'),
+    ]
+    
+    ENTRY_STATUS_CHOICES = [
+        ('PENDING', 'Pending Confirmation'),
+        ('CONFIRMED', 'Confirmed Entry'),
+        ('CANCELLED', 'Cancelled Entry'),
+        ('SYSTEM_GENERATED', 'System Generated'),
+    ]
+    
+    # Core identification and classification
+    transaction_id = models.CharField(
+        max_length=50, unique=True, editable=False,
+        help_text="Auto-generated unique transaction identifier"
+    )
+    transaction_type = models.CharField(
+        max_length=20, choices=TRANSACTION_TYPES,
+        help_text="Type of inventory transaction"
+    )
+    transaction_date = models.DateTimeField(
+        default=timezone.now,
+        help_text="When the transaction occurred"
+    )
+    entry_status = models.CharField(
+        max_length=20, choices=ENTRY_STATUS_CHOICES, default='PENDING'
+    )
+    
+    # Location and product details
+    godown = models.ForeignKey(
+        GodownLocation, on_delete=models.CASCADE, related_name='ledger_entries'
+    )
+    product = models.ForeignKey(
+        'sylvia.Product', on_delete=models.CASCADE, related_name='ledger_entries'
+    )
+    
+    # Quantity tracking
+    inward_quantity = models.PositiveIntegerField(
+        default=0,
+        help_text="Bags added to inventory (positive quantity)"
+    )
+    outward_quantity = models.PositiveIntegerField(
+        default=0,
+        help_text="Bags removed from inventory (positive quantity)"
+    )
+    balance_after_transaction = models.IntegerField(
+        help_text="Calculated balance after this transaction"
+    )
+    
+    # Source document tracking for complete audit trail
+    source_order_transit = models.ForeignKey(
+        OrderInTransit, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ledger_entries',
+        help_text="Source transit order (for INWARD_RECEIPT)"
+    )
+    source_loading_request = models.ForeignKey(
+        LoadingRequest, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ledger_entries',
+        help_text="Source loading request (for OUTWARD_LOADING)"
+    )
+    source_crossover = models.ForeignKey(
+        CrossoverRecord, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ledger_entries',
+        help_text="Source crossover record (for OUTWARD_CROSSOVER)"
+    )
+    source_challan = models.ForeignKey(
+        DeliveryChallan, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ledger_entries',
+        help_text="Source delivery challan"
+    )
+    
+    # FIFO batch tracking
+    affected_inventory_batches = models.ManyToManyField(
+        GodownInventory, through='LedgerBatchMapping',
+        help_text="Inventory batches affected by this transaction"
+    )
+    
+    # Quality and condition tracking
+    quality_notes = models.TextField(
+        blank=True,
+        help_text="Quality observations or notes about the stock"
+    )
+    condition_at_transaction = models.CharField(
+        max_length=20, choices=[
+            ('GOOD', 'Good Condition'),
+            ('DAMAGED', 'Damaged'),
+            ('EXPIRED', 'Expired/Old'),
+            ('MIXED', 'Mixed Condition'),
+        ], default='GOOD'
+    )
+    
+    # Authorization and approval
+    authorized_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='authorized_ledger_entries',
+        help_text="User who authorized this transaction"
+    )
+    approval_required = models.BooleanField(
+        default=False,
+        help_text="Whether this transaction requires approval"
+    )
+    approved_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When transaction was approved"
+    )
+    
+    # Documentation and notes
+    reference_document = models.CharField(
+        max_length=100, blank=True,
+        help_text="Reference document number (challan, receipt, etc.)"
+    )
+    transaction_notes = models.TextField(
+        blank=True,
+        help_text="Detailed notes about this transaction"
+    )
+    
+    # System tracking
+    is_system_generated = models.BooleanField(
+        default=False,
+        help_text="Whether this entry was auto-generated by the system"
+    )
+    parent_transaction = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Parent transaction (for adjustment entries)"
+    )
+    
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            # Generate transaction ID: TXN_GODOWN_YYYYMMDD_HHMMSS_SEQUENCE
+            timestamp = timezone.now()
+            date_str = timestamp.strftime('%Y%m%d')
+            time_str = timestamp.strftime('%H%M%S')
+            
+            # Get count of transactions for this godown today
+            today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_count = GodownInventoryLedger.objects.filter(
+                godown=self.godown,
+                created_at__gte=today_start,
+                transaction_id__startswith=f'TXN_{self.godown.code}_{date_str}_'
+            ).count()
+            
+            self.transaction_id = f'TXN_{self.godown.code}_{date_str}_{time_str}_{today_count + 1:03d}'
+        
+        # Validate quantity logic
+        if self.inward_quantity > 0 and self.outward_quantity > 0:
+            raise ValueError("Transaction cannot have both inward and outward quantities")
+        if self.inward_quantity == 0 and self.outward_quantity == 0:
+            if self.transaction_type not in ['INWARD_OPENING', 'OUTWARD_CLOSING']:
+                raise ValueError("Transaction must have either inward or outward quantity")
+        
+        # Set entry status for system-generated entries
+        if self.is_system_generated and self.entry_status == 'PENDING':
+            self.entry_status = 'SYSTEM_GENERATED'
+        
+        super().save(*args, **kwargs)
+    
+    def get_net_quantity(self):
+        """Get net quantity change (positive for inward, negative for outward)"""
+        return self.inward_quantity - self.outward_quantity
+    
+    def is_inward_transaction(self):
+        """Check if this is an inward transaction"""
+        return self.inward_quantity > 0
+    
+    def is_outward_transaction(self):
+        """Check if this is an outward transaction"""
+        return self.outward_quantity > 0
+    
+    def __str__(self):
+        direction = "IN" if self.is_inward_transaction() else "OUT"
+        quantity = self.inward_quantity or self.outward_quantity
+        return f"{self.transaction_id} - {direction}: {quantity} bags - {self.product.code}"
+    
+    class Meta:
+        ordering = ['-transaction_date', '-created_at']
+        verbose_name = "Godown Inventory Ledger Entry"
+        verbose_name_plural = "Godown Inventory Ledger Entries"
+        indexes = [
+            models.Index(fields=['godown', 'product', '-transaction_date']),
+            models.Index(fields=['transaction_type', '-transaction_date']),
+            models.Index(fields=['entry_status', '-transaction_date']),
+            models.Index(fields=['transaction_id']),
+            models.Index(fields=['is_system_generated', '-transaction_date']),
+        ]
+
+
+class LedgerBatchMapping(BaseModel):
+    """
+    Mapping table to track which inventory batches were affected by ledger transactions.
+    Essential for FIFO compliance and batch traceability.
+    """
+    
+    ledger_entry = models.ForeignKey(
+        GodownInventoryLedger, on_delete=models.CASCADE, related_name='batch_mappings'
+    )
+    inventory_batch = models.ForeignKey(
+        GodownInventory, on_delete=models.CASCADE, related_name='ledger_mappings'
+    )
+    quantity_affected = models.PositiveIntegerField(
+        help_text="Number of bags affected in this batch for this transaction"
+    )
+    
+    # Batch state tracking
+    batch_balance_before = models.PositiveIntegerField(
+        help_text="Batch balance before this transaction"
+    )
+    batch_balance_after = models.PositiveIntegerField(
+        help_text="Batch balance after this transaction"
+    )
+    
+    def __str__(self):
+        return f"{self.ledger_entry.transaction_id} -> Batch {self.inventory_batch.batch_id}: {self.quantity_affected} bags"
+    
+    class Meta:
+        unique_together = ['ledger_entry', 'inventory_batch']
+        ordering = ['inventory_batch__received_date']  # FIFO ordering
+
+
+class GodownDailyBalance(BaseModel):
+    """
+    Daily balance snapshots for each godown-product combination.
+    Provides fast lookups for current stock levels and historical balance tracking.
+    """
+    
+    BALANCE_STATUS_CHOICES = [
+        ('CALCULATED', 'System Calculated'),
+        ('VERIFIED', 'Manually Verified'),
+        ('DISCREPANCY', 'Discrepancy Identified'),
+        ('ADJUSTED', 'Balance Adjusted'),
+    ]
+    
+    # Core identification
+    balance_date = models.DateField(
+        help_text="Date for which this balance is calculated"
+    )
+    godown = models.ForeignKey(
+        GodownLocation, on_delete=models.CASCADE, related_name='daily_balances'
+    )
+    product = models.ForeignKey(
+        'sylvia.Product', on_delete=models.CASCADE, related_name='daily_balances'
+    )
+    
+    # Balance calculations
+    opening_balance = models.IntegerField(
+        default=0,
+        help_text="Opening balance at start of day"
+    )
+    total_inward = models.PositiveIntegerField(
+        default=0,
+        help_text="Total inward movements during the day"
+    )
+    total_outward = models.PositiveIntegerField(
+        default=0,
+        help_text="Total outward movements during the day"
+    )
+    closing_balance = models.IntegerField(
+        help_text="Calculated closing balance (opening + inward - outward)"
+    )
+    
+    # Physical verification (if conducted)
+    physical_count = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Actual physical count (if verification was done)"
+    )
+    count_verified_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='verified_balances',
+        help_text="User who conducted physical verification"
+    )
+    count_verification_date = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When physical verification was conducted"
+    )
+    
+    # Status and variance tracking
+    balance_status = models.CharField(
+        max_length=15, choices=BALANCE_STATUS_CHOICES, default='CALCULATED'
+    )
+    variance_quantity = models.IntegerField(
+        default=0,
+        help_text="Difference between calculated and physical count (+ = excess, - = shortage)"
+    )
+    
+    # Batch-wise breakdown (for detailed analysis)
+    active_batches_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of active inventory batches"
+    )
+    oldest_batch_age_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Age of oldest active batch in days"
+    )
+    
+    # Quality assessment
+    good_condition_bags = models.PositiveIntegerField(
+        default=0,
+        help_text="Bags in good condition"
+    )
+    damaged_bags = models.PositiveIntegerField(
+        default=0,
+        help_text="Damaged bags count"
+    )
+    expired_bags = models.PositiveIntegerField(
+        default=0,
+        help_text="Expired/aged bags count"
+    )
+    
+    # System calculations metadata
+    calculation_timestamp = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this balance was calculated"
+    )
+    last_transaction_id = models.CharField(
+        max_length=50, blank=True,
+        help_text="Last transaction ID included in this calculation"
+    )
+    is_auto_calculated = models.BooleanField(
+        default=True,
+        help_text="Whether this balance was auto-calculated by system"
+    )
+    
+    # Notes and remarks
+    verification_notes = models.TextField(
+        blank=True,
+        help_text="Notes from physical verification or balance review"
+    )
+    discrepancy_reason = models.TextField(
+        blank=True,
+        help_text="Reason for discrepancy (if identified)"
+    )
+    
+    def save(self, *args, **kwargs):
+        # Calculate closing balance
+        self.closing_balance = self.opening_balance + self.total_inward - self.total_outward
+        
+        # Calculate variance if physical count exists
+        if self.physical_count is not None:
+            self.variance_quantity = self.physical_count - self.closing_balance
+            if self.variance_quantity != 0:
+                self.balance_status = 'DISCREPANCY'
+            else:
+                self.balance_status = 'VERIFIED'
+        
+        super().save(*args, **kwargs)
+    
+    def has_variance(self):
+        """Check if there's a variance between calculated and physical count"""
+        return self.variance_quantity != 0 and self.physical_count is not None
+    
+    def get_variance_percentage(self):
+        """Calculate variance as percentage of calculated balance"""
+        if self.closing_balance == 0:
+            return 0
+        return (self.variance_quantity / abs(self.closing_balance)) * 100
+    
+    def is_shortage(self):
+        """Check if there's a shortage (negative variance)"""
+        return self.variance_quantity < 0
+    
+    def is_excess(self):
+        """Check if there's excess stock (positive variance)"""
+        return self.variance_quantity > 0
+    
+    def __str__(self):
+        return f"{self.godown.code} - {self.product.code} - {self.balance_date}: {self.closing_balance} bags"
+    
+    @classmethod
+    def get_current_balance(cls, godown, product):
+        """Get the most recent calculated balance for a godown-product combination"""
+        try:
+            latest_balance = cls.objects.filter(
+                godown=godown,
+                product=product
+            ).latest('balance_date')
+            return latest_balance.closing_balance
+        except cls.DoesNotExist:
+            return 0
+    
+    @classmethod
+    def calculate_balance_from_ledger(cls, godown, product, date):
+        """Calculate balance for a specific date from ledger entries"""
+        from django.db.models import Sum
+        
+        # Get all confirmed ledger entries up to the specified date
+        ledger_entries = GodownInventoryLedger.objects.filter(
+            godown=godown,
+            product=product,
+            transaction_date__date__lte=date,
+            entry_status='CONFIRMED'
+        )
+        
+        # Calculate total inward and outward quantities
+        aggregates = ledger_entries.aggregate(
+            total_inward=Sum('inward_quantity') or 0,
+            total_outward=Sum('outward_quantity') or 0
+        )
+        
+        balance = aggregates['total_inward'] - aggregates['total_outward']
+        
+        return {
+            'balance': balance,
+            'total_inward': aggregates['total_inward'],
+            'total_outward': aggregates['total_outward']
+        }
+    
+    class Meta:
+        unique_together = ['balance_date', 'godown', 'product']
+        ordering = ['-balance_date', 'godown__name', 'product__name']
+        verbose_name = "Godown Daily Balance"
+        verbose_name_plural = "Godown Daily Balances"
+        indexes = [
+            models.Index(fields=['balance_date', 'godown', 'product']),
+            models.Index(fields=['godown', 'product', '-balance_date']),
+            models.Index(fields=['balance_status', '-balance_date']),
+            models.Index(fields=['-balance_date']),
+        ]
+
+
+class InventoryVariance(BaseModel):
+    """
+    Model to track and analyze inventory discrepancies requiring investigation.
+    Helps maintain audit trail for all stock variances and their resolution.
+    """
+    
+    VARIANCE_TYPES = [
+        ('SHORTAGE', 'Stock Shortage'),
+        ('EXCESS', 'Excess Stock'),
+        ('QUALITY_ISSUE', 'Quality Degradation'),
+        ('SYSTEM_ERROR', 'System Calculation Error'),
+        ('THEFT_SUSPECTED', 'Suspected Theft'),
+        ('DAMAGE_UNREPORTED', 'Unreported Damage'),
+        ('COUNTING_ERROR', 'Physical Counting Error'),
+        ('DATA_ENTRY_ERROR', 'Data Entry Mistake'),
+    ]
+    
+    VARIANCE_STATUS = [
+        ('IDENTIFIED', 'Variance Identified'),
+        ('INVESTIGATING', 'Under Investigation'),
+        ('ROOT_CAUSE_FOUND', 'Root Cause Identified'),
+        ('RESOLVED', 'Resolved'),
+        ('WRITTEN_OFF', 'Written Off'),
+        ('DISMISSED', 'Dismissed as Non-Issue'),
+    ]
+    
+    PRIORITY_LEVELS = [
+        ('LOW', 'Low Priority'),
+        ('MEDIUM', 'Medium Priority'),
+        ('HIGH', 'High Priority'),
+        ('CRITICAL', 'Critical - Immediate Action Required'),
+    ]
+    
+    # Core identification
+    variance_id = models.CharField(
+        max_length=50, unique=True, editable=False,
+        help_text="Auto-generated variance identifier"
+    )
+    
+    # Source information
+    godown = models.ForeignKey(
+        GodownLocation, on_delete=models.CASCADE, related_name='inventory_variances'
+    )
+    product = models.ForeignKey(
+        'sylvia.Product', on_delete=models.CASCADE, related_name='inventory_variances'
+    )
+    
+    # Linked to daily balance (if applicable)
+    related_daily_balance = models.ForeignKey(
+        GodownDailyBalance, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='variances',
+        help_text="Daily balance record that identified this variance"
+    )
+    
+    # Variance details
+    variance_type = models.CharField(max_length=20, choices=VARIANCE_TYPES)
+    variance_date = models.DateField(
+        help_text="Date when variance was first identified"
+    )
+    expected_quantity = models.PositiveIntegerField(
+        help_text="Expected/calculated quantity"
+    )
+    actual_quantity = models.PositiveIntegerField(
+        help_text="Actual/physical quantity found"
+    )
+    variance_quantity = models.IntegerField(
+        help_text="Difference (actual - expected)"
+    )
+    
+    # Financial impact
+    estimated_value_impact = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Estimated financial value of variance"
+    )
+    
+    # Status and priority
+    status = models.CharField(max_length=20, choices=VARIANCE_STATUS, default='IDENTIFIED')
+    priority_level = models.CharField(max_length=10, choices=PRIORITY_LEVELS, default='MEDIUM')
+    
+    # Investigation details
+    investigation_started_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When investigation was started"
+    )
+    investigated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='investigated_variances',
+        help_text="User conducting the investigation"
+    )
+    investigation_notes = models.TextField(
+        blank=True,
+        help_text="Detailed investigation findings and notes"
+    )
+    
+    # Root cause analysis
+    root_cause = models.TextField(
+        blank=True,
+        help_text="Identified root cause of the variance"
+    )
+    root_cause_identified_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When root cause was identified"
+    )
+    
+    # Resolution
+    resolution_action = models.TextField(
+        blank=True,
+        help_text="Action taken to resolve the variance"
+    )
+    resolved_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When variance was resolved"
+    )
+    resolved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='resolved_variances',
+        help_text="User who resolved the variance"
+    )
+    
+    # Corrective measures
+    preventive_measures = models.TextField(
+        blank=True,
+        help_text="Measures implemented to prevent similar variances"
+    )
+    
+    # System integration
+    adjustment_ledger_entry = models.ForeignKey(
+        GodownInventoryLedger, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='variance_adjustments',
+        help_text="Ledger entry created to adjust for this variance"
+    )
+    
+    # Escalation tracking
+    escalated_to = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='escalated_variances',
+        help_text="User to whom variance was escalated"
+    )
+    escalated_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When variance was escalated"
+    )
+    
+    def save(self, *args, **kwargs):
+        if not self.variance_id:
+            # Generate variance ID: VAR_GODOWN_YYYYMMDD_SEQUENCE
+            date_str = timezone.now().strftime('%Y%m%d')
+            today_count = InventoryVariance.objects.filter(
+                variance_id__startswith=f'VAR_{self.godown.code}_{date_str}_'
+            ).count()
+            self.variance_id = f'VAR_{self.godown.code}_{date_str}_{today_count + 1:03d}'
+        
+        # Calculate variance quantity
+        self.variance_quantity = self.actual_quantity - self.expected_quantity
+        
+        # Auto-set priority based on variance magnitude
+        if abs(self.variance_quantity) > 100:  # More than 100 bags
+            self.priority_level = 'HIGH'
+        elif abs(self.variance_quantity) > 50:   # 50-100 bags
+            self.priority_level = 'MEDIUM'
+        else:  # Less than 50 bags
+            self.priority_level = 'LOW'
+        
+        # Set investigation start time when status changes to investigating
+        if self.status == 'INVESTIGATING' and not self.investigation_started_at:
+            self.investigation_started_at = timezone.now()
+        
+        # Set resolution time when status changes to resolved
+        if self.status in ['RESOLVED', 'WRITTEN_OFF', 'DISMISSED'] and not self.resolved_at:
+            self.resolved_at = timezone.now()
+        
+        super().save(*args, **kwargs)
+    
+    def is_shortage(self):
+        """Check if this is a shortage variance"""
+        return self.variance_quantity < 0
+    
+    def is_excess(self):
+        """Check if this is an excess variance"""
+        return self.variance_quantity > 0
+    
+    def get_variance_percentage(self):
+        """Calculate variance as percentage of expected quantity"""
+        if self.expected_quantity == 0:
+            return 0
+        return (abs(self.variance_quantity) / self.expected_quantity) * 100
+    
+    def get_resolution_time_days(self):
+        """Calculate days taken to resolve the variance"""
+        if self.resolved_at and self.created_at:
+            return (self.resolved_at - self.created_at).days
+        return None
+    
+    def is_overdue_investigation(self, threshold_days=7):
+        """Check if investigation is overdue (default 7 days)"""
+        if self.status in ['RESOLVED', 'WRITTEN_OFF', 'DISMISSED']:
+            return False
+        
+        days_since_creation = (timezone.now() - self.created_at).days
+        return days_since_creation > threshold_days
+    
+    def __str__(self):
+        direction = "Shortage" if self.is_shortage() else "Excess"
+        return f"{self.variance_id} - {direction}: {abs(self.variance_quantity)} bags - {self.product.code}"
+    
+    class Meta:
+        ordering = ['-variance_date', '-created_at']
+        verbose_name = "Inventory Variance"
+        verbose_name_plural = "Inventory Variances"
+        indexes = [
+            models.Index(fields=['variance_id']),
+            models.Index(fields=['godown', 'product', '-variance_date']),
+            models.Index(fields=['status', 'priority_level', '-variance_date']),
+            models.Index(fields=['variance_type', '-variance_date']),
+            models.Index(fields=['-variance_date']),
+        ]

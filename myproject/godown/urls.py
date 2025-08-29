@@ -2,6 +2,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Godown Home - Main dashboard
+    path('', views.godown_home, name='godown_home'),
+    
     # OrderInTransit URLs
     path('transit/', views.orderintransit_list, name='orderintransit_list'),
     path('transit/create/', views.orderintransit_create, name='orderintransit_create'),
@@ -21,4 +24,20 @@ urlpatterns = [
     
     # AJAX endpoints for Crossover
     path('ajax/crossover/available-bags/', views.get_available_bags, name='get_available_bags'),
+
+
+    
+    # Godown Inventory
+    path('inventory/', views.godown_inventory_list, name='godown_inventory_list'),
+    path('inventory/dashboard/', views.godown_inventory_dashboard, name='godown_inventory_dashboard'),
+    path('inventory/create/', views.godown_inventory_create, name='godown_inventory_create'),
+    path('inventory/<str:batch_id>/', views.godown_inventory_detail, name='godown_inventory_detail'),
+    path('inventory/<str:batch_id>/edit/', views.godown_inventory_update, name='godown_inventory_update'),
+    
+    # Loading Records - Simple URLs for easy access
+    path('loading/', views.loading_record_list, name='loading_record_list'),
+    path('loading/new/', views.loading_record_create, name='loading_record_create'),
+    path('loading/<str:loading_request_id>/', views.loading_record_detail, name='loading_record_detail'),
+    path('loading/<str:loading_request_id>/edit/', views.loading_record_update, name='loading_record_update'),
+    path('loading/dashboard/', views.loading_record_dashboard, name='loading_record_dashboard'),
 ]

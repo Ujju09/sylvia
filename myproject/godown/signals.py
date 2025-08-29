@@ -104,41 +104,63 @@ def create_inward_ledger_entry(sender, instance, created, **kwargs):
 @receiver(post_save, sender=LoadingRequest)
 def create_outward_ledger_entry(sender, instance, created, **kwargs):
     """
-    Create ledger entry when LoadingRequest is completed.
-    Only creates entry when loaded_bags > 0.
+    Create ledger entry when LoadingRequest is created or updated with loaded_bags > 0.
+    Works with both new records created with loaded_bags and updates with loaded_bags.
     """
-    if not created and instance.loaded_bags > 0:
+    logger.debug(f"LoadingRequest signal fired for {instance.loading_request_id}: created={created}, loaded_bags={instance.loaded_bags}")
+    
+    # Create entry for both new records with loaded_bags > 0 and updates with loaded_bags > 0
+    should_create_entry = (
+        instance.loaded_bags > 0 and
+        (created or not created)  # Handle both creation and updates
+    )
+    
+    if should_create_entry:
         # Check if ledger entry already exists to prevent duplicates
         existing_entry = GodownInventoryLedger.objects.filter(
             source_loading_request=instance,
             transaction_type='OUTWARD_LOADING'
         ).first()
         
+        logger.debug(f"Checking for existing ledger entry for LoadingRequest {instance.loading_request_id}: found={bool(existing_entry)}")
+        
         if not existing_entry:
-            with transaction.atomic():
-                # Calculate balance before creating entry
-                previous_balance = _get_previous_balance(instance.godown, instance.product)
-                new_balance = previous_balance - instance.loaded_bags
-                
-                ledger_entry = GodownInventoryLedger.objects.create(
-                    transaction_type='OUTWARD_LOADING',
-                    godown=instance.godown,
-                    product=instance.product,
-                    inward_quantity=0,
-                    outward_quantity=instance.loaded_bags,
-                    balance_after_transaction=new_balance,
-                    source_loading_request=instance,
-                    condition_at_transaction='GOOD',
-                    quality_notes=instance.loading_notes or '',
-                    is_system_generated=True,
-                    entry_status='SYSTEM_GENERATED',
-                    created_by=instance.created_by,
-                    authorized_by=instance.supervised_by,
-                    transaction_notes=f'Automatic entry from LoadingRequest completion: {instance.loading_request_id}'
-                )
-                
-                # Link to inventory batches (FIFO consumption)
-                _link_outward_transaction_to_batches(ledger_entry, instance.loaded_bags)
+            try:
+                with transaction.atomic():
+                    logger.debug(f"Creating ledger entry for LoadingRequest {instance.loading_request_id}")
+                    
+                    # Calculate balance before creating entry
+                    previous_balance = _get_previous_balance(instance.godown, instance.product)
+                    new_balance = previous_balance - instance.loaded_bags
+                    
+                    ledger_entry = GodownInventoryLedger.objects.create(
+                        transaction_type='OUTWARD_LOADING',
+                        godown=instance.godown,
+                        product=instance.product,
+                        inward_quantity=0,
+                        outward_quantity=instance.loaded_bags,
+                        balance_after_transaction=new_balance,
+                        source_loading_request=instance,
+                        condition_at_transaction='GOOD',
+                        quality_notes=instance.loading_notes or '',
+                        is_system_generated=True,
+                        entry_status='SYSTEM_GENERATED',
+                        created_by=instance.created_by,
+                        authorized_by=instance.supervised_by,
+                        transaction_notes=f'Automatic entry from LoadingRequest: {instance.loading_request_id}'
+                    )
+                    
+                    logger.info(f"Created OUTWARD_LOADING ledger entry for LoadingRequest {instance.loading_request_id}: {instance.loaded_bags} bags, balance: {new_balance}")
+                    
+                    # Note: Batch linking not required for LoadingRequest as per requirements
+                    
+            except Exception as e:
+                logger.error(f"Error creating ledger entry for LoadingRequest {instance.loading_request_id}: {str(e)}", exc_info=True)
+                raise
+        else:
+            logger.debug(f"Ledger entry already exists for LoadingRequest {instance.loading_request_id}, skipping creation")
+    else:
+        logger.debug(f"LoadingRequest signal conditions not met for {instance.loading_request_id}: loaded_bags={instance.loaded_bags}")
 
 
 @receiver(post_save, sender=CrossoverRecord)

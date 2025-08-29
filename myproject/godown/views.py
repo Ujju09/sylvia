@@ -935,19 +935,45 @@ def loading_record_list(request):
 
 @login_required
 def loading_record_create(request):
-    """Create a new Loading Record with step-by-step interface"""
+    """Create a new Loading Record with inventory validation"""
     
     if request.method == 'POST':
         form = LoadingRecordForm(request.POST)
         if form.is_valid():
             loading_record = form.save(commit=False)
             loading_record.created_by = request.user
+            
+            # Validate inventory availability before saving
+            from .utils import LedgerCalculator
+            current_balance = LedgerCalculator.calculate_current_balance(
+                loading_record.godown, 
+                loading_record.product
+            )
+            
+            if loading_record.loaded_bags > current_balance:
+                messages.error(
+                    request, 
+                    f'Insufficient inventory! Available: {current_balance} bags, '
+                    f'Requested: {loading_record.loaded_bags} bags. '
+                    f'Please check current inventory levels.'
+                )
+                context = {
+                    'form': form,
+                    'title': 'New Loading Record',
+                    'submit_text': 'Save Loading Record',
+                    'help_text': 'Fill out this simple form to record a loading operation',
+                    'current_balance': current_balance,
+                    'inventory_warning': True
+                }
+                return render(request, 'godown/loadingrecord/form.html', context)
+            
             loading_record.save()
             
             messages.success(
                 request, 
                 f'Loading Record "{loading_record.loading_request_id}" has been created successfully! '
-                f'{loading_record.loaded_bags} bags loaded for {loading_record.dealer.name}.'
+                f'{loading_record.loaded_bags} bags loaded for {loading_record.dealer.name}. '
+                f'Remaining inventory: {current_balance - loading_record.loaded_bags} bags.'
             )
             return redirect('loading_record_detail', loading_request_id=loading_record.loading_request_id)
         else:
@@ -967,7 +993,7 @@ def loading_record_create(request):
 
 @login_required
 def loading_record_detail(request, loading_request_id):
-    """Display detailed view of a specific Loading Record"""
+    """Display detailed view of a Loading Record with ledger integration"""
     
     loading_record = get_object_or_404(LoadingRequest, loading_request_id=loading_request_id)
     
@@ -979,6 +1005,20 @@ def loading_record_detail(request, loading_request_id):
     # Calculate difference
     bags_difference = loading_record.loaded_bags - loading_record.requested_bags
     
+    # Get ledger entry for this loading record
+    from .models import GodownInventoryLedger
+    ledger_entry = GodownInventoryLedger.objects.filter(
+        source_loading_request=loading_record,
+        transaction_type='OUTWARD_LOADING'
+    ).first()
+    
+    # Get current inventory balance for this product at this godown
+    from .utils import LedgerCalculator
+    current_balance = LedgerCalculator.calculate_current_balance(
+        loading_record.godown, 
+        loading_record.product
+    )
+    
     # Get recent loading records for same dealer
     recent_records = LoadingRequest.objects.filter(
         dealer=loading_record.dealer
@@ -986,11 +1026,24 @@ def loading_record_detail(request, loading_request_id):
         'product', 'godown'
     ).order_by('-created_at')[:5]
     
+    # Get loading transactions summary for this product-godown combination (last 7 days)
+    from datetime import timedelta
+    week_ago = timezone.now().date() - timedelta(days=7)
+    loading_summary = LedgerCalculator.get_loading_transactions_summary(
+        godown=loading_record.godown,
+        product=loading_record.product,
+        start_date=week_ago,
+        end_date=timezone.now().date()
+    )
+    
     context = {
         'loading_record': loading_record,
         'completion_percentage': round(completion_percentage, 1),
         'bags_difference': bags_difference,
         'recent_records': recent_records,
+        'ledger_entry': ledger_entry,
+        'current_balance': current_balance,
+        'loading_summary': loading_summary,
         'title': f'Loading Record - {loading_record.loading_request_id}'
     }
     
@@ -999,7 +1052,7 @@ def loading_record_detail(request, loading_request_id):
 
 @login_required
 def loading_record_update(request, loading_request_id):
-    """Update an existing Loading Record"""
+    """Update an existing Loading Record with inventory validation"""
     
     loading_record = get_object_or_404(LoadingRequest, loading_request_id=loading_request_id)
     
@@ -1007,6 +1060,36 @@ def loading_record_update(request, loading_request_id):
         form = LoadingRecordForm(request.POST, instance=loading_record)
         if form.is_valid():
             updated_record = form.save(commit=False)
+            
+            # Validate inventory availability for changes
+            if updated_record.loaded_bags != loading_record.loaded_bags:
+                from .utils import LedgerCalculator
+                current_balance = LedgerCalculator.calculate_current_balance(
+                    updated_record.godown, 
+                    updated_record.product
+                )
+                
+                # Calculate the additional bags needed (if increase) or returned (if decrease)
+                bag_change = updated_record.loaded_bags - loading_record.loaded_bags
+                
+                if bag_change > 0 and bag_change > current_balance:
+                    messages.error(
+                        request, 
+                        f'Insufficient inventory for increase! Additional bags needed: {bag_change}, '
+                        f'Available: {current_balance} bags. '
+                        f'Please check current inventory levels.'
+                    )
+                    context = {
+                        'form': form,
+                        'loading_record': loading_record,
+                        'title': f'Update Loading Record - {loading_record.loading_request_id}',
+                        'submit_text': 'Update Record',
+                        'help_text': 'Make changes to this loading record',
+                        'current_balance': current_balance,
+                        'inventory_warning': True
+                    }
+                    return render(request, 'godown/loadingrecord/form.html', context)
+            
             updated_record.updated_at = timezone.now()
             updated_record.save()
             
@@ -1084,3 +1167,60 @@ def loading_record_dashboard(request):
     }
     
     return render(request, 'godown/loadingrecord/dashboard.html', context)
+
+
+@login_required
+@csrf_exempt
+def check_inventory_availability(request):
+    """AJAX endpoint to check available inventory for loading operations"""
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            godown_id = data.get('godown_id')
+            product_id = data.get('product_id')
+            requested_bags = int(data.get('requested_bags', 0))
+            
+            if not godown_id or not product_id:
+                return JsonResponse({'success': False, 'error': 'Godown and product are required'})
+            
+            from .models import GodownLocation
+            from sylvia.models import Product
+            from .utils import LedgerCalculator
+            
+            godown = GodownLocation.objects.get(pk=godown_id)
+            product = Product.objects.get(pk=product_id)
+            
+            # Get current balance
+            current_balance = LedgerCalculator.calculate_current_balance(godown, product)
+            
+            # Check availability
+            is_available = requested_bags <= current_balance
+            remaining_after_load = current_balance - requested_bags if is_available else current_balance
+            
+            # Get recent loading activity for context
+            from datetime import timedelta
+            week_ago = timezone.now().date() - timedelta(days=7)
+            loading_summary = LedgerCalculator.get_loading_transactions_summary(
+                godown=godown,
+                product=product,
+                start_date=week_ago,
+                end_date=timezone.now().date()
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'current_balance': current_balance,
+                'requested_bags': requested_bags,
+                'is_available': is_available,
+                'remaining_after_load': remaining_after_load,
+                'shortage': max(0, requested_bags - current_balance),
+                'weekly_loaded': loading_summary['loading_stats'].get('total_loaded_bags', 0),
+                'godown_name': godown.name,
+                'product_name': product.name
+            })
+            
+        except (ValueError, json.JSONDecodeError, GodownLocation.DoesNotExist, Product.DoesNotExist) as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})

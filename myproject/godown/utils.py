@@ -3,15 +3,15 @@ Utility functions for inventory ledger calculations, balance management, and var
 Provides centralized business logic for audit and reporting functions.
 """
 
-from django.db.models import Sum, Q, F, Max
+from django.db.models import Sum, Max, Count
 from django.utils import timezone
-from datetime import datetime, date, timedelta
+from datetime import timedelta
 from decimal import Decimal
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 
 from .models import (
     GodownInventoryLedger, GodownDailyBalance, InventoryVariance,
-    GodownLocation, GodownInventory, LedgerBatchMapping
+    GodownLocation, GodownInventory, LoadingRequest
 )
 
 
@@ -174,6 +174,67 @@ class LedgerCalculator:
             'requires_investigation': abs(variance) > 5,  # Tolerance of 5 bags
             'validation_timestamp': timezone.now()
         }
+    
+    @classmethod
+    def get_loading_transactions_summary(cls, godown=None, product=None, start_date=None, end_date=None) -> Dict:
+        """
+        Get summary of loading transactions (LoadingRequest) for analysis.
+        Provides detailed breakdown of loading activities.
+        """
+        filters = {'transaction_type': 'OUTWARD_LOADING', 'entry_status__in': ['CONFIRMED', 'SYSTEM_GENERATED']}
+        
+        if godown:
+            filters['godown'] = godown
+        if product:
+            filters['product'] = product
+        if start_date:
+            filters['transaction_date__date__gte'] = start_date
+        if end_date:
+            filters['transaction_date__date__lte'] = end_date
+        
+        loading_entries = GodownInventoryLedger.objects.filter(**filters)
+        
+        # Get related LoadingRequest data
+        loading_requests = LoadingRequest.objects.filter(
+            id__in=loading_entries.values_list('source_loading_request_id', flat=True)
+        ).select_related('dealer', 'product', 'godown', 'supervised_by')
+        
+        # Aggregate statistics
+        loading_stats = loading_entries.aggregate(
+            total_loaded_bags=Sum('outward_quantity'),
+        )
+        loading_stats['total_transactions'] = loading_entries.count()
+        loading_stats['total_loaded_bags'] = loading_stats['total_loaded_bags'] or 0
+        
+        request_stats = loading_requests.aggregate(
+            total_requested_bags=Sum('requested_bags'),
+            total_loaded_bags=Sum('loaded_bags'),
+        )
+        request_stats['total_requests'] = loading_requests.count()
+        request_stats['total_requested_bags'] = request_stats['total_requested_bags'] or 0
+        request_stats['total_loaded_bags'] = request_stats['total_loaded_bags'] or 0
+        
+        # Calculate completion rate
+        completion_rate = 0
+        if request_stats['total_requested_bags'] > 0 and request_stats['total_loaded_bags'] > 0:
+            completion_rate = (request_stats['total_loaded_bags'] / request_stats['total_requested_bags']) * 100
+        
+        # Top dealers by loading volume
+        top_dealers = loading_requests.values(
+            'dealer__name', 'dealer__code'
+        ).annotate(
+            total_loaded=Sum('loaded_bags'),
+            request_count=Count('id')
+        ).order_by('-total_loaded')[:5]
+        
+        return {
+            'period': {'start_date': start_date, 'end_date': end_date},
+            'loading_stats': loading_stats,
+            'request_stats': request_stats,
+            'completion_rate': round(completion_rate, 1),
+            'top_dealers': list(top_dealers),
+            'analysis_timestamp': timezone.now()
+        }
 
 
 class DailyBalanceManager:
@@ -192,7 +253,7 @@ class DailyBalanceManager:
             balance_date = timezone.now().date()
         
         # Check if balance already exists
-        existing_balance, created = GodownDailyBalance.objects.get_or_create(
+        existing_balance, _ = GodownDailyBalance.objects.get_or_create(
             godown=godown,
             product=product,
             balance_date=balance_date,
@@ -503,7 +564,7 @@ class VarianceDetector:
 def get_inventory_audit_summary(godown=None, product=None, date_range_days=30) -> Dict:
     """
     Generate comprehensive audit summary for management reporting.
-    Provides executive dashboard view of inventory health.
+    Provides executive dashboard view of inventory health including loading operations.
     """
     end_date = timezone.now().date()
     start_date = end_date - timedelta(days=date_range_days)
@@ -521,6 +582,14 @@ def get_inventory_audit_summary(godown=None, product=None, date_range_days=30) -
         total_transactions=transactions.count(),
         total_inward=Sum('inward_quantity'),
         total_outward=Sum('outward_quantity') 
+    )
+    
+    # Loading operations summary
+    loading_summary = LedgerCalculator.get_loading_transactions_summary(
+        godown=godown, 
+        product=product, 
+        start_date=start_date, 
+        end_date=end_date
     )
     
     # Current balances
@@ -547,6 +616,7 @@ def get_inventory_audit_summary(godown=None, product=None, date_range_days=30) -
             'product': product.name if product else 'All Products'
         },
         'transaction_summary': transaction_summary,
+        'loading_summary': loading_summary,
         'current_balance': current_balance,
         'system_integrity': {
             'is_balanced': integrity_check['is_balanced'],

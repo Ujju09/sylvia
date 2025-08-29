@@ -262,13 +262,14 @@ class OrderInTransitForm(forms.ModelForm):
             # Generate a unique dispatch ID based on godown code and timestamp
             timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
             godown_code = instance.godown.code if instance.godown else 'GD'
-            instance.dispatch_id = f"TXN-{godown_code}-{timestamp}"
+            instance.dispatch_id = f"TXN{godown_code}-{timestamp}"
 
         if commit:
             try:
                 with transaction.atomic():
-                   
+                    print("Saving OrderInTransit instance...")
                     
+
                     # Set created_by user if provided and this is a new instance
                     if self.user and is_new:
                         instance.created_by = self.user

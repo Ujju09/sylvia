@@ -12,8 +12,10 @@ from django.db import transaction
 
 from .models import (
     OrderInTransit, LoadingRequest, CrossoverRecord, DeliveryChallan,
-    GodownInventoryLedger, GodownInventory, LedgerBatchMapping, GodownDailyBalance
+    GodownInventoryLedger, GodownInventory, LedgerBatchMapping, GodownDailyBalance,
+    InventoryVariance
 )
+
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

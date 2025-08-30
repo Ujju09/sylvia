@@ -2,969 +2,174 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Page Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="fas fa-box text-primary"></i>
-                        Godown Inventory
-                    </h2>
-                    <p class="text-muted mb-0">Manage inventory</p>
-                </div>
-                <div>
-                    <a href="{% url 'godown_inventory_create' %}" class="btn btn-success btn-lg me-2">
-                        <i class="fas fa-plus"></i>
-                        New Inventory Item
-                    </a>
-                    <a href="{% url 'godown_inventory_dashboard' %}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-chart-bar"></i>
-                        Dashboard
-                    </a>
-                </div>
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+
+<div class="simple-dashboard-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h3 class="dashboard-title">
+                <i class="fas fa-boxes"></i>
+                Godown Inventory
+            </h3>
+            <div class="header-meta">
+                <a href="{% url 'godown_inventory_create' %}" class="btn-view-details">
+                    <i class="fas fa-plus"></i>
+                    New Inventory
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- Enhanced Status Dashboard Cards -->
-    <div class="status-dashboard mb-4">
-        <div class="row g-3">
-            <div class="col-lg-3 col-md-6">
-                <div class="dashboard-card card-hover h-100" data-status="all">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="status-icon me-3">
-                            <i class="fas fa-clipboard-list fa-2x text-primary"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="status-count h2 mb-1 text-primary fw-bold">{{ summary_stats.total_records|default:0 }}</div>
-                            <div class="status-label text-muted mb-0">Total Inventory Records</div>
-                            <div class="status-trend small text-success mt-1">
-                                <i class="fas fa-arrow-up"></i> Active tracking
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="dashboard-card card-hover h-100 cursor-pointer" data-status="ACTIVE">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="status-icon me-3">
-                            <i class="fas fa-check-circle fa-2x text-success"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="status-count h2 mb-1 text-success fw-bold">
-                                {% for status in status_counts %}
-                                    {% if status.status == 'ACTIVE' %}{{ status.count }}{% endif %}
-                                {% empty %}0{% endfor %}
-                            </div>
-                            <div class="status-label text-muted mb-0">Active Stock</div>
-                            <div class="status-trend small text-success mt-1">
-                                <i class="fas fa-check"></i> Ready for use
-                            </div>
-                        </div>
-                        <div class="quick-filter-btn" data-filter="ACTIVE">
-                            <i class="fas fa-filter text-muted"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="dashboard-card card-hover h-100 cursor-pointer" data-status="RESERVED">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="status-icon me-3">
-                            <i class="fas fa-clock fa-2x text-warning"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="status-count h2 mb-1 text-warning fw-bold">
-                                {% for status in status_counts %}
-                                    {% if status.status == 'RESERVED' %}{{ status.count }}{% endif %}
-                                {% empty %}0{% endfor %}
-                            </div>
-                            <div class="status-label text-muted mb-0">Reserved</div>
-                            <div class="status-trend small text-warning mt-1">
-                                <i class="fas fa-clock"></i> Reserved for loading
-                            </div>
-                        </div>
-                        <div class="quick-filter-btn" data-filter="RESERVED">
-                            <i class="fas fa-filter text-muted"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="dashboard-card card-hover h-100" data-status="total-bags">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="status-icon me-3">
-                            <i class="fas fa-boxes fa-2x text-info"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="status-count h2 mb-1 text-info fw-bold">{{ summary_stats.total_bags_available|default:0 }}</div>
-                            <div class="status-label text-muted mb-0">Available Bags</div>
-                            <div class="status-trend small text-info mt-1">
-                                <i class="fas fa-cubes"></i> Ready for dispatch
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Search Section -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-search"></i>
+                Search Inventory
+            </h2>
         </div>
+        
+        <form method="get" class="mb-4">
+            <div class="d-flex gap-3 flex-wrap">
+                <input type="text" 
+                       class="form-control" 
+                       name="q" 
+                       value="{{ search_query }}" 
+                       placeholder="Search by product or godown..." 
+                       style="flex: 2; min-width: 200px;">
+                
+                <select class="form-select" name="status" style="flex: 1; min-width: 150px;">
+                    <option value="">All Status</option>
+                    <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
+                    <option value="RESERVED" {% if status_filter == 'RESERVED' %}selected{% endif %}>Reserved</option>
+                    <option value="ALLOCATED" {% if status_filter == 'ALLOCATED' %}selected{% endif %}>Allocated</option>
+                    <option value="DAMAGED" {% if status_filter == 'DAMAGED' %}selected{% endif %}>Damaged</option>
+                </select>
+                
+                <button type="submit" class="btn-view-details">
+                    <i class="fas fa-search"></i>
+                    Search
+                </button>
+                
+                {% if search_query or status_filter %}
+                    <a href="?" class="btn-view-details" style="background: #6c757d;">
+                        <i class="fas fa-times"></i>
+                        Clear
+                    </a>
+                {% endif %}
+            </div>
+        </form>
     </div>
 
-    <!-- Enhanced Search and Filter Section -->
-    <div class="card filter-card mb-4">
-        <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 text-primary">
-                    <i class="fas fa-search me-2"></i>Search & Filter
-                </h6>
-                <div class="filter-actions">
-                    {% if search_query  or godown_filter %}
-                        <a href="?" class="btn btn-sm btn-outline-secondary me-2" title="Clear all filters">
-                            <i class="fas fa-times"></i> Clear
-                        </a>
-                    {% endif %}
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" 
-                            data-bs-target="#advancedFilters" aria-expanded="false">
-                        <i class="fas fa-sliders-h"></i> Advanced
-                    </button>
-                </div>
-            </div>
+    <!-- Inventory Grid -->
+    <div class="dashboard-section full-width">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-list"></i>
+                Inventory Records
+                {% if page_obj %}
+                    <small class="text-muted">({{ page_obj.paginator.count }} total)</small>
+                {% endif %}
+            </h2>
         </div>
-        <div class="card-body">
-            <form method="get" id="filterForm">
-                <!-- Quick Search Row -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            <input type="text" class="form-control" id="q" name="q" 
-                                   value="{{ search_query }}" 
-                                   placeholder="Search Godown, Product..."
-                                   autocomplete="off">
-                            {% if search_query %}
-                                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('q').value=''; this.form.submit();">
-                                    <i class="fas fa-times"></i>
-                                </button>
+        
+        {% if page_obj %}
+            <div class="inventory-cards-grid">
+                {% for inventory in page_obj %}
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">{{ inventory.product.name }}</h3>
+                        {% if inventory.status == 'ACTIVE' %}
+                            <span class="status-badge status-approved">Active</span>
+                        {% elif inventory.status == 'RESERVED' %}
+                            <span class="status-badge status-processing">Reserved</span>
+                        {% elif inventory.status == 'DAMAGED' %}
+                            <span class="status-badge status-cancelled">Damaged</span>
+                        {% elif inventory.status == 'ALLOCATED' %}
+                            <span class="status-badge status-in-transit">Allocated</span>
+                        {% else %}
+                            <span class="status-badge status-pending">{{ inventory.get_status_display }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-value">{{ inventory.godown.name }}</span>
+                            </div>
+                            <div class="stock-item">
+                                <span class="stock-label">Good Bags Received</span>
+                                <span class="stock-value good">{{ inventory.good_bags_available }}</span>
+                            </div>
+                            
+                            {% if inventory.received_date %}
+                            <div class="stock-item">
+                                <span class="stock-label">Received on {{ inventory.received_date|date:"M d, Y" }} </span>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <select class="form-select" id="product" name="product" onchange="updateFilterCount()">
-                            <option value="">All Products</option>
-                            {% for product in product_choices %}
-                                <option value="{{ product.id }}" {% if product.id|stringformat:"s" == product_filter %}selected{% endif %}>
-                                    {{ product.name }} ({{ product.code }})
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <select class="form-select" id="godown" name="godown" onchange="updateFilterCount()">
-                            <option value="">All Godowns</option>
-                            {% for godown in godown_choices %}
-                                <option value="{{ godown.id }}" {% if godown.id|stringformat:"s" == godown_filter %}selected{% endif %}>
-                                    {{ godown.name }} ({{ godown.code }})
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <select class="form-select" id="status" name="status" onchange="updateFilterCount()">
-                            <option value="">All Status</option>
-                            <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
-                            <option value="RESERVED" {% if status_filter == 'RESERVED' %}selected{% endif %}>Reserved</option>
-                            <option value="ALLOCATED" {% if status_filter == 'ALLOCATED' %}selected{% endif %}>Allocated</option>
-                            <option value="EXPIRED" {% if status_filter == 'EXPIRED' %}selected{% endif %}>Expired</option>
-                            <option value="DAMAGED" {% if status_filter == 'DAMAGED' %}selected{% endif %}>Damaged</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-search"></i> Search
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Advanced Filters (Collapsible) -->
-                <div class="collapse" id="advancedFilters">
-                    <div class="row g-3 p-3 bg-light rounded">
-                        <div class="col-md-3">
-                            <label for="date_from" class="form-label">From Date</label>
-                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="date_to" class="form-label">To Date</label>
-                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="has_issues" class="form-label">Issues Filter</label>
-                            <select class="form-select" id="has_issues" name="has_issues">
-                                <option value="">All Orders</option>
-                                <option value="damage">With Damage</option>
-                                <option value="shortage">With Shortage</option>
-                                <option value="excess">With Excess</option>
-                                <option value="crossover">Crossover Required</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="fas fa-filter"></i> Apply Filters
-                            </button>
+                    <div class="card-actions">
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'godown_inventory_detail' inventory.batch_id %}" 
+                               class="btn-view-details" style="flex: 1;">
+                                <i class="fas fa-eye"></i>
+                                View
+                            </a>
+                            <a href="{% url 'godown_inventory_update' inventory.batch_id %}" 
+                               class="btn-view-details" style="flex: 1; background: #ffc107; color: #000;">
+                                <i class="fas fa-edit"></i>
+                                Edit
+                            </a>
                         </div>
                     </div>
                 </div>
-            </form>
-            
-            <!-- Quick Filter Buttons -->
-            <div class="quick-filters mt-3">
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="badge bg-light text-dark me-2">Quick filters:</span>
-                    <button type="button" class="btn btn-sm btn-outline-success quick-filter-btn" data-filter="ACTIVE">
-                        <i class="fas fa-check-circle"></i> Active Stock
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-warning quick-filter-btn" data-filter="RESERVED">
-                        <i class="fas fa-clock"></i> Reserved
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-info quick-filter-btn" data-filter="today">
-                        <i class="fas fa-calendar-day"></i> Today
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger quick-filter-btn" data-filter="DAMAGED">
-                        <i class="fas fa-exclamation-triangle"></i> Damaged
-                    </button>
-                </div>
+                {% endfor %}
             </div>
-        </div>
-    </div>
 
-    <!-- Enhanced Orders Display -->
-    <div class="card orders-container">
-        <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 text-primary">
-                    <i class="fas fa-list me-2"></i>Inventory
-                    <span class="badge bg-primary ms-2">{{ page_obj.paginator.count }} total</span>
-                </h6>
-                <div class="view-controls">
-                    <div class="btn-group btn-group-sm" role="group" aria-label="View mode">
-                        <input type="radio" class="btn-check" name="view-mode" id="view-cards" checked>
-                        <label class="btn btn-outline-primary" for="view-cards" title="Card View">
-                            <i class="fas fa-th-large"></i>
-                        </label>
-                        <input type="radio" class="btn-check" name="view-mode" id="view-table">
-                        <label class="btn btn-outline-primary" for="view-table" title="Table View">
-                            <i class="fas fa-table"></i>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            {% if page_obj %}
-                <!-- Card View (Mobile-First) -->
-                <div id="cards-view" class="transit-cards p-3">
-                    <div class="row g-3">
-                        {% for inventory in page_obj %}
-                            <div class="col-lg-6 col-xl-4">
-                                <div class="transit-card card card-hover h-100" data-order-id="{{ inventory.batch_id }}">
-                                    <div class="card-body">
-                                        <!-- Header with Status -->
-                                        <div class="d-flex justify-content-between align-items-start mb-3">
-                                            <div class="order-id">
-                                                <h6 class="mb-1 text-primary fw-bold">{{ inventory.product.name }}</h6>
-                                            </div>
-                                            <div class="status-badge">
-                                                {% comment %} {% if inventory.status == 'IN_TRANSIT' %}
-                                                    <span class="badge bg-warning text-dark status-badge-lg">
-                                                        <i class="fas fa-truck me-1"></i>In Transit
-                                                    </span>
-                                                {% elif order.status == 'ARRIVED' %}
-                                                    <span class="badge bg-success status-badge-lg">
-                                                        <i class="fas fa-check-circle me-1"></i>Arrived
-                                                    </span>
-                                                {% elif order.status == 'CANCELLED' %}
-                                                    <span class="badge bg-danger status-badge-lg">
-                                                        <i class="fas fa-times-circle me-1"></i>Cancelled
-                                                    </span>
-                                                {% endif %} {% endcomment %}
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Godown Info -->
-                                        <div class="godown-info mb-3 p-2 bg-light rounded">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-warehouse text-primary me-2"></i>
-                                                <div>
-                                                    <strong>{{ inventory.godown.name }}</strong>
-                                                    <small class="text-muted d-block">{{ inventory.godown.code }}</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Bag Metrics -->
-                                        <div class="bag-metrics mb-3">
-                                            <div class="row g-2">
-                                                <div class="col-6">
-                                                    <div class="metric-box text-center p-2 border rounded">
-                                                        <div class="metric-value h5 mb-1 text-primary">{{ inventory.total_bags_received }}</div>
-                                                        <div class="metric-label small text-muted">Total Bags Received</div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="metric-box text-center p-2 border rounded">
-                                                        <div class="metric-value h5 mb-1">{{ inventory.good_bags_available }}</div>
-                                                        <div class="metric-label small text-muted">Good Bags</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Quality Breakdown -->
-                                            <div class="quality-breakdown mt-2">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <div class="quality-item">
-                                                        <span class="badge bg-success-subtle text-success">
-                                                            <i class="fas fa-check me-1"></i>{{ inventory.good_bags_available }} Good
-                                                        </span>
-                                                    </div>
-                                                    <div class="quality-item">
-                                                        <span class="badge bg-danger-subtle text-danger">
-                                                            <i class="fas fa-times me-1"></i>{{ inventory.damaged_bags }} Damaged
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Arrival Info -->
-                                        <div class="arrival-info mb-3 p-2 bg-light rounded">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-calendar-alt text-muted me-2"></i>
-                                                <div>
-                                                    {% if inventory.received_date %}
-                                                        <strong>{{ inventory.received_date|date:"M d, Y" }}</strong>
-                                                        <small class="text-muted d-block">{{ inventory.received_date|time:"g:i A" }}</small>
-                                                    {% else %}
-                                                        <span class="text-muted">Not received yet</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Action Buttons -->
-                                        <div class="card-actions d-grid gap-2 d-md-flex">
-                                            <a href="{% url 'godown_inventory_detail' inventory.batch_id %}" 
-                                               class="btn btn-primary btn-sm flex-fill">
-                                                <i class="fas fa-eye me-1"></i>View Details
-                                            </a>
-                                            <a href="{% url 'godown_inventory_update' inventory.batch_id %}" 
-                                               class="btn btn-warning btn-sm flex-fill">
-                                                <i class="fas fa-edit me-1"></i>Edit
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                
-                <!-- Table View (Desktop) -->
-                <div id="table-view" class="table-responsive" style="display: none;">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-dark sticky-top">
-                            <tr>
-                                <th>Batch ID</th>
-                                <th>Product</th>
-                                <th>Godown</th>
-                                <th>Status</th>
-                                <th>Total Bags</th>
-                                <th>Good/Damaged</th>
-                                <th>Received Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for inventory in page_obj %}
-                                <tr class="table-row-hover" data-inventory-id="{{ inventory.batch_id }}">
-                                    <td>
-                                        <strong class="text-primary">{{ inventory.batch_id }}</strong>
-                                        {% if inventory.storage_location %}
-                                            <br><small class="text-muted">{{ inventory.storage_location }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <strong>{{ inventory.product.name }}</strong>
-                                        {% if inventory.product.code %}
-                                            <br><small class="text-muted">Code: {{ inventory.product.code }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <strong>{{ inventory.godown.name }}</strong>
-                                        <br><small class="text-muted">{{ inventory.godown.code }} - {{ inventory.godown.city }}</small>
-                                    </td>
-                                    <td>
-                                        {% if inventory.status == 'ACTIVE' %}
-                                            <span class="badge bg-success fs-6">
-                                                <i class="fas fa-check-circle"></i> Active
-                                            </span>
-                                        {% elif inventory.status == 'RESERVED' %}
-                                            <span class="badge bg-warning text-dark fs-6">
-                                                <i class="fas fa-clock"></i> Reserved
-                                            </span>
-                                        {% elif inventory.status == 'DAMAGED' %}
-                                            <span class="badge bg-danger fs-6">
-                                                <i class="fas fa-exclamation-triangle"></i> Damaged
-                                            </span>
-                                        {% elif inventory.status == 'ALLOCATED' %}
-                                            <span class="badge bg-info fs-6">
-                                                <i class="fas fa-truck"></i> Allocated
-                                            </span>
-                                        {% else %}
-                                            <span class="badge bg-secondary fs-6">{{ inventory.get_status_display }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="h6 text-primary quantity-display">{{ inventory.total_bags_received }}</span>
-                                        {% if inventory.good_bags_reserved > 0 %}
-                                            <br><small class="text-warning">
-                                                <i class="fas fa-lock"></i> {{ inventory.good_bags_reserved }} reserved
-                                            </small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="text-success fw-bold">{{ inventory.good_bags_available }}</span> / 
-                                        <span class="text-danger fw-bold">{{ inventory.damaged_bags }}</span>
-                                        {% if inventory.damaged_bags > 0 %}
-                                            {% with damage_percent=inventory.damaged_bags|floatformat:0|add:0 total_percent=inventory.total_bags_received|floatformat:0|add:0 %}
-                                                {% if total_percent > 0 %}
-                                                    {% widthratio damage_percent total_percent 100 as damage_rate %}
-                                                    <br><small class="text-danger">
-                                                        <i class="fas fa-exclamation-triangle"></i> {{ damage_rate }}% damage
-                                                    </small>
-                                                {% endif %}
-                                            {% endwith %}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if inventory.received_date %}
-                                            {{ inventory.received_date|date:"M d, Y" }}
-                                            <br><small class="text-muted">{{ inventory.received_date|time:"g:i A" }}</small>
-                                        {% else %}
-                                            <span class="text-muted">Not received</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{% url 'godown_inventory_detail' inventory.batch_id %}" 
-                                               class="btn btn-sm btn-outline-primary" title="View Details">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{% url 'godown_inventory_update' inventory.batch_id %}" 
-                                               class="btn btn-sm btn-outline-warning" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            {% if inventory.order_in_transit %}
-                                                <a href="{% url 'orderintransit_detail' inventory.order_in_transit.dispatch_id %}" 
-                                                   class="btn btn-sm btn-outline-info" title="View Transit Order">
-                                                    <i class="fas fa-truck"></i>
-                                                </a>
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
-                {% if page_obj.has_other_pages %}
-                    <nav aria-label="Page navigation" class="mt-4">
-                        <ul class="pagination justify-content-center">
+            <!-- Simple Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-center mt-4">
+                    <nav>
+                        <ul class="pagination">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.previous_page_number }}">
-                                        Previous
-                                    </a>
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
                                 </li>
                             {% endif %}
-
-                            {% for num in page_obj.paginator.page_range %}
-                                {% if page_obj.number == num %}
-                                    <li class="page-item active">
-                                        <span class="page-link">{{ num }}</span>
-                                    </li>
-                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ num }}">{{ num }}</a>
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-
+                            
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_obj.number }}</span>
+                            </li>
+                            
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.next_page_number }}">
-                                        Next
-                                    </a>
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
                                 </li>
                             {% endif %}
                         </ul>
                     </nav>
-                {% endif %}
-
-            {% else %}
-                <div class="empty-state text-center py-5">
-                    <div class="empty-icon mb-4">
-                        <i class="fas fa-truck-loading fa-4x text-muted"></i>
-                    </div>
-                    <h4 class="text-muted mb-2">No Inventory Records Found</h4>
-                    {% if search_query or status_filter or godown_filter or date_from or date_to %}
-                        <p class="text-muted mb-3">No inventory match your current filters. Try adjusting your search criteria.</p>
-                        <div class="d-flex justify-content-center gap-2">
-                            <a href="?" class="btn btn-outline-secondary">
-                                <i class="fas fa-times"></i> Clear Filters
-                            </a>
-                            <a href="{% url 'godown_inventory_create' %}" class="btn btn-success">
-                                <i class="fas fa-plus"></i> Create Inventory Record
-                            </a>
-                        </div>
-                    {% else %}
-                        <p class="text-muted mb-3">Create your first inventory record to get started.</p>
-                        <a href="{% url 'godown_inventory_create' %}" class="btn btn-success btn-lg">
-                            <i class="fas fa-plus me-2"></i>Create First Inventory Record
-                        </a>
-                    {% endif %}
                 </div>
             {% endif %}
-        </div>
+
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-boxes"></i>
+                <p>No inventory records found</p>
+                {% if search_query or status_filter %}
+                    <a href="?" class="btn-view-details mt-3">
+                        <i class="fas fa-times"></i>
+                        Clear Filters
+                    </a>
+                {% else %}
+                    <a href="{% url 'godown_inventory_create' %}" class="btn-view-details mt-3">
+                        <i class="fas fa-plus"></i>
+                        Create First Record
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<style>
-/* Enhanced UX Styles for Transit Interface */
-
-/* Dashboard Cards */
-.status-dashboard .dashboard-card {
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.status-dashboard .dashboard-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.status-dashboard .dashboard-card[data-status="IN_TRANSIT"] {
-    border-left: 4px solid #f39c12;
-}
-
-.status-dashboard .dashboard-card[data-status="ARRIVED"] {
-    border-left: 4px solid #27ae60;
-}
-
-.status-icon {
-    opacity: 0.8;
-}
-
-.status-count {
-    font-family: 'SF Pro Display', system-ui, -apple-system, sans-serif;
-    font-weight: 700;
-}
-
-.status-trend {
-    font-size: 0.75rem;
-    opacity: 0.8;
-}
-
-.quick-filter-btn {
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.dashboard-card:hover .quick-filter-btn {
-    opacity: 1;
-}
-
-.cursor-pointer {
-    cursor: pointer;
-}
-
-/* Enhanced Filter Section */
-.filter-card {
-    border: 1px solid #e3e6ea;
-    box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.05);
-}
-
-.filter-actions .btn {
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-}
-
-.quick-filters {
-    border-top: 1px solid #e9ecef;
-    padding-top: 1rem;
-}
-
-.quick-filter-btn {
-    transition: all 0.2s ease;
-    border-radius: 20px;
-}
-
-.quick-filter-btn:hover {
-    transform: scale(1.05);
-}
-
-.quick-filter-btn.active {
-    background-color: var(--bs-primary) !important;
-    border-color: var(--bs-primary) !important;
-    color: white !important;
-}
-
-/* Transit Cards */
-.transit-card {
-    border: 1px solid #e3e6ea;
-    border-radius: 0.5rem;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.transit-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.12);
-    border-color: #0d6efd;
-}
-
-.transit-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: linear-gradient(180deg, #0d6efd, #6610f2);
-    border-radius: 0 0.25rem 0.25rem 0;
-}
-
-.status-badge-lg {
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem;
-}
-
-.metric-box {
-    transition: all 0.2s ease;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-}
-
-.metric-box:hover {
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-    transform: translateY(-1px);
-}
-
-.metric-value {
-    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
-    font-weight: 700;
-}
-
-.metric-alert {
-    animation: pulse 2s infinite;
-}
-
-.quality-breakdown .badge {
-    font-size: 0.75rem;
-    padding: 0.4rem 0.6rem;
-}
-
-.card-actions .btn {
-    border-radius: 0.375rem;
-    font-weight: 500;
-}
-
-/* Table Enhancements */
-.table-row-hover {
-    transition: all 0.2s ease;
-}
-
-.table-row-hover:hover {
-    background-color: rgba(13, 110, 253, 0.08) !important;
-    transform: scale(1.01);
-}
-
-.quantity-display {
-    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
-    font-weight: 600;
-}
-
-.sticky-top {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-/* View Controls */
-.view-controls .btn-check:checked + .btn-outline-primary {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-    color: white;
-}
-
-/* Empty State */
-.empty-state {
-    padding: 4rem 2rem;
-}
-
-.empty-icon {
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-/* Responsive Design Enhancements */
-@media (max-width: 768px) {
-    .status-dashboard .card-body {
-        padding: 1rem;
-    }
-    
-    .status-count {
-        font-size: 1.5rem;
-    }
-    
-    .filter-card .card-body {
-        padding: 1rem;
-    }
-    
-    .quick-filters {
-        text-align: center;
-    }
-    
-    .quick-filters .d-flex {
-        justify-content: center;
-    }
-    
-    .transit-card {
-        margin-bottom: 1rem;
-    }
-    
-    .metric-box {
-        margin-bottom: 0.5rem;
-    }
-    
-    .card-actions .btn {
-        font-size: 0.875rem;
-    }
-    
-    .view-controls {
-        display: none !important;
-    }
-    
-    #table-view {
-        display: none !important;
-    }
-    
-    #cards-view {
-        display: block !important;
-    }
-}
-
-@media (min-width: 769px) {
-    .transit-cards .col-xl-4:nth-child(3n+1) .transit-card {
-        border-left-color: #0d6efd;
-    }
-    
-    .transit-cards .col-xl-4:nth-child(3n+2) .transit-card {
-        border-left-color: #6610f2;
-    }
-    
-    .transit-cards .col-xl-4:nth-child(3n+3) .transit-card {
-        border-left-color: #20c997;
-    }
-}
-
-/* Badge Variants */
-.bg-success-subtle { background-color: rgba(25, 135, 84, 0.1); border: 1px solid rgba(25, 135, 84, 0.2); }
-.bg-danger-subtle { background-color: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.2); }
-.bg-info-subtle { background-color: rgba(13, 202, 240, 0.1); border: 1px solid rgba(13, 202, 240, 0.2); }
-.text-success { color: #198754 !important; }
-.text-danger { color: #dc3545 !important; }
-.text-info { color: #0dcaf0 !important; }
-
-/* Loading States */
-.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 2rem;
-    height: 2rem;
-    margin: -1rem 0 0 -1rem;
-    border: 2px solid #f3f4f6;
-    border-top: 2px solid #0d6efd;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-</style>
-
-<!-- Enhanced JavaScript -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // View Toggle Functionality
-    const cardViewBtn = document.getElementById('view-cards');
-    const tableViewBtn = document.getElementById('view-table');
-    const cardsView = document.getElementById('cards-view');
-    const tableView = document.getElementById('table-view');
-    
-    // Load saved view preference
-    const savedView = localStorage.getItem('inventory-view-mode') || 'cards';
-    if (savedView === 'table') {
-        tableViewBtn.checked = true;
-        cardsView.style.display = 'none';
-        tableView.style.display = 'block';
-    }
-    
-    cardViewBtn.addEventListener('change', function() {
-        if (this.checked) {
-            cardsView.style.display = 'block';
-            tableView.style.display = 'none';
-            localStorage.setItem('inventory-view-mode', 'cards');
-        }
-    });
-    
-    tableViewBtn.addEventListener('change', function() {
-        if (this.checked) {
-            cardsView.style.display = 'none';
-            tableView.style.display = 'block';
-            localStorage.setItem('inventory-view-mode', 'table');
-        }
-    });
-    
-    // Dashboard Card Quick Filters
-    document.querySelectorAll('.dashboard-card[data-status]').forEach(card => {
-        card.addEventListener('click', function() {
-            const status = this.dataset.status;
-            if (status === 'ACTIVE' || status === 'RESERVED') {
-                const statusSelect = document.getElementById('status');
-                statusSelect.value = status;
-                document.getElementById('filterForm').submit();
-            }
-        });
-    });
-    
-    // Quick Filter Buttons
-    document.querySelectorAll('.quick-filter-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const filter = this.dataset.filter;
-            const form = document.getElementById('filterForm');
-            
-            // Reset form first
-            form.reset();
-            
-            switch(filter) {
-                case 'ACTIVE':
-                case 'RESERVED':
-                case 'DAMAGED':
-                    document.getElementById('status').value = filter;
-                    break;
-                case 'today':
-                    const today = new Date().toISOString().split('T')[0];
-                    document.getElementById('date_from').value = today;
-                    document.getElementById('date_to').value = today;
-                    break;
-                case 'issues':
-                    document.getElementById('has_issues').value = 'damage';
-                    break;
-            }
-            
-            // Add active class
-            document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            form.submit();
-        });
-    });
-    
-    // Auto-submit search after typing (debounced)
-    let searchTimeout;
-    const searchInput = document.getElementById('q');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                if (this.value.length >= 3 || this.value.length === 0) {
-                    document.getElementById('filterForm').submit();
-                }
-            }, 500);
-        });
-    }
-    
-    // Loading state for form submissions
-    document.getElementById('filterForm').addEventListener('submit', function() {
-        document.body.classList.add('loading');
-        document.querySelector('.orders-container').style.opacity = '0.6';
-    });
-    
-    // Card hover effects
-    document.querySelectorAll('.transit-card').forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-4px)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
-    
-    // Initialize tooltips if Bootstrap is available
-    if (typeof bootstrap !== 'undefined') {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    }
-    
-    // Update filter count (placeholder for future implementation)
-    window.updateFilterCount = function() {
-        // This can be implemented to show live filter counts
-        console.log('Filter updated');
-    };
-});
-</script>
-{% endblock %}
-
-{% block extra_js %}
-<!-- Additional JavaScript for enhanced functionality -->
-<script>
-// Real-time updates (WebSocket integration placeholder)
-if ('WebSocket' in window) {
-    // This can be implemented for real-time order status updates
-    console.log('WebSocket supported - ready for real-time updates');
-}
-
-// Progressive Web App features
-if ('serviceWorker' in navigator) {
-    // Service worker registration for offline support
-    console.log('Service Worker supported - ready for PWA features');
-}
-</script>
 {% endblock %}

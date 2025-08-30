@@ -2,84 +2,84 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Mobile-First Page Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-                <div class="header-info">
-                    <h2 class="mb-1 d-flex align-items-center">
-                        <i class="fas fa-dolly-flatbed text-primary me-2"></i>
-                        Loading Records
-                    </h2>
-                    <p class="text-muted mb-0">Track all warehouse loading operations</p>
-                </div>
-                <div class="header-actions">
-                    <a href="{% url 'loading_record_create' %}" class="btn btn-success btn-lg shadow-sm">
-                        <i class="fas fa-plus-circle me-2"></i>
-                        New Loading Record
-                    </a>
-                </div>
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+<div class="simple-dashboard-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">
+                <i class="fas fa-dolly-flatbed"></i>
+                Loading Records
+            </h1>
+            <div class="header-meta">
+                <a href="{% url 'loading_record_create' %}" class="btn-view-details">
+                    <i class="fas fa-plus-circle"></i> New Record
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- Simple Dashboard Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center p-3">
-                    <div class="display-6 text-primary fw-bold mb-2">{{ summary_stats.total_records|default:0 }}</div>
-                    <div class="small text-muted">Total Records</div>
+    <div class="dashboard-grid">
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Summary
+                </h2>
+            </div>
+            <div class="inventory-cards-grid">
+                <div class="metric-card metric-card--info">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.total_records|default:0 }}</div>
+                        </div>
+                        <div class="stat-label">Total Records</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-card--normal">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.total_requested_bags|default:0 }}</div>
+                        </div>
+                        <div class="stat-label">Bags Requested</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-card--normal">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.total_loaded_bags|default:0 }}</div>
+                        </div>
+                        <div class="stat-label">Bags Loaded</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-card--warning">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.completion_percentage|default:0 }}%</div>
+                        </div>
+                        <div class="stat-label">Completion</div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center p-3">
-                    <div class="display-6 text-info fw-bold mb-2">{{ summary_stats.total_requested_bags|default:0 }}</div>
-                    <div class="small text-muted">Bags Requested</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center p-3">
-                    <div class="display-6 text-success fw-bold mb-2">{{ summary_stats.total_loaded_bags|default:0 }}</div>
-                    <div class="small text-muted">Bags Loaded</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center p-3">
-                    <div class="display-6 text-warning fw-bold mb-2">{{ summary_stats.completion_percentage|default:0 }}%</div>
-                    <div class="small text-muted">Completion</div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Simple Search and Filter -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-light border-0">
-            <h6 class="mb-0 text-primary">
-                <i class="fas fa-search me-2"></i>Search & Filter
-            </h6>
-        </div>
-        <div class="card-body">
-            <form method="get" id="filterForm">
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-search"></i>
+                    Search & Filter
+                </h2>
+            </div>
+            <form method="get" class="form-section">
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
                         <label for="q" class="form-label">Search</label>
-                        <input type="text" class="form-control form-control-lg" id="q" name="q" 
+                        <input type="text" class="form-control" id="q" name="q" 
                                value="{{ search_query }}" 
-                               placeholder="Search records, dealers, products..."
-                               autocomplete="off">
+                               placeholder="Search records...">
                     </div>
                     <div class="col-6 col-md-3">
                         <label for="godown" class="form-label">Warehouse</label>
-                        <select class="form-select form-select-lg" id="godown" name="godown">
+                        <select class="form-select" id="godown" name="godown">
                             <option value="">All Warehouses</option>
                             {% for godown in godown_choices %}
                                 <option value="{{ godown.id }}" {% if godown.id|stringformat:"s" == godown_filter %}selected{% endif %}>
@@ -90,7 +90,7 @@
                     </div>
                     <div class="col-6 col-md-3">
                         <label for="dealer" class="form-label">Customer</label>
-                        <select class="form-select form-select-lg" id="dealer" name="dealer">
+                        <select class="form-select" id="dealer" name="dealer">
                             <option value="">All Customers</option>
                             {% for dealer in dealer_choices %}
                                 <option value="{{ dealer.id }}" {% if dealer.id|stringformat:"s" == dealer_filter %}selected{% endif %}>
@@ -100,156 +100,125 @@
                         </select>
                     </div>
                     <div class="col-12 col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-search"></i> Search
                         </button>
                     </div>
                 </div>
             </form>
         </div>
-    </div>
 
-    <!-- Mobile-First Records Display -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light border-0">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 text-primary">
-                    <i class="fas fa-list me-2"></i>Loading Records
-                    <span class="badge bg-primary ms-2">{{ page_obj.paginator.count }} total</span>
-                </h6>
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-list"></i>
+                    Records <span class="badge bg-primary ms-2">{{ page_obj.paginator.count }} total</span>
+                </h2>
             </div>
-        </div>
-        <div class="card-body p-0">
+            
             {% if page_obj %}
-                <!-- Mobile-First Card View -->
-                <div class="loading-records">
-                    {% for record in page_obj %}
-                        <div class="record-card border-bottom p-3 p-md-4" data-record-id="{{ record.loading_request_id }}">
-                            <!-- Header Row -->
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div class="record-header">
-                                    <h6 class="text-primary fw-bold mb-1">{{ record.loading_request_id }}</h6>
-                                    <small class="text-muted">{{ record.created_at|date:"M d, Y g:i A" }}</small>
-                                </div>
-                                <div class="record-status">
-                                    {% if record.loaded_bags >= record.requested_bags %}
-                                        <span class="badge bg-success fs-6">
-                                            <i class="fas fa-check-circle"></i> Complete
-                                        </span>
-                                    {% elif record.loaded_bags > 0 %}
-                                        <span class="badge bg-warning text-dark fs-6">
-                                            <i class="fas fa-clock"></i> Partial
-                                        </span>
-                                    {% else %}
-                                        <span class="badge bg-secondary fs-6">
-                                            <i class="fas fa-hourglass-start"></i> Pending
-                                        </span>
-                                    {% endif %}
-                                </div>
+                {% for record in page_obj %}
+                    <div class="widget-card">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h4 class="mb-1">{{ record.loading_request_id }}</h4>
+                                <small class="text-muted">{{ record.created_at|date:"M d, Y g:i A" }}</small>
                             </div>
-                            
-                            <!-- Main Info Row -->
-                            <div class="row g-3 mb-3">
-                                <div class="col-12 col-md-6">
-                                    <div class="info-item d-flex align-items-center">
-                                        <i class="fas fa-warehouse text-primary me-2"></i>
-                                        <div>
-                                            <strong>{{ record.godown.name }}</strong>
-                                            <small class="text-muted d-block">{{ record.godown.code }}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="info-item d-flex align-items-center">
-                                        <i class="fas fa-store text-success me-2"></i>
-                                        <div>
-                                            <strong>{{ record.dealer.name }}</strong>
-                                            <small class="text-muted d-block">{{ record.dealer.code }}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Product and Quantities -->
-                            <div class="product-info mb-3 p-3 bg-light rounded">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-cubes text-info me-2"></i>
-                                    <strong>{{ record.product.name }}</strong>
-                                </div>
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <div class="quantity-box text-center p-2 border rounded bg-white">
-                                            <div class="quantity-value h5 mb-1 text-primary">{{ record.requested_bags }}</div>
-                                            <div class="quantity-label small text-muted">Requested</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="quantity-box text-center p-2 border rounded bg-white">
-                                            <div class="quantity-value h5 mb-1 text-success">{{ record.loaded_bags }}</div>
-                                            <div class="quantity-label small text-muted">Loaded</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Progress Bar -->
-                                {% if record.requested_bags > 0 %}
-                                    {% widthratio record.loaded_bags record.requested_bags 100 as completion %}
-                                    <div class="progress mt-2" style="height: 8px;">
-                                        <div class="progress-bar {% if completion == 100 %}bg-success{% elif completion > 0 %}bg-warning{% else %}bg-secondary{% endif %}" 
-                                             role="progressbar" style="width: {{ completion }}%"></div>
-                                    </div>
-                                    <small class="text-muted">{{ completion }}% Complete</small>
+                            <div>
+                                {% if record.loaded_bags >= record.requested_bags %}
+                                    <span class="status-badge status-completed">Complete</span>
+                                {% elif record.loaded_bags > 0 %}
+                                    <span class="status-badge status-loading_in_progress">Partial</span>
+                                {% else %}
+                                    <span class="status-badge status-pending">Pending</span>
                                 {% endif %}
                             </div>
-                            
-                            <!-- Supervisor Info -->
-                            {% if record.supervised_by %}
-                                <div class="supervisor-info mb-3">
-                                    <small class="text-muted">
-                                        <i class="fas fa-user-check me-1"></i>
-                                        Supervised by: <strong>{{ record.supervised_by.get_full_name|default:record.supervised_by.username }}</strong>
-                                    </small>
+                        </div>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-warehouse text-primary me-2"></i>
+                                    <div>
+                                        <strong>{{ record.godown.name }}</strong>
+                                        <small class="text-muted d-block">{{ record.godown.code }}</small>
+                                    </div>
                                 </div>
-                            {% endif %}
-                            
-                            <!-- Action Buttons -->
-                            <div class="record-actions d-grid gap-2 d-md-flex">
-                                <a href="{% url 'loading_record_detail' record.loading_request_id %}" 
-                                   class="btn btn-outline-primary btn-sm flex-fill">
-                                    <i class="fas fa-eye me-1"></i>View Details
-                                </a>
-                                <a href="{% url 'loading_record_update' record.loading_request_id %}" 
-                                   class="btn btn-outline-warning btn-sm flex-fill">
-                                    <i class="fas fa-edit me-1"></i>Edit Record
-                                </a>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-store text-success me-2"></i>
+                                    <div>
+                                        <strong>{{ record.dealer.name }}</strong>
+                                        <small class="text-muted d-block">{{ record.dealer.code }}</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    {% endfor %}
-                </div>
+                        
+                        <div class="detail-zone mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-cubes text-info me-2"></i>
+                                <strong>{{ record.product.name }}</strong>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="text-center p-2 border rounded bg-light">
+                                        <div class="quantity-display text-primary">{{ record.requested_bags }}</div>
+                                        <div class="small text-muted">Requested</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 border rounded bg-light">
+                                        <div class="quantity-display text-success">{{ record.loaded_bags }}</div>
+                                        <div class="small text-muted">Loaded</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if record.requested_bags > 0 %}
+                                {% widthratio record.loaded_bags record.requested_bags 100 as completion %}
+                                <div class="progress mt-2 loading-progress">
+                                    <div class="progress-bar {% if completion == 100 %}bg-success{% elif completion > 0 %}bg-warning{% else %}bg-secondary{% endif %}" 
+                                         role="progressbar" style="width: {{ completion }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ completion }}% Complete</small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'loading_record_detail' record.loading_request_id %}" 
+                               class="action-button flex-fill">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'loading_record_update' record.loading_request_id %}" 
+                               class="action-button flex-fill">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
 
-                <!-- Pagination -->
                 {% if page_obj.has_other_pages %}
-                    <div class="pagination-container p-3 border-top bg-light">
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination pagination-lg justify-content-center mb-0">
+                    <div class="d-flex justify-content-center mt-4">
+                        <nav>
+                            <ul class="pagination">
                                 {% if page_obj.has_previous %}
                                     <li class="page-item">
                                         <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if dealer_filter %}dealer={{ dealer_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">
-                                            <i class="fas fa-chevron-left"></i> Previous
+                                            Previous
                                         </a>
                                     </li>
                                 {% endif %}
-
                                 <li class="page-item active">
                                     <span class="page-link">
-                                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                        {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
                                     </span>
                                 </li>
-
                                 {% if page_obj.has_next %}
                                     <li class="page-item">
                                         <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if dealer_filter %}dealer={{ dealer_filter }}&{% endif %}page={{ page_obj.next_page_number }}">
-                                            Next <i class="fas fa-chevron-right"></i>
+                                            Next
                                         </a>
                                     </li>
                                 {% endif %}
@@ -259,26 +228,16 @@
                 {% endif %}
 
             {% else %}
-                <div class="empty-state text-center py-5">
-                    <div class="empty-icon mb-4">
-                        <i class="fas fa-dolly-flatbed fa-4x text-muted"></i>
-                    </div>
-                    <h4 class="text-muted mb-2">No Loading Records Found</h4>
+                <div class="empty-state">
+                    <i class="fas fa-dolly-flatbed"></i>
+                    <p>No Loading Records Found</p>
                     {% if search_query or godown_filter or dealer_filter %}
-                        <p class="text-muted mb-3">No records match your search criteria. Try adjusting your filters.</p>
-                        <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
-                            <a href="?" class="btn btn-outline-secondary">
-                                <i class="fas fa-times"></i> Clear Filters
-                            </a>
-                            <a href="{% url 'loading_record_create' %}" class="btn btn-success">
-                                <i class="fas fa-plus"></i> Create Loading Record
-                            </a>
+                        <div class="mt-3">
+                            <a href="?" class="action-button me-2">Clear Filters</a>
+                            <a href="{% url 'loading_record_create' %}" class="action-button--priority">Create Record</a>
                         </div>
                     {% else %}
-                        <p class="text-muted mb-3">Create your first loading record to start tracking operations.</p>
-                        <a href="{% url 'loading_record_create' %}" class="btn btn-success btn-lg">
-                            <i class="fas fa-plus me-2"></i>Create First Loading Record
-                        </a>
+                        <a href="{% url 'loading_record_create' %}" class="action-button--priority mt-3">Create First Record</a>
                     {% endif %}
                 </div>
             {% endif %}
@@ -286,233 +245,4 @@
     </div>
 </div>
 
-<style>
-/* Mobile-First Loading Records Styles */
-
-/* Record Card Styling */
-.record-card {
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.record-card:hover {
-    background-color: rgba(13, 110, 253, 0.02);
-}
-
-.record-card:last-child {
-    border-bottom: none !important;
-}
-
-/* Info Items */
-.info-item {
-    padding: 0.5rem 0;
-}
-
-/* Quantity Boxes */
-.quantity-box {
-    transition: all 0.2s ease;
-}
-
-.quantity-box:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
-}
-
-.quantity-value {
-    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
-    font-weight: 700;
-}
-
-/* Product Info Styling */
-.product-info {
-    border-left: 4px solid #0dcaf0;
-}
-
-/* Progress Bar Custom Styling */
-.progress {
-    border-radius: 1rem;
-    overflow: hidden;
-}
-
-.progress-bar {
-    transition: width 0.6s ease;
-}
-
-/* Action Buttons */
-.record-actions .btn {
-    border-radius: 0.5rem;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-}
-
-/* Badge Styling */
-.badge.fs-6 {
-    font-size: 0.9rem !important;
-    padding: 0.5rem 0.75rem;
-    font-weight: 600;
-}
-
-/* Header Styling */
-.header-info h2 {
-    font-weight: 700;
-}
-
-/* Card Header */
-.card-header h6 {
-    font-weight: 600;
-}
-
-/* Empty State */
-.empty-state {
-    padding: 4rem 2rem;
-}
-
-.empty-icon {
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-}
-
-/* Mobile Optimizations */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-    
-    .record-card {
-        margin: 0 -1rem;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-    
-    .card-body {
-        padding-left: 0;
-        padding-right: 0;
-    }
-    
-    .header-info h2 {
-        font-size: 1.5rem;
-    }
-    
-    .display-6 {
-        font-size: 2rem;
-    }
-    
-    .form-control-lg, 
-    .form-select-lg {
-        font-size: 1rem;
-        padding: 0.75rem;
-    }
-    
-    .btn-lg {
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-    }
-    
-    .quantity-value {
-        font-size: 1.25rem;
-    }
-    
-    .info-item {
-        padding: 0.25rem 0;
-    }
-}
-
-/* Large Screen Optimizations */
-@media (min-width: 1200px) {
-    .record-card {
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        border: 1px solid #e9ecef !important;
-    }
-    
-    .record-card:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
-    }
-    
-    .loading-records {
-        padding: 1rem;
-    }
-}
-
-/* Accessibility Improvements */
-@media (prefers-reduced-motion: reduce) {
-    .record-card,
-    .quantity-box,
-    .progress-bar {
-        transition: none;
-    }
-    
-    .empty-icon {
-        animation: none;
-    }
-}
-
-/* High Contrast Mode */
-@media (prefers-contrast: high) {
-    .record-card {
-        border: 2px solid #000 !important;
-    }
-    
-    .badge {
-        border: 1px solid #000;
-    }
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit search after typing (debounced)
-    let searchTimeout;
-    const searchInput = document.getElementById('q');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                if (this.value.length >= 3 || this.value.length === 0) {
-                    document.getElementById('filterForm').submit();
-                }
-            }, 800); // Longer delay for mobile users
-        });
-    }
-    
-    // Auto-submit on filter changes
-    document.getElementById('godown')?.addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
-    });
-    
-    document.getElementById('dealer')?.addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
-    });
-    
-    // Loading state
-    document.getElementById('filterForm')?.addEventListener('submit', function() {
-        const submitBtn = document.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
-            submitBtn.disabled = true;
-        }
-    });
-    
-    // Touch-friendly interactions for mobile
-    if ('ontouchstart' in window) {
-        document.querySelectorAll('.record-card').forEach(card => {
-            card.addEventListener('touchstart', function() {
-                this.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
-            });
-            
-            card.addEventListener('touchend', function() {
-                setTimeout(() => {
-                    this.style.backgroundColor = '';
-                }, 200);
-            });
-        });
-    }
-});
-</script>
 {% endblock %}

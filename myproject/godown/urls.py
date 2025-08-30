@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     # Godown Home - Main dashboard
     path('', views.godown_home, name='godown_home'),
+    path('<int:godown_id>/', views.godown_detail, name='godown_detail'),
     
     # OrderInTransit URLs
     path('transit/', views.orderintransit_list, name='orderintransit_list'),

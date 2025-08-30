@@ -8,123 +8,164 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 import json
 
-from .models import OrderInTransit, GodownLocation, CrossoverRecord, GodownInventory, LoadingRequest
+from .models import OrderInTransit, GodownLocation, CrossoverRecord, GodownInventory, LoadingRequest, GodownDailyBalance
 from .forms import OrderInTransitForm, CrossoverRecordForm, GodownInventoryForm, LoadingRecordForm
 from sylvia.models import Product, Dealer
 
 
 @login_required
 def godown_home(request):
-    """
-    Main dashboard view for godown operations with comprehensive statistics and quick access links
-    """
+    """Render the godown home page with navigation links and simple details"""
+    from django.db.models import Max
+    
     today = timezone.now().date()
-    week_ago = today - timezone.timedelta(days=7)
     
-    # Quick overview statistics
-    total_orders_in_transit = OrderInTransit.objects.count()
-    arrived_today = OrderInTransit.objects.filter(
-        status='ARRIVED',
-        actual_arrival_date__date=today
-    ).count()
+    # Get godown summaries - simplified approach
+    from .models import GodownDailyBalance
     
-    pending_in_transit = OrderInTransit.objects.filter(status='IN_TRANSIT').count()
-    
-    # Inventory summary
-    active_inventory = GodownInventory.objects.filter(status='ACTIVE')
-    total_available_bags = active_inventory.aggregate(
-        total=Sum('good_bags_available')
-    )['total'] or 0
-    
-    total_reserved_bags = active_inventory.aggregate(
-        total=Sum('good_bags_reserved')
-    )['total'] or 0
-    
-    # Low stock products (less than 50 bags available)
-    low_stock_products = active_inventory.values(
-        'product__name', 'product__code'
+    # Get latest daily balances for all godown-product combinations
+    latest_dates = GodownDailyBalance.objects.filter(
+        balance_date__lte=today
+    ).values(
+        'godown', 'product'
     ).annotate(
-        total_bags=Sum('good_bags_available')
-    ).filter(total_bags__lt=50).count()
+        latest_date=Max('balance_date')
+    )
     
-    # Recent loading activities
-    recent_loading_requests = LoadingRequest.objects.select_related(
-        'dealer', 'product', 'godown'
-    ).order_by('-created_at')[:8]
+    # Get the actual balance records for those latest dates
+    latest_balances = []
+    for date_info in latest_dates:
+        balance = GodownDailyBalance.objects.filter(
+            godown_id=date_info['godown'],
+            product_id=date_info['product'],
+            balance_date=date_info['latest_date']
+        ).select_related('godown', 'product').first()
+        
+        if balance:
+            latest_balances.append(balance)
+    
+    # Group by godown for summary
+    godown_summaries = []
+    godown_data = {}
+    
+    for balance in latest_balances:
+        godown_key = f"{balance.godown.code}_{balance.godown.name}"
+        
+        if godown_key not in godown_data:
+            godown_data[godown_key] = {
+                'godown_id': balance.godown.id,
+                'godown_name': balance.godown.name,
+                'godown_code': balance.godown.code,
+                'total_bags': 0,
+                'good_condition_bags': 0,
+                'damaged_bags': 0,
+                'products_count': 0,
+            }
+        
+        if balance.closing_balance > 0:
+            godown_data[godown_key]['total_bags'] += balance.closing_balance
+            godown_data[godown_key]['good_condition_bags'] += balance.good_condition_bags
+            godown_data[godown_key]['damaged_bags'] += balance.damaged_bags
+            godown_data[godown_key]['products_count'] += 1
+    
+    # Convert to sorted list
+    godown_summaries = sorted(
+        [data for data in godown_data.values() if data['total_bags'] > 0],
+        key=lambda x: x['total_bags'], 
+        reverse=True
+    )
     
     # Today's loading statistics
     today_loadings = LoadingRequest.objects.filter(created_at__date=today)
     today_loading_count = today_loadings.count()
-    today_bags_requested = today_loadings.aggregate(
-        total=Sum('requested_bags')
-    )['total'] or 0
-    today_bags_loaded = today_loadings.aggregate(
-        total=Sum('loaded_bags')
-    )['total'] or 0
-    
-    # Crossover activities this week
-    recent_crossovers = CrossoverRecord.objects.select_related(
-        'destination_dealer', 'product', 'source_order_transit'
-    ).filter(created_at__date__gte=week_ago).order_by('-created_at')[:5]
-    
-    weekly_crossovers_count = CrossoverRecord.objects.filter(
-        created_at__date__gte=week_ago
-    ).count()
-    
-    # Recent orders in transit
-    recent_transit_orders = OrderInTransit.objects.select_related(
-        'godown', 'product'
-    ).order_by('-created_at')[:5]
-    
-    # Godown-wise inventory summary
-    godown_summaries = active_inventory.values(
-        'godown__name', 'godown__code'
-    ).annotate(
-        total_bags=Sum('good_bags_available'),
-        total_products=Count('product', distinct=True)
-    ).filter(total_bags__gt=0).order_by('-total_bags')[:5]
-    
-    # Critical alerts
-    critical_alerts = []
-    
-    # Add low stock alerts
-    if low_stock_products > 0:
-        critical_alerts.append({
-            'type': 'warning',
-            'message': f'{low_stock_products} product(s) have low stock (< 50 bags)',
-            'action': 'Check Inventory',
-            'url': '/godown/inventory/'
-        })
-    
-    # Add pending transit orders
-    if pending_in_transit > 5:
-        critical_alerts.append({
-            'type': 'info',
-            'message': f'{pending_in_transit} orders are currently in transit',
-            'action': 'View Transit Orders',
-            'url': '/godown/transit/'
-        })
+    today_bags_requested = today_loadings.aggregate(total=Sum('requested_bags'))['total'] or 0
+    today_bags_loaded = today_loadings.aggregate(total=Sum('loaded_bags'))['total'] or 0
     
     context = {
-        'total_orders_in_transit': total_orders_in_transit,
-        'arrived_today': arrived_today,
-        'pending_in_transit': pending_in_transit,
-        'total_available_bags': total_available_bags,
-        'total_reserved_bags': total_reserved_bags,
-        'low_stock_products': low_stock_products,
-        'recent_loading_requests': recent_loading_requests,
+        'godown_summaries': godown_summaries,
         'today_loading_count': today_loading_count,
         'today_bags_requested': today_bags_requested,
         'today_bags_loaded': today_bags_loaded,
-        'recent_crossovers': recent_crossovers,
-        'weekly_crossovers_count': weekly_crossovers_count,
-        'recent_transit_orders': recent_transit_orders,
-        'godown_summaries': godown_summaries,
-        'critical_alerts': critical_alerts,
         'today_date': today,
     }
     
-    return render(request, 'godown/home.html', context)
+    return render(request, 'godown/home.html', context) 
+
+
+@login_required
+def godown_detail(request, godown_id):
+    """Display detailed view for a specific godown using GodownDailyBalance data"""
+    from django.db.models import Max
+    
+    # Get the godown
+    godown = get_object_or_404(GodownLocation, id=godown_id)
+    today = timezone.now().date()
+    
+    # Get latest daily balances for this godown - one per product
+    latest_dates = GodownDailyBalance.objects.filter(
+        godown=godown,
+        balance_date__lte=today
+    ).values(
+        'product'
+    ).annotate(
+        latest_date=Max('balance_date')
+    )
+    
+    # Get the actual balance records for those latest dates
+    latest_balances = []
+    for date_info in latest_dates:
+        balance = GodownDailyBalance.objects.filter(
+            godown=godown,
+            product_id=date_info['product'],
+            balance_date=date_info['latest_date']
+        ).select_related('product').first()
+        
+        if balance and balance.closing_balance > 0:
+            latest_balances.append(balance)
+    
+    # Calculate summary metrics
+    total_bags = sum(balance.closing_balance for balance in latest_balances)
+    total_good_bags = sum(balance.good_condition_bags for balance in latest_balances)
+    total_damaged_bags = sum(balance.damaged_bags for balance in latest_balances)
+    products_count = len(latest_balances)
+    
+    # Calculate utilization percentage (assuming some capacity metrics)
+    utilization_percentage = 0
+    if godown.total_capacity:
+        # Simple utilization based on total bags (assuming 50kg per bag, 1 MT per cubic meter)
+        estimated_volume_used = total_bags * 0.05  # 50kg bags = 0.05 MT
+        utilization_percentage = (estimated_volume_used / float(godown.total_capacity)) * 100
+    
+    # Get recent activity - last 10 balance changes for this godown
+    recent_activity = GodownDailyBalance.objects.filter(
+        godown=godown,
+        balance_date__lte=today
+    ).select_related('product').order_by('-balance_date')[:10]
+    
+    # Get product-wise breakdown
+    product_breakdown = [{
+        'product_name': balance.product.name,
+        'product_code': balance.product.code,
+        'closing_balance': balance.closing_balance,
+        'good_condition_bags': balance.good_condition_bags,
+        'damaged_bags': balance.damaged_bags,
+        'last_updated': balance.balance_date,
+        'balance_status': balance.get_balance_status_display(),
+    } for balance in latest_balances]
+    
+    context = {
+        'godown': godown,
+        'total_bags': total_bags,
+        'total_good_bags': total_good_bags,
+        'total_damaged_bags': total_damaged_bags,
+        'products_count': products_count,
+        'utilization_percentage': round(utilization_percentage, 1) if utilization_percentage else 0,
+        'product_breakdown': product_breakdown,
+        'recent_activity': recent_activity,
+        'today_date': today,
+    }
+    
+    return render(request, 'godown/godown_detail.html', context)
 
 
 @login_required

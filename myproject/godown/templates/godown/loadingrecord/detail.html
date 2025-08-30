@@ -2,721 +2,251 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-                <div class="header-info">
-                    <h2 class="mb-1 d-flex align-items-center">
-                        <i class="fas fa-file-alt text-primary me-2"></i>
-                        {{ loading_record.loading_request_id }}
-                    </h2>
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-calendar me-1"></i>
-                        Created {{ loading_record.created_at|date:"M d, Y \a\t g:i A" }}
-                        {% if loading_record.created_by %}
-                            by {{ loading_record.created_by.get_full_name|default:loading_record.created_by.username }}
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="header-actions d-flex gap-2">
-                    <a href="{% url 'loading_record_list' %}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i> Back to List
-                    </a>
-                    <a href="{% url 'loading_record_update' loading_record.loading_request_id %}" class="btn btn-warning">
-                        <i class="fas fa-edit me-1"></i> Edit Record
-                    </a>
-                </div>
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+<div class="simple-dashboard-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">
+                <i class="fas fa-file-alt"></i>
+                {{ loading_record.loading_request_id }}
+            </h1>
+            <div class="header-meta">
+                <div class="date-display">{{ loading_record.created_at|date:"M d, Y g:i A" }}</div>
+                {% if loading_record.created_by %}
+                    <div class="user-display">by {{ loading_record.created_by.get_full_name|default:loading_record.created_by.username }}</div>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Status Card -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <div class="d-flex flex-column flex-md-row align-items-center justify-content-between">
-                        <div class="status-info mb-3 mb-md-0">
+    <div class="dashboard-grid">
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Status
+                </h2>
+            </div>
+            <div class="metric-card {% if completion_percentage == 100 %}metric-card--normal{% elif loading_record.loaded_bags > 0 %}metric-card--warning{% else %}metric-card--info{% endif %}">
+                <div class="metric-card__content">
+                    <div class="metric-value">
+                        <div class="metric-value__primary">{{ completion_percentage|floatformat:0 }}%</div>
+                        <div class="metric-value__trend">
                             {% if completion_percentage == 100 %}
-                                <div class="status-badge badge bg-success fs-5 px-3 py-2 mb-2">
-                                    <i class="fas fa-check-circle me-2"></i>Loading Complete
-                                </div>
-                                <div class="status-text text-success">
-                                    All requested bags have been loaded successfully!
-                                </div>
+                                <span class="trend-indicator--up">Complete</span>
                             {% elif loading_record.loaded_bags > 0 %}
-                                <div class="status-badge badge bg-warning text-dark fs-5 px-3 py-2 mb-2">
-                                    <i class="fas fa-clock me-2"></i>Partially Loaded
-                                </div>
-                                <div class="status-text text-warning">
-                                    {{ completion_percentage }}% of requested bags loaded
-                                </div>
+                                <span class="trend-indicator--stable">Partial</span>
                             {% else %}
-                                <div class="status-badge badge bg-secondary fs-5 px-3 py-2 mb-2">
-                                    <i class="fas fa-hourglass-start me-2"></i>Pending Loading
-                                </div>
-                                <div class="status-text text-muted">
-                                    Loading has not started yet
-                                </div>
+                                <span class="trend-indicator--down">Pending</span>
                             {% endif %}
                         </div>
-                        
-                        <!-- Progress Circle -->
-                        <div class="progress-circle">
-                            <div class="circle-container">
-                                <div class="progress-ring">
-                                    <svg width="100" height="100" class="progress-svg">
-                                        <circle cx="50" cy="50" r="40" stroke="#e9ecef" stroke-width="8" fill="none"></circle>
-                                        <circle cx="50" cy="50" r="40" stroke="currentColor" stroke-width="8" fill="none"
-                                                stroke-dasharray="251.2" stroke-dashoffset="{{ 251.2|floatformat:1 }}"
-                                                style="stroke-dashoffset: calc(251.2 - (251.2 * {{ completion_percentage }} / 100));"
-                                                class="{% if completion_percentage == 100 %}text-success{% elif completion_percentage > 0 %}text-warning{% else %}text-secondary{% endif %}"></circle>
-                                    </svg>
-                                    <div class="progress-text">
-                                        <div class="percentage">{{ completion_percentage|floatformat:0 }}%</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Main Information -->
-    <div class="row g-4 mb-4">
-        <!-- Basic Information -->
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Basic Information
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="info-grid">
-                        <div class="info-item mb-4">
-                            <div class="info-icon">
-                                <i class="fas fa-warehouse text-primary"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Warehouse</div>
-                                <div class="info-value">{{ loading_record.godown.name }}</div>
-                                <div class="info-detail">{{ loading_record.godown.code }}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-item mb-4">
-                            <div class="info-icon">
-                                <i class="fas fa-store text-success"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Customer</div>
-                                <div class="info-value">{{ loading_record.dealer.name }}</div>
-                                <div class="info-detail">{{ loading_record.dealer.code }}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-item mb-4">
-                            <div class="info-icon">
-                                <i class="fas fa-cubes text-info"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Product</div>
-                                <div class="info-value">{{ loading_record.product.name }}</div>
-                                <div class="info-detail">{{ loading_record.product.code }}</div>
-                            </div>
-                        </div>
-                        
-                        {% if loading_record.supervised_by %}
-                        <div class="info-item mb-0">
-                            <div class="info-icon">
-                                <i class="fas fa-user-check text-warning"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Supervised By</div>
-                                <div class="info-value">{{ loading_record.supervised_by.get_full_name|default:loading_record.supervised_by.username }}</div>
-                                <div class="info-detail">{{ loading_record.supervised_by.username }}</div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-info"></i>
+                    Details
+                </h2>
             </div>
-        </div>
-        
-        <!-- Quantity Details -->
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-calculator me-2"></i>Quantity Details
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="quantity-display">
-                        <!-- Requested Bags -->
-                        <div class="quantity-item mb-4 p-3 border rounded bg-light">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="quantity-info">
-                                    <div class="quantity-label text-muted mb-1">Bags Requested</div>
-                                    <div class="quantity-value h3 mb-0 text-primary">
-                                        {{ loading_record.requested_bags|floatformat:0 }}
-                                    </div>
-                                </div>
-                                <div class="quantity-icon">
-                                    <i class="fas fa-clipboard-list fa-2x text-primary opacity-25"></i>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Loaded Bags -->
-                        <div class="quantity-item mb-4 p-3 border rounded bg-light">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="quantity-info">
-                                    <div class="quantity-label text-muted mb-1">Bags Loaded</div>
-                                    <div class="quantity-value h3 mb-0 text-success">
-                                        {{ loading_record.loaded_bags|floatformat:0 }}
-                                    </div>
-                                </div>
-                                <div class="quantity-icon">
-                                    <i class="fas fa-truck-loading fa-2x text-success opacity-25"></i>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Difference -->
-                        <div class="quantity-item p-3 border rounded {% if bags_difference == 0 %}bg-light{% elif bags_difference > 0 %}bg-success bg-opacity-10{% else %}bg-danger bg-opacity-10{% endif %}">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="quantity-info">
-                                    <div class="quantity-label text-muted mb-1">Difference</div>
-                                    <div class="quantity-value h3 mb-0 {% if bags_difference == 0 %}text-primary{% elif bags_difference > 0 %}text-success{% else %}text-danger{% endif %}">
-                                        {% if bags_difference > 0 %}+{% endif %}{{ bags_difference|floatformat:0 }}
-                                    </div>
-                                    <small class="text-muted">
-                                        {% if bags_difference == 0 %}
-                                            Exact match
-                                        {% elif bags_difference > 0 %}
-                                            More than requested
-                                        {% else %}
-                                            Less than requested
-                                        {% endif %}
-                                    </small>
-                                </div>
-                                <div class="quantity-icon">
-                                    {% if bags_difference == 0 %}
-                                        <i class="fas fa-balance-scale fa-2x text-primary opacity-25"></i>
-                                    {% elif bags_difference > 0 %}
-                                        <i class="fas fa-arrow-up fa-2x text-success opacity-25"></i>
-                                    {% else %}
-                                        <i class="fas fa-arrow-down fa-2x text-danger opacity-25"></i>
-                                    {% endif %}
-                                </div>
+            
+            <div class="detail-zone mb-3">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-warehouse text-primary me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.godown.name }}</strong>
+                                <small class="text-muted d-block">{{ loading_record.godown.code }}</small>
                             </div>
                         </div>
                     </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-store text-success me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.dealer.name }}</strong>
+                                <small class="text-muted d-block">{{ loading_record.dealer.code }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-cubes text-info me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.product.name }}</strong>
+                                <small class="text-muted d-block">{{ loading_record.product.code }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% if loading_record.supervised_by %}
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-check text-warning me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.supervised_by.get_full_name|default:loading_record.supervised_by.username }}</strong>
+                                <small class="text-muted d-block">Supervisor</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Additional Information -->
-    {% if loading_record.special_instructions or loading_record.loading_notes %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-sticky-note me-2"></i>Additional Information
-                    </h5>
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-calculator"></i>
+                    Quantities
+                </h2>
+            </div>
+            
+            <div class="inventory-cards-grid mb-3">
+                <div class="metric-card metric-card--info">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ loading_record.requested_bags|floatformat:0 }}</div>
+                        </div>
+                        <div class="stat-label">Requested</div>
+                    </div>
                 </div>
-                <div class="card-body p-4">
-                    <div class="row g-4">
-                        {% if loading_record.special_instructions %}
-                        <div class="col-12 col-md-6">
-                            <div class="note-section">
-                                <h6 class="note-title text-primary mb-3">
-                                    <i class="fas fa-exclamation-circle me-2"></i>Special Instructions
-                                </h6>
-                                <div class="note-content p-3 bg-light rounded">
-                                    {{ loading_record.special_instructions|linebreaks }}
-                                </div>
-                            </div>
+                <div class="metric-card metric-card--normal">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ loading_record.loaded_bags|floatformat:0 }}</div>
                         </div>
-                        {% endif %}
-                        
-                        {% if loading_record.loading_notes %}
-                        <div class="col-12 col-md-6">
-                            <div class="note-section">
-                                <h6 class="note-title text-success mb-3">
-                                    <i class="fas fa-comment-alt me-2"></i>Loading Notes
-                                </h6>
-                                <div class="note-content p-3 bg-light rounded">
-                                    {{ loading_record.loading_notes|linebreaks }}
-                                </div>
-                            </div>
+                        <div class="stat-label">Loaded</div>
+                    </div>
+                </div>
+                <div class="metric-card {% if bags_difference == 0 %}metric-card--info{% elif bags_difference > 0 %}metric-card--normal{% else %}metric-card--critical{% endif %}">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{% if bags_difference > 0 %}+{% endif %}{{ bags_difference|floatformat:0 }}</div>
                         </div>
-                        {% endif %}
+                        <div class="stat-label">Difference</div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    {% endif %}
 
-    <!-- Recent Records for Same Dealer -->
-    {% if recent_records %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history me-2"></i>Recent Records for {{ loading_record.dealer.name }}
-                    </h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Record ID</th>
-                                    <th>Date</th>
-                                    <th>Product</th>
-                                    <th>Requested</th>
-                                    <th>Loaded</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for record in recent_records %}
-                                <tr>
-                                    <td>
-                                        <a href="{% url 'loading_record_detail' record.loading_request_id %}" 
-                                           class="text-decoration-none fw-bold">
-                                            {{ record.loading_request_id }}
-                                        </a>
-                                    </td>
-                                    <td>{{ record.created_at|date:"M d, Y" }}</td>
-                                    <td>{{ record.product.name }}</td>
-                                    <td class="text-primary fw-bold">{{ record.requested_bags }}</td>
-                                    <td class="text-success fw-bold">{{ record.loaded_bags }}</td>
-                                    <td>
-                                        {% if record.loaded_bags >= record.requested_bags %}
-                                            <span class="badge bg-success">Complete</span>
-                                        {% elif record.loaded_bags > 0 %}
-                                            <span class="badge bg-warning text-dark">Partial</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Pending</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+        {% if loading_record.special_instructions or loading_record.loading_notes %}
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-sticky-note"></i>
+                    Notes
+                </h2>
+            </div>
+            
+            <div class="row g-3">
+                {% if loading_record.special_instructions %}
+                <div class="col-12 col-md-6">
+                    <div class="detail-zone">
+                        <h6 class="mb-2">
+                            <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                            Special Instructions
+                        </h6>
+                        <div>{{ loading_record.special_instructions|linebreaks }}</div>
                     </div>
                 </div>
+                {% endif %}
+                
+                {% if loading_record.loading_notes %}
+                <div class="col-12 col-md-6">
+                    <div class="detail-zone">
+                        <h6 class="mb-2">
+                            <i class="fas fa-comment-alt text-info me-2"></i>
+                            Loading Notes
+                        </h6>
+                        <div>{{ loading_record.loading_notes|linebreaks }}</div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <!-- Action Buttons -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <div class="d-grid gap-3 d-md-flex justify-content-md-center">
-                        <a href="{% url 'loading_record_update' loading_record.loading_request_id %}" 
-                           class="btn btn-warning btn-lg">
-                            <i class="fas fa-edit me-2"></i>Edit This Record
-                        </a>
-                        <a href="{% url 'loading_record_create' %}" 
-                           class="btn btn-success btn-lg">
-                            <i class="fas fa-plus me-2"></i>Create New Record
-                        </a>
-                        <a href="{% url 'loading_record_list' %}" 
-                           class="btn btn-primary btn-lg">
-                            <i class="fas fa-list me-2"></i>View All Records
-                        </a>
+        {% if recent_records %}
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-history"></i>
+                    Recent Records for {{ loading_record.dealer.name }}
+                </h2>
+            </div>
+            
+            {% for record in recent_records %}
+                <div class="widget-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h4>
+                                <a href="{% url 'loading_record_detail' record.loading_request_id %}" class="text-decoration-none">
+                                    {{ record.loading_request_id }}
+                                </a>
+                            </h4>
+                            <small class="text-muted">{{ record.created_at|date:"M d, Y" }} • {{ record.product.name }}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="quantity-display">{{ record.requested_bags }} / {{ record.loaded_bags }}</div>
+                            {% if record.loaded_bags >= record.requested_bags %}
+                                <span class="status-badge status-completed">Complete</span>
+                            {% elif record.loaded_bags > 0 %}
+                                <span class="status-badge status-loading_in_progress">Partial</span>
+                            {% else %}
+                                <span class="status-badge status-pending">Pending</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-cogs"></i>
+                    Actions
+                </h2>
+            </div>
+            
+            <div class="quick-links-grid">
+                <a href="{% url 'loading_record_update' loading_record.loading_request_id %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">Edit Record</h3>
+                        <p class="link-description">Modify this loading record</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'loading_record_create' %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">New Record</h3>
+                        <p class="link-description">Create another loading record</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'loading_record_list' %}" class="quick-link-card priority">
+                    <div class="link-icon">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">All Records</h3>
+                        <p class="link-description">View all loading records</p>
+                    </div>
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-/* Mobile-First Detail Page Styles */
-
-/* Header Styling */
-.header-info h2 {
-    font-weight: 700;
-    font-size: 1.75rem;
-}
-
-/* Status Card */
-.status-badge {
-    border-radius: 1rem;
-    font-weight: 600;
-}
-
-.status-text {
-    font-weight: 500;
-    font-size: 1.1rem;
-}
-
-/* Progress Circle */
-.progress-circle {
-    position: relative;
-}
-
-.circle-container {
-    position: relative;
-    width: 100px;
-    height: 100px;
-}
-
-.progress-ring {
-    position: relative;
-    transform: rotate(-90deg);
-}
-
-.progress-svg circle {
-    transition: stroke-dashoffset 1s ease-in-out;
-}
-
-.progress-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-}
-
-.percentage {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #495057;
-}
-
-/* Info Grid */
-.info-grid .info-item {
-    display: flex;
-    align-items-flex-start;
-    gap: 1rem;
-}
-
-.info-icon {
-    flex-shrink: 0;
-    width: 40px;
-    text-align: center;
-}
-
-.info-icon i {
-    font-size: 1.5rem;
-}
-
-.info-content {
-    flex: 1;
-}
-
-.info-label {
-    font-size: 0.875rem;
-    color: #6c757d;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
-}
-
-.info-value {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #212529;
-    margin-bottom: 0.125rem;
-}
-
-.info-detail {
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-
-/* Quantity Display */
-.quantity-item {
-    transition: all 0.3s ease;
-}
-
-.quantity-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-}
-
-.quantity-value {
-    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
-    font-weight: 700;
-}
-
-.quantity-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-/* Notes Section */
-.note-title {
-    font-weight: 600;
-    border-left: 4px solid;
-    padding-left: 0.75rem;
-}
-
-.note-content {
-    line-height: 1.6;
-    font-size: 0.95rem;
-}
-
-/* Card Headers */
-.card-header h5 {
-    font-weight: 600;
-}
-
-/* Table Styling */
-.table th {
-    border-top: none;
-    font-weight: 600;
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #495057;
-}
-
-.table td {
-    vertical-align: middle;
-    border-color: #e9ecef;
-}
-
-/* Action Buttons */
-.btn-lg {
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    border-radius: 0.75rem;
-}
-
-/* Mobile Optimizations */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-    
-    .header-info h2 {
-        font-size: 1.5rem;
-    }
-    
-    .header-actions {
-        width: 100%;
-    }
-    
-    .header-actions .btn {
-        flex: 1;
-    }
-    
-    .card-body {
-        padding: 1.5rem 1rem;
-    }
-    
-    .progress-circle {
-        margin-top: 1rem;
-        text-align: center;
-    }
-    
-    .info-item {
-        padding: 1rem 0;
-        border-bottom: 1px solid #e9ecef;
-    }
-    
-    .info-item:last-child {
-        border-bottom: none;
-    }
-    
-    .quantity-item {
-        margin-bottom: 1rem;
-    }
-    
-    .btn-lg {
-        font-size: 1rem;
-        padding: 0.75rem 1.5rem;
-    }
-    
-    /* Stack table on mobile */
-    .table-responsive table,
-    .table-responsive thead,
-    .table-responsive tbody,
-    .table-responsive th,
-    .table-responsive td,
-    .table-responsive tr {
-        display: block;
-    }
-    
-    .table-responsive thead tr {
-        position: absolute;
-        top: -9999px;
-        left: -9999px;
-    }
-    
-    .table-responsive tr {
-        border: 1px solid #e9ecef;
-        margin-bottom: 1rem;
-        border-radius: 0.5rem;
-        padding: 1rem;
-    }
-    
-    .table-responsive td {
-        border: none;
-        position: relative;
-        padding-left: 50%;
-        padding-bottom: 0.5rem;
-        padding-top: 0.5rem;
-    }
-    
-    .table-responsive td:before {
-        content: attr(data-label);
-        position: absolute;
-        left: 1rem;
-        width: 45%;
-        padding-right: 10px;
-        white-space: nowrap;
-        font-weight: 600;
-        color: #495057;
-    }
-}
-
-/* Large Screen Optimizations */
-@media (min-width: 1200px) {
-    .info-item {
-        padding: 1.5rem 0;
-    }
-    
-    .quantity-item {
-        border-radius: 1rem;
-    }
-    
-    .card {
-        border-radius: 1rem;
-    }
-}
-
-/* Animation for progress circle */
-@keyframes drawCircle {
-    from {
-        stroke-dashoffset: 251.2;
-    }
-    to {
-        stroke-dashoffset: calc(251.2 - (251.2 * var(--percentage) / 100));
-    }
-}
-
-/* Accessibility Improvements */
-@media (prefers-reduced-motion: reduce) {
-    .quantity-item,
-    .progress-svg circle {
-        transition: none;
-        animation: none;
-    }
-}
-
-/* High Contrast Mode */
-@media (prefers-contrast: high) {
-    .card {
-        border: 2px solid #000;
-    }
-    
-    .info-item {
-        border-bottom: 2px solid #000;
-    }
-    
-    .badge {
-        border: 1px solid #000;
-    }
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Animate progress circle on load
-    const progressCircle = document.querySelector('.progress-svg circle:last-child');
-    if (progressCircle) {
-        setTimeout(() => {
-            progressCircle.style.transition = 'stroke-dashoffset 1.5s ease-out';
-        }, 500);
-    }
-    
-    // Add touch feedback for mobile
-    if ('ontouchstart' in window) {
-        document.querySelectorAll('.quantity-item, .info-item').forEach(item => {
-            item.addEventListener('touchstart', function() {
-                this.style.transform = 'scale(0.98)';
-            });
-            
-            item.addEventListener('touchend', function() {
-                setTimeout(() => {
-                    this.style.transform = 'scale(1)';
-                }, 200);
-            });
-        });
-    }
-    
-    // Enhanced table experience on mobile
-    const tables = document.querySelectorAll('.table-responsive table');
-    tables.forEach(table => {
-        const headers = table.querySelectorAll('thead th');
-        const rows = table.querySelectorAll('tbody tr');
-        
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            cells.forEach((cell, index) => {
-                if (headers[index]) {
-                    cell.setAttribute('data-label', headers[index].textContent.trim());
-                }
-            });
-        });
-    });
-    
-    // Smooth scroll for internal links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-    
-    // Auto-refresh if data might be stale (optional feature)
-    const lastUpdate = new Date('{{ loading_record.updated_at|date:"c" }}');
-    const now = new Date();
-    const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60);
-    
-    if (hoursSinceUpdate > 24) {
-        // Show a subtle indicator that data might be stale
-        const statusCard = document.querySelector('.card');
-        if (statusCard) {
-            const staleIndicator = document.createElement('div');
-            staleIndicator.className = 'alert alert-info mt-3';
-            staleIndicator.innerHTML = `
-                <i class="fas fa-info-circle me-2"></i>
-                <small>This record was last updated ${Math.floor(hoursSinceUpdate)} hours ago.</small>
-            `;
-            statusCard.appendChild(staleIndicator);
-        }
-    }
-});
-</script>
 {% endblock %}

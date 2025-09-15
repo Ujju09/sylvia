@@ -14,7 +14,10 @@
             <p class="mb-1"><strong>Dealer:</strong> {{ order.dealer.name }} ({{ order.dealer.code }})</p>
             <p class="mb-1"><strong>Vehicle:</strong> {{ order.vehicle.truck_number }}</p>
             <p class="mb-1"><strong>Depot:</strong> {{ order.depot.name }}</p>
-            <p class="mb-0"><strong>Order Date:</strong> {{ order.order_date|date:'M d, Y' }}</p>
+            <p class="mb-1"><strong>Order Date:</strong> {{ order.order_date|date:'M d, Y' }}</p>
+            {% if order.remarks %}
+            <p class="mb-0"><strong>Current Remarks:</strong> {{ order.remarks }}</p>
+            {% endif %}
           </div>
 
           <form method="post" id="updateOrderForm">
@@ -47,6 +50,12 @@
                 <div class="mb-3">
                   <label for="invoice_date" class="form-label">Invoice Date</label>
                   <input type="date" class="form-control" id="invoice_date" name="invoice_date" value="{{ invoice_date|date:'Y-m-d' }}">
+                </div>
+                
+                <div class="mb-3">
+                  <label for="remarks" class="form-label">Remarks</label>
+                  <textarea class="form-control" id="remarks" name="remarks" rows="3" placeholder="Enter any remarks or notes about this order...">{{ order.remarks }}</textarea>
+                  <div class="form-text">Optional notes or comments about this order.</div>
                 </div>
               </div>
               

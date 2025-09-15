@@ -262,6 +262,7 @@ def update_order(request, order_id):
             new_invoice_date = request.POST.get('invoice_date')
             new_mrn_date = request.POST.get('mrn_date')
             new_dealer_id = request.POST.get('dealer_id')
+            new_remarks = request.POST.get('remarks')
             
             # Update dealer if Anonymous and new dealer selected
             if is_dealer_anonymous and new_dealer_id:
@@ -368,6 +369,10 @@ def update_order(request, order_id):
             if new_invoice_date:
                 order.bill_date = new_invoice_date
                 order.status = 'BILLED'
+            
+            # Update remarks
+            if new_remarks is not None:
+                order.remarks = new_remarks
             
             order.save()
             

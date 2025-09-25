@@ -111,6 +111,22 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Remarks Section -->
+              {% if order.remarks %}
+              <div class="mt-3">
+                <h5 class="text-secondary mb-3">Remarks</h5>
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start">
+                      <div>
+                        <p class="mb-0">{{ order.remarks|linebreaks }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
             </div>
           </div>
           

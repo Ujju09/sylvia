@@ -138,6 +138,7 @@
             <th>Total Quantity</th>
             <th>MRN Status</th>
             <th>Invoice Status</th>
+            <th>Indicators</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -172,6 +173,20 @@
                 <span class="badge bg-warning">Pending</span>
               {% endif %}
             </td>
+            <td class="text-center">
+              <div class="d-flex flex-column align-items-center gap-1">
+                {% if order.remarks %}
+                  <span class="badge bg-warning rounded-pill" title="Order has remarks: {{ order.remarks|truncatechars:100 }}" data-bs-toggle="tooltip">
+                    <i class="fas fa-comment-dots"></i>
+                  </span>
+                {% endif %}
+                {% if order.mrn_images.exists %}
+                  <span class="badge bg-info rounded-pill" title="{{ order.mrn_images.count }} MRN image{% if order.mrn_images.count != 1 %}s{% endif %} uploaded" data-bs-toggle="tooltip">
+                    <i class="fas fa-images"></i> {{ order.mrn_images.count }}
+                  </span>
+                {% endif %}
+              </div>
+            </td>
             <td>
               <div class="btn-group" role="group">
                 <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-outline-info" title="View Order Details">
@@ -186,7 +201,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="10" class="text-center">No orders found.</td></tr>
+          <tr><td colspan="11" class="text-center">No orders found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -234,4 +249,14 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Bootstrap tooltips
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>
 {% endblock %}

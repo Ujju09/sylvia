@@ -80,8 +80,8 @@ def process_dispatch_image(request):
         
         IMPORTANT - Depot Name Mapping:
         Use this correlation table to map depot descriptions to standard depot names:
-        - "JH NAGARUNTARI BC TR [VD]" → "Nagar Untari Depot"
-        - "JH CHHATTARPUR BC TR [VD]" → "Chhatarpur Depot"
+        - "JH NAGARUNTARI TR [VD]" → "Nagar Untari Depot"
+        - "JH CHHATTARPUR TR [VD]" → "Chhatarpur Depot"
         
         If the depot description doesn't match exactly, find the closest match from the correlation table.
         

@@ -1,8 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block content %}
+{% block extra_css %}
 <link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+{% endblock %}
+
+{% block content %}
 
 <div class="simple-dashboard-container">
     <!-- Header Section -->

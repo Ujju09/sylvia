@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+
+<div class="simple-dashboard-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h3 class="dashboard-title">
+                Orders in Transit
+            </h3>
+            <div class="header-meta">
+                <span class="date-display">{{ today_date|date:"d M Y" }}</span>
+                <div class="user-display">{{ page_obj.paginator.count }} total orders</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+        <!-- Search Section -->
+        {% if search_query or status_filter %}
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Search Results
+                </h2>
+            </div>
+            
+            <div class="progress-section">
+                <div class="progress-text">
+                    {% if search_query %}Searching for "{{ search_query }}"{% endif %}
+                    {% if status_filter %}Status: {{ status_filter|title }}{% endif %}
+                    <a href="?" style="margin-left: 1rem; color: var(--primary-color);">Clear Search</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Transit Orders Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Transit Orders
+                </h2>
+                <div style="margin-top: 1rem;">
+                    <a href="{% url 'orderintransit_create' %}" class="btn-view-details">
+                        New Transit Order
+                    </a>
+                </div>
+            </div>
+
+            <!-- Simple Search Form -->
+            <div style="margin-bottom: 2rem;">
+                <form method="get" style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" class="form-control" name="q" value="{{ search_query }}" 
+                           placeholder="Search E-way bill, transport number..." 
+                           style="max-width: 400px; padding: 1rem; border-radius: var(--radius-sm); border: 2px solid var(--border-light);">
+                    <select class="form-select" name="status" 
+                            style="max-width: 200px; padding: 1rem; border-radius: var(--radius-sm); border: 2px solid var(--border-light);">
+                        <option value="">All Status</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if value == status_filter %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn-view-details" style="width: auto; padding: 1rem 2rem;">
+                        Search
+                    </button>
+                </form>
+            </div>
+            
+            <div class="inventory-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; overflow: visible;">
+                {% if page_obj %}
+                    {% for order in page_obj %}
+                    <div class="inventory-card">
+                        <div class="card-header">
+                            <h3 class="godown-name">{{ order.eway_bill_number }}</h3>
+                            <div class="godown-code status-badge 
+                                {% if order.status == 'IN_TRANSIT' %}status-in-transit
+                                {% elif order.status == 'ARRIVED' %}status-arrived
+                                {% elif order.status == 'CANCELLED' %}status-cancelled
+                                {% endif %}">
+                                {{ order.get_status_display }}
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="stock-summary">
+                                <div class="stock-item">
+                                    <span class="stock-value">{{ order.godown.name }}</span>
+                                </div>
+                                <div class="stock-item">
+                                    <span class="stock-label">Expected Bags</span>
+                                    <span class="stock-value">{{ order.expected_total_bags }}</span>
+                                </div>
+                                <div class="stock-item">
+                                    <span class="stock-label">Received Bags</span>
+                                    <span class="stock-value 
+                                        {% if order.shortage_bags > 0 %}damaged
+                                        {% elif order.excess_bags > 0 %}good
+                                        {% endif %}">
+                                        {{ order.actual_received_bags }}
+                                    </span>
+                                </div>
+                                {% if order.good_bags or order.damaged_bags %}
+                                <div class="stock-item">
+                                    <span class="stock-label">Good / Damaged</span>
+                                    <span class="stock-value">
+                                        <span class="good">{{ order.good_bags }}</span> / 
+                                        <span class="damaged">{{ order.damaged_bags }}</span>
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if order.actual_arrival_date %}
+                                <div class="stock-item">
+                                    <span class="stock-value">Arrived on {{ order.actual_arrival_date|date:"d M Y" }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-actions" style="display: flex; gap: 1rem;">
+                            <a href="{% url 'orderintransit_detail' order.dispatch_id %}" class="btn-view-details" style="flex: 1;">
+                                View Details
+                            </a>
+                            <a href="{% url 'orderintransit_update' order.dispatch_id %}" class="btn-view-details" 
+                               style="flex: 1; background: var(--warning-color); color: white;">
+                                Edit
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <p>No transit orders found</p>
+                        {% if search_query or status_filter %}
+                            <a href="?" style="color: var(--primary-color); margin-top: 1rem; display: inline-block;">Clear Search</a>
+                        {% else %}
+                            <a href="{% url 'orderintransit_create' %}" style="color: var(--primary-color); margin-top: 1rem; display: inline-block;">Create First Transit Order</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div style="margin-top: 3rem; text-align: center;">
+                    <div style="display: inline-flex; gap: 1rem; align-items: center;">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.previous_page_number }}" 
+                               class="btn-view-details" style="width: auto; padding: 0.75rem 1.5rem;">
+                                Previous
+                            </a>
+                        {% endif %}
+
+                        <span style="color: var(--text-secondary); font-weight: 500;">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+
+                        {% if page_obj.has_next %}
+                            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.next_page_number }}" 
+                               class="btn-view-details" style="width: auto; padding: 0.75rem 1.5rem;">
+                                Next
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

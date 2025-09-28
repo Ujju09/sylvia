@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+
+<div class="simple-dashboard-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h3 class="dashboard-title">
+                <i class="fas fa-boxes"></i>
+                Godown Inventory
+            </h3>
+            <div class="header-meta">
+                <a href="{% url 'godown_inventory_create' %}" class="btn-view-details">
+                    <i class="fas fa-plus"></i>
+                    New Inventory
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-search"></i>
+                Search Inventory
+            </h2>
+        </div>
+        
+        <form method="get" class="mb-4">
+            <div class="d-flex gap-3 flex-wrap">
+                <input type="text" 
+                       class="form-control" 
+                       name="q" 
+                       value="{{ search_query }}" 
+                       placeholder="Search by product or godown..." 
+                       style="flex: 2; min-width: 200px;">
+                
+                <select class="form-select" name="status" style="flex: 1; min-width: 150px;">
+                    <option value="">All Status</option>
+                    <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
+                    <option value="RESERVED" {% if status_filter == 'RESERVED' %}selected{% endif %}>Reserved</option>
+                    <option value="ALLOCATED" {% if status_filter == 'ALLOCATED' %}selected{% endif %}>Allocated</option>
+                    <option value="DAMAGED" {% if status_filter == 'DAMAGED' %}selected{% endif %}>Damaged</option>
+                </select>
+                
+                <button type="submit" class="btn-view-details">
+                    <i class="fas fa-search"></i>
+                    Search
+                </button>
+                
+                {% if search_query or status_filter %}
+                    <a href="?" class="btn-view-details" style="background: #6c757d;">
+                        <i class="fas fa-times"></i>
+                        Clear
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Inventory Grid -->
+    <div class="dashboard-section full-width">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-list"></i>
+                Inventory Records
+                {% if page_obj %}
+                    <small class="text-muted">({{ page_obj.paginator.count }} total)</small>
+                {% endif %}
+            </h2>
+        </div>
+        
+        {% if page_obj %}
+            <div class="inventory-cards-grid">
+                {% for inventory in page_obj %}
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">{{ inventory.product.name }}</h3>
+                        {% if inventory.status == 'ACTIVE' %}
+                            <span class="status-badge status-approved">Active</span>
+                        {% elif inventory.status == 'RESERVED' %}
+                            <span class="status-badge status-processing">Reserved</span>
+                        {% elif inventory.status == 'DAMAGED' %}
+                            <span class="status-badge status-cancelled">Damaged</span>
+                        {% elif inventory.status == 'ALLOCATED' %}
+                            <span class="status-badge status-in-transit">Allocated</span>
+                        {% else %}
+                            <span class="status-badge status-pending">{{ inventory.get_status_display }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-value">{{ inventory.godown.name }}</span>
+                            </div>
+                            <div class="stock-item">
+                                <span class="stock-label">Good Bags Received</span>
+                                <span class="stock-value good">{{ inventory.good_bags_available }}</span>
+                            </div>
+                            
+                            {% if inventory.received_date %}
+                            <div class="stock-item">
+                                <span class="stock-label">Received on {{ inventory.received_date|date:"M d, Y" }} </span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'godown_inventory_detail' inventory.batch_id %}" 
+                               class="btn-view-details" style="flex: 1;">
+                                <i class="fas fa-eye"></i>
+                                View
+                            </a>
+                            <a href="{% url 'godown_inventory_update' inventory.batch_id %}" 
+                               class="btn-view-details" style="flex: 1; background: #ffc107; color: #000;">
+                                <i class="fas fa-edit"></i>
+                                Edit
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Simple Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-center mt-4">
+                    <nav>
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_obj.number }}</span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-boxes"></i>
+                <p>No inventory records found</p>
+                {% if search_query or status_filter %}
+                    <a href="?" class="btn-view-details mt-3">
+                        <i class="fas fa-times"></i>
+                        Clear Filters
+                    </a>
+                {% else %}
+                    <a href="{% url 'godown_inventory_create' %}" class="btn-view-details mt-3">
+                        <i class="fas fa-plus"></i>
+                        Create First Record
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

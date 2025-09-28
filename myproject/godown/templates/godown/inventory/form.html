@@ -1,0 +1,469 @@
+{% extends 'base.html' %} 
+{% load static %} 
+
+{% block content %}
+
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-10 offset-lg-1">
+      <!-- Page Header -->
+      <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="mb-0">
+                <i class="fas fa-warehouse"></i>
+                {{ title }}
+              </h4>
+              <p class="mb-0 mt-1 opacity-75">
+                Record inventory details for godown storage
+              </p>
+            </div>
+            <a href="{% url 'godown_inventory_list' %}" class="btn btn-light">
+              <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form method="post" id="inventoryForm">
+        {% csrf_token %}
+
+        <!-- Form Errors -->
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+          <h6>
+            <i class="fas fa-exclamation-triangle"></i> Please fix these issues:
+          </h6>
+          {% for error in form.non_field_errors %}
+          <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Source Information -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="fas fa-truck text-primary"></i>
+              Source Information
+            </h5>
+            <small class="text-muted"
+              >Select the source transit order and location details</small
+            >
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label
+                    for="{{ form.order_in_transit.id_for_label }}"
+                    class="form-label fw-bold"
+                  >
+                    {{ form.order_in_transit.label }}
+                    <span class="text-danger">*</span>
+                  </label>
+                  {{ form.order_in_transit }}
+                  {% if form.order_in_transit.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ form.order_in_transit.errors.0 }}
+                  </div>
+                  {% endif %}
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i>
+                    {{ form.order_in_transit.help_text }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label
+                    for="{{ form.godown.id_for_label }}"
+                    class="form-label fw-bold"
+                  >
+                    {{ form.godown.label }} <span class="text-danger">*</span>
+                  </label>
+                  {{ form.godown }}
+                  {% if form.godown.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ form.godown.errors.0 }}
+                  </div>
+                  {% endif %}
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i>
+                    {{ form.godown.help_text }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label
+                    for="{{ form.product.id_for_label }}"
+                    class="form-label fw-bold"
+                  >
+                    {{ form.product.label }} <span class="text-danger">*</span>
+                  </label>
+                  {{ form.product }}
+                  {% if form.product.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ form.product.errors.0 }}
+                  </div>
+                  {% endif %}
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i>
+                    {{ form.product.help_text }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Inventory Details -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="fas fa-boxes text-warning"></i>
+              Inventory Details
+            </h5>
+            <small class="text-muted"
+              >Enter the quantity and condition details</small
+            >
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label
+                    for="{{ form.total_bags_received.id_for_label }}"
+                    class="form-label fw-bold"
+                  >
+                    {{ form.total_bags_received.label }}
+                    <span class="text-danger">*</span>
+                  </label>
+                  {{ form.total_bags_received }}
+                  {% if form.total_bags_received.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ form.total_bags_received.errors.0 }}
+                  </div>
+                  {% endif %}
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i>
+                    {{ form.total_bags_received.help_text }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label
+                    for="{{ form.good_bags_available.id_for_label }}"
+                    class="form-label fw-bold"
+                  >
+                    {{ form.good_bags_available.label }}
+                    <span class="text-danger">*</span>
+                  </label>
+                  {{ form.good_bags_available }}
+                  {% if form.good_bags_available.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ form.good_bags_available.errors.0 }}
+                  </div>
+                  {% endif %}
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i>
+                    {{ form.good_bags_available.help_text }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label
+                    for="{{ form.damaged_bags.id_for_label }}"
+                    class="form-label fw-bold"
+                  >
+                    {{ form.damaged_bags.label }}
+                    <span class="text-danger">*</span>
+                  </label>
+                  {{ form.damaged_bags }}
+                  {% if form.damaged_bags.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ form.damaged_bags.errors.0 }}
+                  </div>
+                  {% endif %}
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i>
+                    {{ form.damaged_bags.help_text }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Validation Alert -->
+            <div
+              class="alert alert-info"
+              id="validation-alert"
+              style="display: none"
+            >
+              <h6><i class="fas fa-calculator"></i> Quantity Analysis</h6>
+              <div id="validation-content"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Storage Notes -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="fas fa-sticky-note text-info"></i>
+              Storage Notes
+            </h5>
+            <small class="text-muted"
+              >Add any additional notes about storage conditions</small
+            >
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-12">
+                <div class="mb-3">
+                  <label
+                    for="{{ form.storage_notes.id_for_label }}"
+                    class="form-label fw-bold"
+                  >
+                    {{ form.storage_notes.label }}
+                  </label>
+                  {{ form.storage_notes }}
+                  {% if form.storage_notes.errors %}
+                  <div class="text-danger small mt-1">
+                    {{ form.storage_notes.errors.0 }}
+                  </div>
+                  {% endif %}
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i>
+                    {{ form.storage_notes.help_text }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Summary Section -->
+            <div class="card bg-light">
+              <div class="card-body">
+                <h6>
+                  <i class="fas fa-clipboard-check"></i> Inventory Summary
+                </h6>
+                <div class="row text-center">
+                  <div class="col-4">
+                    <div class="h5 text-primary" id="summary-total">-</div>
+                    <small>Total Received</small>
+                  </div>
+                  <div class="col-4">
+                    <div class="h5 text-success" id="summary-good">-</div>
+                    <small>Good Bags</small>
+                  </div>
+                  <div class="col-4">
+                    <div class="h5 text-danger" id="summary-damaged">-</div>
+                    <small>Damaged Bags</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+              <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save"></i> {{ submit_text }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Form Styles */
+  .card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+  }
+
+  .form-label {
+    color: #495057;
+    font-size: 0.95rem;
+  }
+
+  .form-control,
+  .form-select {
+    border: 2px solid #e9ecef;
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+  }
+
+  .form-control-lg {
+    border-width: 3px;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .form-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+  }
+
+  .alert {
+    border: none;
+    border-radius: 0.5rem;
+  }
+
+  .text-danger {
+    color: #dc3545 !important;
+  }
+
+  .text-success {
+    color: #28a745 !important;
+  }
+
+  .text-warning {
+    color: #ffc107 !important;
+    color: #856404 !important;
+  }
+
+  .text-info {
+    color: #17a2b8 !important;
+  }
+
+  .text-primary {
+    color: #007bff !important;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .btn-lg {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+
+    .form-control-lg {
+      font-size: 1rem;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const totalBagsInput = document.getElementById(
+      "{{ form.total_bags_received.id_for_label }}"
+    );
+    const goodBagsInput = document.getElementById(
+      "{{ form.good_bags_available.id_for_label }}"
+    );
+    const damagedBagsInput = document.getElementById(
+      "{{ form.damaged_bags.id_for_label }}"
+    );
+
+    // Validate bag quantities
+    function validateBags() {
+      const total = parseInt(totalBagsInput.value) || 0;
+      const good = parseInt(goodBagsInput.value) || 0;
+      const damaged = parseInt(damagedBagsInput.value) || 0;
+
+      if (total > 0 && (good > 0 || damaged > 0)) {
+        const accountedFor = good + damaged;
+
+        let content = "";
+        let alertClass = "alert-success";
+
+        if (accountedFor !== total) {
+          const difference = total - accountedFor;
+          if (difference > 0) {
+            content = `<div class="text-warning">Missing ${difference} bags in accounting. Good (${good}) + Damaged (${damaged}) = ${accountedFor}, but total received is ${total}</div>`;
+          } else {
+            content = `<div class="text-warning">Over-accounted by ${Math.abs(difference)} bags. Good (${good}) + Damaged (${damaged}) = ${accountedFor}, but total received is ${total}</div>`;
+          }
+          alertClass = "alert-warning";
+        } else {
+          content = `<div class="text-success">Perfect: All ${total} bags properly accounted for</div>`;
+        }
+
+        if (good < 0 || damaged < 0) {
+          content += `<div class="text-danger">Negative values are not allowed</div>`;
+          alertClass = "alert-danger";
+        }
+
+        document.getElementById("validation-content").innerHTML = content;
+        document.getElementById(
+          "validation-alert"
+        ).className = `alert ${alertClass}`;
+        document.getElementById("validation-alert").style.display = "block";
+
+        // Update summary
+        document.getElementById("summary-total").textContent = total;
+        document.getElementById("summary-good").textContent = good;
+        document.getElementById("summary-damaged").textContent = damaged;
+      } else if (total > 0) {
+        // Only total is provided
+        document.getElementById("validation-alert").style.display = "none";
+        document.getElementById("summary-total").textContent = total;
+        document.getElementById("summary-good").textContent = "-";
+        document.getElementById("summary-damaged").textContent = "-";
+      } else {
+        document.getElementById("validation-alert").style.display = "none";
+        document.getElementById("summary-total").textContent = "-";
+        document.getElementById("summary-good").textContent = "-";
+        document.getElementById("summary-damaged").textContent = "-";
+      }
+    }
+
+    // Event listeners
+    totalBagsInput.addEventListener("input", validateBags);
+    goodBagsInput.addEventListener("input", validateBags);
+    damagedBagsInput.addEventListener("input", validateBags);
+
+    // Initialize
+    validateBags();
+
+    // Form validation before submit
+    document
+      .getElementById("inventoryForm")
+      .addEventListener("submit", function (e) {
+        const total = parseInt(totalBagsInput.value) || 0;
+        const good = parseInt(goodBagsInput.value) || 0;
+        const damaged = parseInt(damagedBagsInput.value) || 0;
+
+        if (total <= 0) {
+          alert("Please enter a valid total bags received");
+          e.preventDefault();
+          return false;
+        }
+
+        if (good + damaged !== total) {
+          if (
+            !confirm(
+              `Good bags (${good}) + Damaged bags (${damaged}) = ${
+                good + damaged
+              }, but total received is ${total}. Do you want to continue anyway?`
+            )
+          ) {
+            e.preventDefault();
+            return false;
+          }
+        }
+
+        return true;
+      });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,1624 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="transit-detail-container">
+    <!-- Enhanced Header with Breadcrumb -->
+    <div class="detail-header">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/godown/"><i class="fas fa-home"></i> Godown</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'orderintransit_list' %}">Transit Orders</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ order.dispatch_id }}</li>
+            </ol>
+        </nav>
+        
+        <!-- Status Header -->
+        <div class="status-header-card">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+                <div class="header-info flex-grow-1">
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <div class="status-indicator-large">
+                            {% if order.status == 'IN_TRANSIT' %}
+                                <span class="status-badge status-in-transit">
+                                    <i class="fas fa-truck"></i>
+                                    <span class="status-text">In Transit</span>
+                                    <span class="status-pulse"></span>
+                                </span>
+                            {% elif order.status == 'ARRIVED' %}
+                                <span class="status-badge status-arrived">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span class="status-text">Arrived</span>
+                                </span>
+                            {% elif order.status == 'CANCELLED' %}
+                                <span class="status-badge status-cancelled">
+                                    <i class="fas fa-times-circle"></i>
+                                    <span class="status-text">Cancelled</span>
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <h1 class="transaction-id">{{ order.dispatch_id }}</h1>
+                    <div class="header-details">
+                        <div class="detail-chip">E-way: {{ order.eway_bill_number }}</div>
+                        {% if order.transport_document_number %}
+                            <div class="detail-chip">Transport: {{ order.transport_document_number }}</div>
+                        {% endif %}
+                        <div class="detail-chip last-updated">Updated {{ order.updated_at|timesince }} ago</div>
+                    </div>
+                </div>
+                
+                <!-- Mobile-Optimized Action Bar -->
+                <div class="action-bar">
+                    <div class="btn-group-mobile">
+                        <a href="{% url 'orderintransit_list' %}" class="btn btn-secondary btn-mobile">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Back</span>
+                        </a>
+                        <a href="{% url 'orderintransit_update' order.dispatch_id %}" class="btn btn-primary btn-mobile">
+                            <i class="fas fa-edit"></i>
+                            <span class="btn-text">Edit</span>
+                        </a>
+                        <button class="btn btn-outline-primary btn-mobile" onclick="window.print()">
+                            <i class="fas fa-print"></i>
+                            <span class="btn-text">Print</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Key Metrics Dashboard -->
+    <div class="metrics-dashboard">
+        <div class="metrics-grid">
+            <div class="metric-card metric-primary">
+                <div class="metric-icon">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">{{ order.expected_total_bags }}</div>
+                    <div class="metric-label">Expected Bags</div>
+                    <div class="metric-sublabel">As per invoice</div>
+                </div>
+            </div>
+            
+            <div class="metric-card metric-success">
+                <div class="metric-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">{{ order.actual_received_bags }}</div>
+                    <div class="metric-label">Received</div>
+                    <div class="metric-progress">
+                        <div class="progress-bar" 
+                             style="width: {% if order.expected_total_bags > 0 %}{% widthratio order.actual_received_bags order.expected_total_bags 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="metric-card metric-info">
+                <div class="metric-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">{{ storage_bags }}</div>
+                    <div class="metric-label">For Storage</div>
+                    <div class="metric-sublabel">Available inventory</div>
+                </div>
+            </div>
+            
+            <div class="metric-card {% if discrepancy != 0 %}metric-warning{% else %}metric-success{% endif %}">
+                <div class="metric-icon">
+                    {% if discrepancy > 0 %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                    {% elif discrepancy < 0 %}
+                        <i class="fas fa-plus-circle"></i>
+                    {% else %}
+                        <i class="fas fa-balance-scale"></i>
+                    {% endif %}
+                </div>
+                <div class="metric-content">
+                    <div class="metric-value">
+                        {% if discrepancy > 0 %}
+                            -{{ discrepancy }}
+                        {% elif discrepancy < 0 %}
+                            +{{ discrepancy|floatformat:0|slice:"1:" }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </div>
+                    <div class="metric-label">Discrepancy</div>
+                    <div class="metric-sublabel">
+                        {% if discrepancy == 0 %}
+                            Perfect match
+                        {% else %}
+                            {{ discrepancy_percentage }}% variance
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quality Breakdown Bar -->
+        <div class="quality-breakdown-card">
+            <div class="quality-header">
+                <h6><i class="fas fa-chart-bar me-2"></i>Quality Breakdown</h6>
+            </div>
+            <div class="quality-visual">
+                <div class="quality-bar">
+                    {% if order.actual_received_bags > 0 %}
+                        <div class="quality-segment good" 
+                             style="width: {% widthratio order.good_bags order.actual_received_bags 100 %}%"
+                             title="{{ order.good_bags }} good bags">
+                        </div>
+                        <div class="quality-segment damaged" 
+                             style="width: {% widthratio order.damaged_bags order.actual_received_bags 100 %}%"
+                             title="{{ order.damaged_bags }} damaged bags">
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="quality-legend">
+                    <div class="legend-item">
+                        <span class="legend-color good"></span>
+                        <span class="legend-text">{{ order.good_bags }} Good</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color damaged"></span>
+                        <span class="legend-text">{{ order.damaged_bags }} Damaged</span>
+                    </div>
+                    {% if order.crossover_required %}
+                        <div class="legend-item">
+                            <span class="legend-color crossover"></span>
+                            <span class="legend-text">{{ order.crossover_bags }} Crossover</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="detail-content-grid">
+        <!-- Primary Information Column -->
+        <div class="main-content">
+            <!-- Enhanced Transport Information -->
+            <div class="info-card transport-info">
+                <div class="info-card-header">
+                    <div class="header-icon">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <div class="header-text">
+                        <h5>Transport Information</h5>
+                        <p class="header-subtitle">Shipment and documentation details</p>
+                    </div>
+                </div>
+                <div class="info-card-body">
+                    <div class="info-grid">
+                        <div class="info-group">
+                            <div class="info-field">
+                                <label class="info-label">
+                                    <i class="fas fa-barcode me-2"></i>Dispatch ID
+                                </label>
+                                <div class="info-value primary-id">{{ order.dispatch_id }}</div>
+                                <button class="copy-btn" onclick="copyToClipboard('{{ order.dispatch_id }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="info-field">
+                                <label class="info-label">
+                                    <i class="fas fa-file-invoice me-2"></i>E-way Bill
+                                </label>
+                                <div class="info-value">{{ order.eway_bill_number }}</div>
+                                <button class="copy-btn" onclick="copyToClipboard('{{ order.eway_bill_number }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="info-group">
+                            {% if order.transport_document_number %}
+                                <div class="info-field">
+                                    <label class="info-label">
+                                        <i class="fas fa-truck me-2"></i>Transport Document
+                                    </label>
+                                    <div class="info-value">{{ order.transport_document_number }}</div>
+                                </div>
+                            {% endif %}
+                            {% if order.product %}
+                                <div class="info-field">
+                                    <label class="info-label">
+                                        <i class="fas fa-box me-2"></i>Product
+                                    </label>
+                                    <div class="info-value product-info">
+                                        <strong>{{ order.product.name }}</strong>
+                                        <span class="product-code">({{ order.product.code }})</span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Location & Timing -->
+            <div class="info-card location-timing">
+                <div class="info-card-header">
+                    <div class="header-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="header-text">
+                        <h5>Location & Timing</h5>
+                        <p class="header-subtitle">Destination and schedule information</p>
+                    </div>
+                </div>
+                <div class="info-card-body">
+                    <!-- Destination Info -->
+                    <div class="destination-card">
+                        <div class="destination-header">
+                            <div class="destination-icon">
+                                <i class="fas fa-warehouse"></i>
+                            </div>
+                            <div class="destination-details">
+                                <h6 class="destination-name">{{ order.godown.name }}</h6>
+                                <p class="destination-code">{{ order.godown.code }}</p>
+                                <p class="destination-location">
+                                    <i class="fas fa-location-dot me-1"></i>
+                                    {{ order.godown.city }}, {{ order.godown.state }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Timing Info -->
+                    <div class="timing-section">
+                        <div class="timing-item">
+                            <div class="timing-label">
+                                <i class="fas fa-calendar-plus me-2"></i>Order Created
+                            </div>
+                            <div class="timing-value">{{ order.created_at|date:"M d, Y g:i A" }}</div>
+                        </div>
+                        
+                        {% if order.actual_arrival_date %}
+                            <div class="timing-item arrived">
+                                <div class="timing-label">
+                                    <i class="fas fa-calendar-check me-2"></i>Actual Arrival
+                                </div>
+                                <div class="timing-value">{{ order.actual_arrival_date|date:"M d, Y g:i A" }}</div>
+                                <div class="timing-duration">
+                                    Duration: {{ order.actual_arrival_date|timeuntil:order.created_at }}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="timing-item pending">
+                                <div class="timing-label">
+                                    <i class="fas fa-clock me-2"></i>Expected Arrival
+                                </div>
+                                <div class="timing-value text-muted">In transit - arrival pending</div>
+                                <div class="timing-duration">
+                                    Transit time: {{ order.created_at|timesince }}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Analysis Section -->
+            <div class="info-card analysis-section">
+                <div class="info-card-header">
+                    <div class="header-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="header-text">
+                        <h5>Quantity Analysis</h5>
+                        <p class="header-subtitle">Detailed breakdown of received inventory</p>
+                    </div>
+                </div>
+                <div class="info-card-body">
+                    <!-- Key Insights Cards -->
+                    <div class="insights-grid">
+                        {% if order.shortage_bags > 0 %}
+                            <div class="insight-card shortage">
+                                <div class="insight-icon">
+                                    <i class="fas fa-minus-circle"></i>
+                                </div>
+                                <div class="insight-content">
+                                    <div class="insight-value">{{ order.shortage_bags }}</div>
+                                    <div class="insight-label">Bags Short</div>
+                                    <div class="insight-impact">-{{ discrepancy_percentage }}% impact</div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if order.excess_bags > 0 %}
+                            <div class="insight-card excess">
+                                <div class="insight-icon">
+                                    <i class="fas fa-plus-circle"></i>
+                                </div>
+                                <div class="insight-content">
+                                    <div class="insight-value">{{ order.excess_bags }}</div>
+                                    <div class="insight-label">Bags Excess</div>
+                                    <div class="insight-impact">+{{ discrepancy_percentage }}% bonus</div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if order.damaged_bags > 0 %}
+                            <div class="insight-card damaged">
+                                <div class="insight-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="insight-content">
+                                    <div class="insight-value">{{ order.damaged_bags }}</div>
+                                    <div class="insight-label">Bags Damaged</div>
+                                    <div class="insight-impact">
+                                        {% if order.actual_received_bags > 0 %}
+                                            {% widthratio order.damaged_bags order.actual_received_bags 100 %}% damage rate
+                                        {% else %}
+                                            0% damage rate
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if order.crossover_required %}
+                            <div class="insight-card crossover">
+                                <div class="insight-icon">
+                                    <i class="fas fa-exchange-alt"></i>
+                                </div>
+                                <div class="insight-content">
+                                    <div class="insight-value">{{ order.crossover_bags }}</div>
+                                    <div class="insight-label">Crossover Bags</div>
+                                    <div class="insight-impact">Direct transfer</div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Summary Table -->
+                    <div class="analysis-table-wrapper">
+                        <table class="analysis-table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-center">Count</th>
+                                    <th class="text-center">Percentage</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="row-expected">
+                                    <td>
+                                        <div class="category-cell">
+                                            <i class="fas fa-clipboard-list"></i>
+                                            <span>Expected Total</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><strong>{{ order.expected_total_bags }}</strong></td>
+                                    <td class="text-center">100%</td>
+                                    <td class="text-center">
+                                        <span class="status-chip baseline">Baseline</span>
+                                    </td>
+                                </tr>
+                                <tr class="row-received">
+                                    <td>
+                                        <div class="category-cell">
+                                            <i class="fas fa-truck-loading"></i>
+                                            <span>Actually Received</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><strong>{{ order.actual_received_bags }}</strong></td>
+                                    <td class="text-center">
+                                        {% if order.expected_total_bags > 0 %}
+                                            {% widthratio order.actual_received_bags order.expected_total_bags 100 %}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="status-chip received">Received</span>
+                                    </td>
+                                </tr>
+                                <tr class="row-good">
+                                    <td>
+                                        <div class="category-cell">
+                                            <i class="fas fa-check-circle"></i>
+                                            <span>Good Condition</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><strong>{{ order.good_bags }}</strong></td>
+                                    <td class="text-center">
+                                        {% if order.actual_received_bags > 0 %}
+                                            {% widthratio order.good_bags order.actual_received_bags 100 %}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="status-chip good">Usable</span>
+                                    </td>
+                                </tr>
+                                <tr class="row-storage">
+                                    <td>
+                                        <div class="category-cell">
+                                            <i class="fas fa-warehouse"></i>
+                                            <span>Available for Storage</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><strong>{{ storage_bags }}</strong></td>
+                                    <td class="text-center">
+                                        {% if order.good_bags > 0 %}
+                                            {% widthratio storage_bags order.good_bags 100 %}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="status-chip storage">Available</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Section -->
+            {% if order.arrival_notes %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-sticky-note text-info"></i>
+                            Notes & Remarks
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ order.arrival_notes|linebreaks }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ===== ENHANCED UX DESIGN SYSTEM FOR TRANSIT DETAILS ===== */
+
+/* CSS Variables for Design Consistency */
+:root {
+    --primary-color: #0d6efd;
+    --success-color: #198754;
+    --warning-color: #fd7e14;
+    --danger-color: #dc3545;
+    --info-color: #0dcaf0;
+    --secondary-color: #6c757d;
+    
+    --status-in-transit: #ffd60a;
+    --status-arrived: #52b788;
+    --status-cancelled: #e63946;
+    
+    --surface-primary: #ffffff;
+    --surface-secondary: #f8f9fa;
+    --surface-tertiary: #e9ecef;
+    
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --text-muted: #adb5bd;
+    
+    --border-radius: 12px;
+    --border-radius-lg: 16px;
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Mobile-First Container */
+.transit-detail-container {
+    max-width: 100%;
+    padding: var(--spacing-md);
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    .transit-detail-container {
+        max-width: 1200px;
+        padding: var(--spacing-lg);
+    }
+}
+
+/* Enhanced Header Design */
+.detail-header {
+    margin-bottom: var(--spacing-xl);
+}
+
+.breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin-bottom: var(--spacing-md);
+}
+
+.breadcrumb-item a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--primary-color);
+}
+
+.status-header-card {
+    background: var(--surface-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--surface-tertiary);
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.status-badge.status-in-transit {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border: 2px solid var(--status-in-transit);
+}
+
+.status-badge.status-arrived {
+    background: linear-gradient(135deg, #d1e7dd, #a3cfbb);
+    color: #0f5132;
+    border: 2px solid var(--status-arrived);
+}
+
+.status-badge.status-cancelled {
+    background: linear-gradient(135deg, #f8d7da, #f1aeb5);
+    color: #842029;
+    border: 2px solid var(--status-cancelled);
+}
+
+.status-pulse {
+    position: absolute;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: currentColor;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.transaction-id {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: var(--spacing-sm) 0;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+}
+
+.header-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.detail-chip {
+    background: var(--surface-secondary);
+    color: var(--text-secondary);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.detail-chip.last-updated {
+    background: var(--info-color);
+    color: white;
+}
+
+/* Mobile-Optimized Action Bar */
+.action-bar {
+    margin-top: var(--spacing-md);
+}
+
+.btn-group-mobile {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.btn-mobile {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    min-height: 44px;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-mobile:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-mobile:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 576px) {
+    .btn-group-mobile {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-mobile {
+        justify-content: center;
+    }
+    
+    .btn-text {
+        display: inline;
+    }
+}
+
+/* Enhanced Metrics Dashboard */
+.metrics-dashboard {
+    margin-bottom: var(--spacing-xl);
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+@media (min-width: 576px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 992px) {
+    .metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.metric-card {
+    background: var(--surface-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.metric-card.metric-success {
+    border-left-color: var(--success-color);
+}
+
+.metric-card.metric-warning {
+    border-left-color: var(--warning-color);
+}
+
+.metric-card.metric-info {
+    border-left-color: var(--info-color);
+}
+
+.metric-icon {
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-sm);
+    opacity: 0.8;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-sublabel {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: var(--spacing-xs);
+}
+
+.metric-progress {
+    margin-top: var(--spacing-sm);
+    height: 4px;
+    background: var(--surface-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color), var(--info-color));
+    transition: width 0.3s ease;
+}
+
+/* Quality Breakdown */
+.quality-breakdown-card {
+    background: var(--surface-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.quality-header h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+}
+
+.quality-bar {
+    height: 12px;
+    background: var(--surface-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    margin-bottom: var(--spacing-md);
+}
+
+.quality-segment {
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.quality-segment.good {
+    background: linear-gradient(90deg, var(--success-color), #20c997);
+}
+
+.quality-segment.damaged {
+    background: linear-gradient(90deg, var(--danger-color), #ff6b6b);
+}
+
+.quality-segment.crossover {
+    background: linear-gradient(90deg, var(--info-color), #74c0fc);
+}
+
+.quality-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.legend-color.good {
+    background: var(--success-color);
+}
+
+.legend-color.damaged {
+    background: var(--danger-color);
+}
+
+.legend-color.crossover {
+    background: var(--info-color);
+}
+
+.legend-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* Main Content Grid */
+.detail-content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+}
+
+@media (min-width: 992px) {
+    .detail-content-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+/* Enhanced Info Cards */
+.info-card {
+    background: var(--surface-primary);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--surface-tertiary);
+    transition: all 0.3s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.info-card-header {
+    background: linear-gradient(135deg, var(--surface-secondary), #e3f2fd);
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--surface-tertiary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.header-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.header-text h5 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+}
+
+.header-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.info-card-body {
+    padding: var(--spacing-lg);
+}
+
+/* Transport Information */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+}
+
+@media (min-width: 768px) {
+    .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.info-field {
+    position: relative;
+    padding: var(--spacing-md);
+    background: var(--surface-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--surface-tertiary);
+}
+
+.info-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-xs);
+    display: flex;
+    align-items: center;
+}
+
+.info-value {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0;
+}
+
+.primary-id {
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.product-code {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.copy-btn {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: var(--surface-tertiary);
+    color: var(--primary-color);
+}
+
+/* Destination Card */
+.destination-card {
+    background: linear-gradient(135deg, var(--success-color), #20c997);
+    color: white;
+    border-radius: var(--border-radius);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.destination-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.destination-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.destination-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+}
+
+.destination-code {
+    font-family: 'SF Mono', monospace;
+    opacity: 0.8;
+    margin-bottom: var(--spacing-xs);
+}
+
+.destination-location {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+/* Timing Section */
+.timing-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.timing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-md);
+    background: var(--surface-secondary);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--text-muted);
+}
+
+.timing-item.arrived {
+    border-left-color: var(--success-color);
+    background: linear-gradient(135deg, #d1e7dd, #f8fff9);
+}
+
+.timing-item.pending {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(135deg, #fff3cd, #fffef5);
+}
+
+.timing-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.timing-value {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.timing-duration {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: var(--spacing-xs);
+}
+
+/* Analysis Section */
+.insights-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+@media (min-width: 576px) {
+    .insights-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 992px) {
+    .insights-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.insight-card {
+    background: var(--surface-primary);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+    border-left: 4px solid var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.insight-card.shortage {
+    border-left-color: var(--danger-color);
+    background: linear-gradient(135deg, #fff5f5, #ffeaea);
+}
+
+.insight-card.excess {
+    border-left-color: var(--info-color);
+    background: linear-gradient(135deg, #f0f9ff, #e0f7ff);
+}
+
+.insight-card.damaged {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(135deg, #fffbf0, #fff4e0);
+}
+
+.insight-card.crossover {
+    border-left-color: var(--primary-color);
+    background: linear-gradient(135deg, #f8f9ff, #e8eaff);
+}
+
+.insight-icon {
+    font-size: 1.5rem;
+    opacity: 0.8;
+}
+
+.insight-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.insight-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.insight-impact {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Analysis Table */
+.analysis-table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--surface-tertiary);
+}
+
+.analysis-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.analysis-table thead {
+    background: linear-gradient(135deg, var(--surface-secondary), #e9ecef);
+}
+
+.analysis-table th,
+.analysis-table td {
+    padding: var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid var(--surface-tertiary);
+}
+
+.analysis-table th {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.category-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.status-chip {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-chip.baseline {
+    background: var(--surface-tertiary);
+    color: var(--text-secondary);
+}
+
+.status-chip.received {
+    background: var(--info-color);
+    color: white;
+}
+
+.status-chip.good {
+    background: var(--success-color);
+    color: white;
+}
+
+.status-chip.storage {
+    background: var(--warning-color);
+    color: white;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .transaction-id {
+        font-size: 1.5rem;
+    }
+    
+    .metric-value {
+        font-size: 1.75rem;
+    }
+    
+    .metric-card {
+        padding: var(--spacing-md);
+    }
+    
+    .info-card-header,
+    .info-card-body {
+        padding: var(--spacing-md);
+    }
+    
+    .header-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .destination-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.25rem;
+    }
+    
+    .timing-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+    
+    .analysis-table {
+        font-size: 0.875rem;
+    }
+    
+    .analysis-table th,
+    .analysis-table td {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .action-bar,
+    .btn-mobile,
+    .copy-btn {
+        display: none !important;
+    }
+    
+    .info-card {
+        box-shadow: none !important;
+        border: 1px solid #000 !important;
+        break-inside: avoid;
+    }
+    
+    .status-header-card {
+        box-shadow: none !important;
+        border: 2px solid #000 !important;
+    }
+    
+    .transaction-id {
+        color: #000 !important;
+    }
+}
+
+/* Utility Classes */
+.text-center { text-align: center; }
+.fw-bold { font-weight: 700; }
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-info { color: var(--info-color); }
+.text-muted { color: var(--text-muted); }
+</style>
+
+<script>
+// Enhanced UX JavaScript for Transit Detail Page
+
+// Copy to clipboard functionality
+function copyToClipboard(text) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+            showToast('Copied to clipboard: ' + text, 'success');
+        }).catch(function() {
+            fallbackCopyToClipboard(text);
+        });
+    } else {
+        fallbackCopyToClipboard(text);
+    }
+}
+
+function fallbackCopyToClipboard(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        showToast('Copied to clipboard: ' + text, 'success');
+    } catch (err) {
+        showToast('Failed to copy to clipboard', 'error');
+    }
+    document.body.removeChild(textArea);
+}
+
+// Toast notification system
+function showToast(message, type = 'info') {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.toast-notification');
+    existingToasts.forEach(toast => toast.remove());
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (toast && toast.parentElement) {
+            toast.remove();
+        }
+    }, 3000);
+}
+
+// Status update functionality
+function updateStatus(newStatus) {
+    const statusNames = {
+        'ARRIVED': 'Arrived',
+        'IN_TRANSIT': 'In Transit',
+        'CANCELLED': 'Cancelled'
+    };
+    
+    if (confirm(`Are you sure you want to update the status to ${statusNames[newStatus]}?`)) {
+        // Show loading state
+        const buttons = document.querySelectorAll('.btn-mobile');
+        buttons.forEach(btn => {
+            btn.classList.add('loading');
+            btn.disabled = true;
+        });
+        
+        // This would normally make an AJAX call to update the status
+        // For now, redirect to the edit page
+        setTimeout(() => {
+            window.location.href = "{% url 'orderintransit_update' order.dispatch_id %}";
+        }, 500);
+    }
+}
+
+// Enhanced print functionality
+function enhancedPrint() {
+    // Add print-specific styles
+    document.body.classList.add('printing');
+    
+    // Print the page
+    window.print();
+    
+    // Remove print styles after a delay
+    setTimeout(() => {
+        document.body.classList.remove('printing');
+    }, 1000);
+}
+
+// Intersection Observer for animations
+function initializeAnimations() {
+    const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-in');
+            }
+        });
+    }, observerOptions);
+    
+    // Observe all cards
+    document.querySelectorAll('.metric-card, .info-card, .insight-card').forEach(card => {
+        observer.observe(card);
+    });
+}
+
+// Real-time status updates (WebSocket placeholder)
+function initializeStatusUpdates() {
+    // This would connect to a WebSocket for real-time updates
+    console.log('Real-time status updates initialized for:', '{{ order.dispatch_id }}');
+    
+    // Simulate periodic status checks
+    if ('{{ order.status }}' === 'IN_TRANSIT') {
+        setInterval(() => {
+            // This would check for status updates
+            console.log('Checking for status updates...');
+        }, 30000); // Check every 30 seconds
+    }
+}
+
+// Progressive Web App functionality
+function initializePWA() {
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+        console.log('PWA features available');
+    }
+    
+    // Add to home screen prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('App can be installed');
+    });
+}
+
+// Initialize all functionality when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAnimations();
+    initializeStatusUpdates();
+    initializePWA();
+    
+    // Add loading states to buttons
+    document.querySelectorAll('.btn-mobile').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.onclick && this.onclick.toString().includes('window.location')) {
+                this.classList.add('loading');
+                this.disabled = true;
+            }
+        });
+    });
+    
+    // Add hover effects to metric cards
+    document.querySelectorAll('.metric-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-4px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+    });
+    
+    // Smooth scroll for any anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    console.log('Enhanced transit detail UX initialized');
+});
+</script>
+
+<!-- Additional CSS for animations and toast notifications -->
+<style>
+/* Animation Classes */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-in {
+    animation: slideInUp 0.6s ease forwards;
+}
+
+/* Toast Notifications */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--surface-primary);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-xl);
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    z-index: 1050;
+    min-width: 300px;
+    animation: slideInRight 0.3s ease;
+    border-left: 4px solid var(--info-color);
+}
+
+.toast-notification.toast-success {
+    border-left-color: var(--success-color);
+}
+
+.toast-notification.toast-error {
+    border-left-color: var(--danger-color);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-grow: 1;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.toast-close:hover {
+    background: var(--surface-tertiary);
+    color: var(--text-primary);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Loading States */
+.btn-mobile.loading {
+    opacity: 0.7;
+    position: relative;
+    pointer-events: none;
+}
+
+.btn-mobile.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Print enhancements */
+.printing .toast-notification {
+    display: none;
+}
+
+@media (max-width: 576px) {
+    .toast-notification {
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+    }
+}
+</style>
+{% endblock %}

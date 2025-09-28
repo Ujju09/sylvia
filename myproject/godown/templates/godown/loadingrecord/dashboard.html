@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+
+<div class="simple-dashboard-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h3 class="dashboard-title">
+                <i class="fas fa-truck-loading"></i>
+                Loading Dashboard
+            </h3>
+            <div class="header-meta">
+                <span class="date-display">{{ today_date|date:"d M Y" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+        <!-- Today's Summary Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-calendar-day"></i>
+                    Today's Activity
+                </h2>
+            </div>
+            
+            <div class="inventory-cards-grid">
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Records Created</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-label">Today</span>
+                                <span class="stock-value">{{ today_count|default:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Bags Requested</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-label">Today</span>
+                                <span class="stock-value">{{ today_stats.requested|default:0|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Bags Loaded</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-label">Today</span>
+                                <span class="stock-value good">{{ today_stats.loaded|default:0|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if today_stats.requested and today_stats.requested > 0 %}
+                    {% widthratio today_stats.loaded today_stats.requested 100 as today_completion %}
+                    <div class="inventory-card">
+                        <div class="card-header">
+                            <h3 class="godown-name">Completion</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="stock-summary">
+                                <div class="stock-item">
+                                    <span class="stock-label">Today</span>
+                                    <span class="stock-value {% if today_completion >= 90 %}good{% elif today_completion >= 70 %}{% else %}damaged{% endif %}">{{ today_completion|default:0 }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- This Week Summary Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-calendar-week"></i>
+                    This Week's Summary
+                </h2>
+            </div>
+            
+            <div class="inventory-cards-grid">
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Total Records</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-label">This Week</span>
+                                <span class="stock-value">{{ week_count|default:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Bags Requested</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-label">This Week</span>
+                                <span class="stock-value">{{ week_stats.requested|default:0|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Bags Loaded</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-label">This Week</span>
+                                <span class="stock-value good">{{ week_stats.loaded|default:0|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if week_stats.requested and week_stats.requested > 0 %}
+                    {% widthratio week_stats.loaded week_stats.requested 100 as week_completion %}
+                    <div class="inventory-card">
+                        <div class="card-header">
+                            <h3 class="godown-name">Avg Completion</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="stock-summary">
+                                <div class="stock-item">
+                                    <span class="stock-label">This Week</span>
+                                    <span class="stock-value {% if week_completion >= 90 %}good{% elif week_completion >= 70 %}{% else %}damaged{% endif %}">{{ week_completion|default:0 }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Records Section -->
+        {% if recent_records %}
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-history"></i>
+                    Recent Loading Records
+                </h2>
+            </div>
+            
+            {% for record in recent_records %}
+                <div class="widget-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h4>
+                                <a href="{% url 'loading_record_detail' record.loading_request_id %}" class="text-decoration-none">
+                                    {{ record.loading_request_id }}
+                                </a>
+                            </h4>
+                            <small class="text-muted">
+                                {{ record.created_at|date:"M d, g:i A" }} • 
+                                {{ record.dealer.name }} • 
+                                {{ record.product.name }}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <div class="quantity-display">{{ record.loaded_bags }} / {{ record.requested_bags }}</div>
+                            {% if record.loaded_bags >= record.requested_bags %}
+                                <span class="status-badge status-completed">Complete</span>
+                            {% elif record.loaded_bags > 0 %}
+                                <span class="status-badge status-loading_in_progress">Partial</span>
+                            {% else %}
+                                <span class="status-badge status-pending">Pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-bolt"></i>
+                    Quick Actions
+                </h2>
+            </div>
+            
+            <div class="quick-links-grid">
+                <a href="{% url 'loading_record_create' %}" class="quick-link-card priority">
+                    <div class="link-icon">
+                        <i class="fas fa-plus-circle"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">New Loading</h3>
+                        <p class="link-description">Create loading record</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'loading_record_list' %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">All Records</h3>
+                        <p class="link-description">View all loading records</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'godown_inventory_list' %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">Inventory</h3>
+                        <p class="link-description">Check stock levels</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

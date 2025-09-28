@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+<div class="simple-dashboard-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">
+                <i class="fas fa-plus-circle"></i>
+                {% if form.instance.pk %}Edit Loading Record{% else %}New Loading Record{% endif %}
+            </h1>
+            <div class="header-meta">
+                <a href="{% url 'loading_record_list' %}" class="btn-view-details">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="dashboard-section full-width">
+            <form method="post" class="form-section">
+                {% csrf_token %}
+                
+                <!-- Basic Information -->
+                <h6 class="mb-3">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    Basic Information
+                </h6>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-4">
+                        <label for="{{ form.godown.id_for_label }}" class="form-label">Warehouse</label>
+                        {{ form.godown }}
+                        {% if form.godown.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.godown.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="{{ form.dealer.id_for_label }}" class="form-label">Customer</label>
+                        {{ form.dealer }}
+                        {% if form.dealer.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.dealer.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="{{ form.product.id_for_label }}" class="form-label">Product</label>
+                        {{ form.product }}
+                        {% if form.product.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.product.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quantities -->
+                <h6 class="mb-3">
+                    <i class="fas fa-calculator text-success me-2"></i>
+                    Quantities
+                </h6>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6">
+                        <label for="{{ form.requested_bags.id_for_label }}" class="form-label">Bags Requested</label>
+                        {{ form.requested_bags }}
+                        <div class="form-text">Number of bags requested by the customer</div>
+                        {% if form.requested_bags.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.requested_bags.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="{{ form.loaded_bags.id_for_label }}" class="form-label">Bags Loaded</label>
+                        {{ form.loaded_bags }}
+                        <div class="form-text">Number of bags actually loaded</div>
+                        {% if form.loaded_bags.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.loaded_bags.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Optional Information -->
+                <h6 class="mb-3">
+                    <i class="fas fa-sticky-note text-warning me-2"></i>
+                    Additional Information (Optional)
+                </h6>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-4">
+                        <label for="{{ form.supervised_by.id_for_label }}" class="form-label">Supervisor</label>
+                        {{ form.supervised_by }}
+                        {% if form.supervised_by.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.supervised_by.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="{{ form.special_instructions.id_for_label }}" class="form-label">Special Instructions</label>
+                        {{ form.special_instructions }}
+                        {% if form.special_instructions.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.special_instructions.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="{{ form.loading_notes.id_for_label }}" class="form-label">Loading Notes</label>
+                        {{ form.loading_notes }}
+                        {% if form.loading_notes.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {% for error in form.loading_notes.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Form Errors -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Please check:</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{% url 'loading_record_list' %}" class="action-button">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="action-button--priority">
+                        <i class="fas fa-save"></i> Save Record
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

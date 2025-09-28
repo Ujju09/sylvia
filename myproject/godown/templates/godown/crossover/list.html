@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-exchange-alt text-primary"></i>
+                        Crossover Records
+                    </h2>
+                    <p class="text-muted mb-0">Track direct vehicle-to-vehicle transfers</p>
+                </div>
+                <div>
+                    <a href="{% url 'crossover_create' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus"></i>
+                        New Crossover
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <div class="h3 text-primary mb-1">{{ summary_stats.total_records|default:0 }}</div>
+                    <div class="text-muted">Total Crossovers</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <div class="h3 text-info mb-1">{{ summary_stats.total_requested_bags|default:0 }}</div>
+                    <div class="text-muted">Requested Bags</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <div class="h3 text-success mb-1">{{ summary_stats.total_transferred_bags|default:0 }}</div>
+                    <div class="text-muted">Transferred Bags</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <div class="h3 text-warning mb-1">
+                        {% if summary_stats.total_requested_bags > 0 %}
+                            {% widthratio summary_stats.total_transferred_bags summary_stats.total_requested_bags 100 %}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                    <div class="text-muted">Completion Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="q" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="q" name="q" 
+                           value="{{ search_query }}" 
+                           placeholder="Crossover ID, dealer, product...">
+                </div>
+                <div class="col-md-2">
+                    <label for="dealer" class="form-label">Dealer</label>
+                    <select class="form-control" id="dealer" name="dealer">
+                        <option value="">All Dealers</option>
+                        {% for dealer in dealer_choices %}
+                            <option value="{{ dealer.id }}" {% if dealer.id|stringformat:"s" == dealer_filter %}selected{% endif %}>
+                                {{ dealer.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="product" class="form-label">Product</label>
+                    <select class="form-control" id="product" name="product">
+                        <option value="">All Products</option>
+                        {% for product in product_choices %}
+                            <option value="{{ product.id }}" {% if product.id|stringformat:"s" == product_filter %}selected{% endif %}>
+                                {{ product.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Crossovers Table -->
+    <div class="card">
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Crossover ID</th>
+                                <th>Source Order</th>
+                                <th>Destination Dealer</th>
+                                <th>Product</th>
+                                <th>Requested</th>
+                                <th>Transferred</th>
+                                <th>Progress</th>
+                                <th>Approved Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for crossover in page_obj %}
+                                <tr data-url="{% url 'crossover_detail' crossover.crossover_id %}">
+                                    <td>
+                                        <strong class="text-primary">{{ crossover.crossover_id }}</strong>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>{{ crossover.source_order_transit.eway_bill_number }}</strong>
+                                            <br><small class="text-muted">{{ crossover.source_order_transit.godown.name }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>{{ crossover.destination_dealer.name }}</strong>
+                                            <br><small class="text-muted">{{ crossover.destination_dealer.code }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>{{ crossover.product.name }}</strong>
+                                            <br><small class="text-muted">{{ crossover.product.code }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="h6 text-primary">{{ crossover.requested_bags }}</span>
+                                        <br><small class="text-muted">bags</small>
+                                    </td>
+                                    <td>
+                                        <span class="h6 {% if crossover.actual_transferred_bags >= crossover.requested_bags %}text-success{% elif crossover.actual_transferred_bags > 0 %}text-warning{% else %}text-muted{% endif %}">
+                                            {{ crossover.actual_transferred_bags }}
+                                        </span>
+                                        <br><small class="text-muted">bags</small>
+                                    </td>
+                                    <td>
+                                        {% if crossover.requested_bags > 0 %}
+                                            {% widthratio crossover.actual_transferred_bags crossover.requested_bags 100 as completion_percent %}
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar {% if completion_percent == 100 %}bg-success{% elif completion_percent > 0 %}bg-warning{% else %}bg-secondary{% endif %}" 
+                                                     role="progressbar" style="width: {{ completion_percent }}%"
+                                                     aria-valuenow="{{ completion_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                                    {{ completion_percent }}%
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if crossover.approved_date %}
+                                            {{ crossover.approved_date|date:"M d, Y" }}
+                                            <br><small class="text-muted">{{ crossover.approved_date|time:"g:i A" }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'crossover_detail' crossover.crossover_id %}" 
+                                               class="btn btn-sm btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'crossover_update' crossover.crossover_id %}" 
+                                               class="btn btn-sm btn-outline-warning" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if dealer_filter %}dealer={{ dealer_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                        Previous
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if dealer_filter %}dealer={{ dealer_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if dealer_filter %}dealer={{ dealer_filter }}&{% endif %}{% if product_filter %}product={{ product_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                        Next
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-exchange-alt fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Crossover Records Found</h4>
+                    <p class="text-muted">Create your first crossover record to get started.</p>
+                    <a href="{% url 'crossover_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create Crossover Record
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styles for better user experience */
+.progress {
+    border-radius: 10px;
+}
+
+.progress-bar {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.table th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.table-responsive {
+    border-radius: 0.375rem;
+}
+
+/* Row hover effect with click cursor */
+tbody tr[data-url] {
+    cursor: pointer;
+}
+
+tbody tr[data-url]:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Status-specific colors */
+.text-warning { color: #f39c12 !important; }
+.bg-warning { background-color: #f39c12 !important; }
+.text-success { color: #27ae60 !important; }
+.bg-success { background-color: #27ae60 !important; }
+.text-danger { color: #e74c3c !important; }
+.bg-danger { background-color: #e74c3c !important; }
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .progress {
+        height: 15px !important;
+    }
+    
+    .progress-bar {
+        font-size: 0.7rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click navigation for table rows
+    const tableRows = document.querySelectorAll('tbody tr[data-url]');
+    tableRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't navigate if clicking on action buttons
+            if (!e.target.closest('.btn, .btn-group')) {
+                window.location.href = this.dataset.url;
+            }
+        });
+    });
+    
+    // Enhanced list view functionality from godown.js
+    if (window.GodownJS && window.GodownJS.enhanceTransitListView) {
+        window.GodownJS.enhanceTransitListView();
+    }
+});
+</script>
+{% endblock %}

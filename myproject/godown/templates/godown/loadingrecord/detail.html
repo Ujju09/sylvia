@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+<div class="simple-dashboard-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">
+                <i class="fas fa-file-alt"></i>
+                {{ loading_record.loading_request_id }}
+            </h1>
+            <div class="header-meta">
+                <div class="date-display">{{ loading_record.created_at|date:"M d, Y g:i A" }}</div>
+                {% if loading_record.created_by %}
+                    <div class="user-display">by {{ loading_record.created_by.get_full_name|default:loading_record.created_by.username }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Status
+                </h2>
+            </div>
+            <div class="metric-card {% if completion_percentage == 100 %}metric-card--normal{% elif loading_record.loaded_bags > 0 %}metric-card--warning{% else %}metric-card--info{% endif %}">
+                <div class="metric-card__content">
+                    <div class="metric-value">
+                        <div class="metric-value__primary">{{ completion_percentage|floatformat:0 }}%</div>
+                        <div class="metric-value__trend">
+                            {% if completion_percentage == 100 %}
+                                <span class="trend-indicator--up">Complete</span>
+                            {% elif loading_record.loaded_bags > 0 %}
+                                <span class="trend-indicator--stable">Partial</span>
+                            {% else %}
+                                <span class="trend-indicator--down">Pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-info"></i>
+                    Details
+                </h2>
+            </div>
+            
+            <div class="detail-zone mb-3">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-warehouse text-primary me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.godown.name }}</strong>
+                                <small class="text-muted d-block">{{ loading_record.godown.code }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-store text-success me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.dealer.name }}</strong>
+                                <small class="text-muted d-block">{{ loading_record.dealer.code }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-cubes text-info me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.product.name }}</strong>
+                                <small class="text-muted d-block">{{ loading_record.product.code }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% if loading_record.supervised_by %}
+                    <div class="col-12">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-check text-warning me-2"></i>
+                            <div>
+                                <strong>{{ loading_record.supervised_by.get_full_name|default:loading_record.supervised_by.username }}</strong>
+                                <small class="text-muted d-block">Supervisor</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-calculator"></i>
+                    Quantities
+                </h2>
+            </div>
+            
+            <div class="inventory-cards-grid mb-3">
+                <div class="metric-card metric-card--info">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ loading_record.requested_bags|floatformat:0 }}</div>
+                        </div>
+                        <div class="stat-label">Requested</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-card--normal">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ loading_record.loaded_bags|floatformat:0 }}</div>
+                        </div>
+                        <div class="stat-label">Loaded</div>
+                    </div>
+                </div>
+                <div class="metric-card {% if bags_difference == 0 %}metric-card--info{% elif bags_difference > 0 %}metric-card--normal{% else %}metric-card--critical{% endif %}">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{% if bags_difference > 0 %}+{% endif %}{{ bags_difference|floatformat:0 }}</div>
+                        </div>
+                        <div class="stat-label">Difference</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if loading_record.special_instructions or loading_record.loading_notes %}
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-sticky-note"></i>
+                    Notes
+                </h2>
+            </div>
+            
+            <div class="row g-3">
+                {% if loading_record.special_instructions %}
+                <div class="col-12 col-md-6">
+                    <div class="detail-zone">
+                        <h6 class="mb-2">
+                            <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                            Special Instructions
+                        </h6>
+                        <div>{{ loading_record.special_instructions|linebreaks }}</div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if loading_record.loading_notes %}
+                <div class="col-12 col-md-6">
+                    <div class="detail-zone">
+                        <h6 class="mb-2">
+                            <i class="fas fa-comment-alt text-info me-2"></i>
+                            Loading Notes
+                        </h6>
+                        <div>{{ loading_record.loading_notes|linebreaks }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if recent_records %}
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-history"></i>
+                    Recent Records for {{ loading_record.dealer.name }}
+                </h2>
+            </div>
+            
+            {% for record in recent_records %}
+                <div class="widget-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h4>
+                                <a href="{% url 'loading_record_detail' record.loading_request_id %}" class="text-decoration-none">
+                                    {{ record.loading_request_id }}
+                                </a>
+                            </h4>
+                            <small class="text-muted">{{ record.created_at|date:"M d, Y" }} • {{ record.product.name }}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="quantity-display">{{ record.requested_bags }} / {{ record.loaded_bags }}</div>
+                            {% if record.loaded_bags >= record.requested_bags %}
+                                <span class="status-badge status-completed">Complete</span>
+                            {% elif record.loaded_bags > 0 %}
+                                <span class="status-badge status-loading_in_progress">Partial</span>
+                            {% else %}
+                                <span class="status-badge status-pending">Pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-cogs"></i>
+                    Actions
+                </h2>
+            </div>
+            
+            <div class="quick-links-grid">
+                <a href="{% url 'loading_record_update' loading_record.loading_request_id %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">Edit Record</h3>
+                        <p class="link-description">Modify this loading record</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'loading_record_create' %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">New Record</h3>
+                        <p class="link-description">Create another loading record</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'loading_record_list' %}" class="quick-link-card priority">
+                    <div class="link-icon">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">All Records</h3>
+                        <p class="link-description">View all loading records</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

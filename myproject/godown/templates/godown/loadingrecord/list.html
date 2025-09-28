@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+<div class="simple-dashboard-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">
+                <i class="fas fa-dolly-flatbed"></i>
+                Loading Records
+            </h1>
+            <div class="header-meta">
+                <a href="{% url 'loading_record_create' %}" class="btn-view-details">
+                    <i class="fas fa-plus-circle"></i> New Record
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Summary
+                </h2>
+            </div>
+            <div class="inventory-cards-grid">
+                <div class="metric-card metric-card--info">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.total_records|default:0 }}</div>
+                        </div>
+                        <div class="stat-label">Total Records</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-card--normal">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.total_requested_bags|default:0 }}</div>
+                        </div>
+                        <div class="stat-label">Bags Requested</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-card--normal">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.total_loaded_bags|default:0 }}</div>
+                        </div>
+                        <div class="stat-label">Bags Loaded</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-card--warning">
+                    <div class="metric-card__content">
+                        <div class="metric-value">
+                            <div class="metric-value__primary">{{ summary_stats.completion_percentage|default:0 }}%</div>
+                        </div>
+                        <div class="stat-label">Completion</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-search"></i>
+                    Search & Filter
+                </h2>
+            </div>
+            <form method="get" class="form-section">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label for="q" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="q" name="q" 
+                               value="{{ search_query }}" 
+                               placeholder="Search records...">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label for="godown" class="form-label">Warehouse</label>
+                        <select class="form-select" id="godown" name="godown">
+                            <option value="">All Warehouses</option>
+                            {% for godown in godown_choices %}
+                                <option value="{{ godown.id }}" {% if godown.id|stringformat:"s" == godown_filter %}selected{% endif %}>
+                                    {{ godown.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label for="dealer" class="form-label">Customer</label>
+                        <select class="form-select" id="dealer" name="dealer">
+                            <option value="">All Customers</option>
+                            {% for dealer in dealer_choices %}
+                                <option value="{{ dealer.id }}" {% if dealer.id|stringformat:"s" == dealer_filter %}selected{% endif %}>
+                                    {{ dealer.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-list"></i>
+                    Records <span class="badge bg-primary ms-2">{{ page_obj.paginator.count }} total</span>
+                </h2>
+            </div>
+            
+            {% if page_obj %}
+                {% for record in page_obj %}
+                    <div class="widget-card">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h4 class="mb-1">{{ record.loading_request_id }}</h4>
+                                <small class="text-muted">{{ record.created_at|date:"M d, Y g:i A" }}</small>
+                            </div>
+                            <div>
+                                {% if record.loaded_bags >= record.requested_bags %}
+                                    <span class="status-badge status-completed">Complete</span>
+                                {% elif record.loaded_bags > 0 %}
+                                    <span class="status-badge status-loading_in_progress">Partial</span>
+                                {% else %}
+                                    <span class="status-badge status-pending">Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-warehouse text-primary me-2"></i>
+                                    <div>
+                                        <strong>{{ record.godown.name }}</strong>
+                                        <small class="text-muted d-block">{{ record.godown.code }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-store text-success me-2"></i>
+                                    <div>
+                                        <strong>{{ record.dealer.name }}</strong>
+                                        <small class="text-muted d-block">{{ record.dealer.code }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-zone mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-cubes text-info me-2"></i>
+                                <strong>{{ record.product.name }}</strong>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="text-center p-2 border rounded bg-light">
+                                        <div class="quantity-display text-primary">{{ record.requested_bags }}</div>
+                                        <div class="small text-muted">Requested</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 border rounded bg-light">
+                                        <div class="quantity-display text-success">{{ record.loaded_bags }}</div>
+                                        <div class="small text-muted">Loaded</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if record.requested_bags > 0 %}
+                                {% widthratio record.loaded_bags record.requested_bags 100 as completion %}
+                                <div class="progress mt-2 loading-progress">
+                                    <div class="progress-bar {% if completion == 100 %}bg-success{% elif completion > 0 %}bg-warning{% else %}bg-secondary{% endif %}" 
+                                         role="progressbar" style="width: {{ completion }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ completion }}% Complete</small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'loading_record_detail' record.loading_request_id %}" 
+                               class="action-button flex-fill">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'loading_record_update' record.loading_request_id %}" 
+                               class="action-button flex-fill">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                {% if page_obj.has_other_pages %}
+                    <div class="d-flex justify-content-center mt-4">
+                        <nav>
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if dealer_filter %}dealer={{ dealer_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                            Previous
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                    </span>
+                                </li>
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if godown_filter %}godown={{ godown_filter }}&{% endif %}{% if dealer_filter %}dealer={{ dealer_filter }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                            Next
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                {% endif %}
+
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-dolly-flatbed"></i>
+                    <p>No Loading Records Found</p>
+                    {% if search_query or godown_filter or dealer_filter %}
+                        <div class="mt-3">
+                            <a href="?" class="action-button me-2">Clear Filters</a>
+                            <a href="{% url 'loading_record_create' %}" class="action-button--priority">Create Record</a>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'loading_record_create' %}" class="action-button--priority mt-3">Create First Record</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

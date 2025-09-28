@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+
+<div class="simple-dashboard-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h3 class="dashboard-title">
+                {{ godown.name }}
+            </h3>
+            <div class="header-meta">
+                <span class="date-display">{{ today_date|date:"d M Y" }}</span>
+                <a href="{% url 'godown_home' %}" class="btn btn-outline-primary btn-sm ms-2">
+                    <i class="fas fa-arrow-left"></i> Back to Overview
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+        <!-- Key Metrics Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Key Metrics
+                </h2>
+            </div>
+            
+            <div class="inventory-cards-grid">
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Total Bags Available</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-value" style="font-size: 2rem; color: #0d6efd;">{{ total_bags|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Products</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-value" style="font-size: 2rem; color: #198754;">{{ products_count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+               
+
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">Utilization</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-value" style="font-size: 2rem; color: #fd7e14;">{{ utilization_percentage }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Breakdown Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Product-wise Stock
+                </h2>
+            </div>
+            
+            {% if product_breakdown %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Bags Available</th>
+                                <th>Recd in Good condition</th>
+                                <th>Recd Damaged</th>
+                                <th>Last Updated</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in product_breakdown %}
+                            <tr>
+                                <td>
+                                    <strong>{{ product.product_name }}</strong><br>
+                                    <small class="text-muted">{{ product.product_code }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ product.closing_balance|floatformat:0 }} bags</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">{{ product.good_condition_bags|floatformat:0 }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning">{{ product.damaged_bags|floatformat:0 }}</span>
+                                </td>
+                                <td>
+                                    <small>{{ product.last_updated|date:"d M Y" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ product.balance_status }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>No stock data available for this godown</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Activity Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Recent Activity
+                </h2>
+            </div>
+            
+            {% if recent_activity %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Product</th>
+                                <th>Opening</th>
+                                <th>Inward</th>
+                                <th>Outward</th>
+                                <th>Closing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in recent_activity %}
+                            <tr>
+                                <td><small>{{ activity.balance_date|date:"d M" }}</small></td>
+                                <td>
+                                    <small>{{ activity.product.name }}</small>
+                                </td>
+                                <td><small>{{ activity.opening_balance|floatformat:0 }}</small></td>
+                                <td>
+                                    {% if activity.total_inward > 0 %}
+                                        <small class="text-success">+{{ activity.total_inward|floatformat:0 }}</small>
+                                    {% else %}
+                                        <small>-</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if activity.total_outward > 0 %}
+                                        <small class="text-danger">-{{ activity.total_outward|floatformat:0 }}</small>
+                                    {% else %}
+                                        <small>-</small>
+                                    {% endif %}
+                                </td>
+                                <td><small><strong>{{ activity.closing_balance|floatformat:0 }}</strong></small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clock"></i>
+                    <p>No recent activity</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Godown Information Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Godown Information
+                </h2>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong> {{ godown.name }}</p>
+                            <p><strong>Code:</strong> {{ godown.code }}</p>
+                            <p><strong>City:</strong> {{ godown.city }}, {{ godown.state }}</p>
+                            {% if godown.pincode %}
+                                <p><strong>Pincode:</strong> {{ godown.pincode }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if godown.total_capacity %}
+                                <p><strong>Total Capacity:</strong> {{ godown.total_capacity }} cubic meters</p>
+                            {% endif %}
+                            {% if godown.manager %}
+                                <p><strong>Manager:</strong> {{ godown.manager.get_full_name|default:godown.manager.username }}</p>
+                            {% endif %}
+                            <p><strong>Status:</strong> 
+                                <span class="badge {% if godown.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                    {% if godown.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    {% if godown.address %}
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <p><strong>Address:</strong> {{ godown.address }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

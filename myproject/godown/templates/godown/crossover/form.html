@@ -1,0 +1,869 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <!-- Page Header -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-0">
+                                <i class="fas fa-exchange-alt"></i>
+                                {{ title }}
+                            </h4>
+                            <p class="mb-0 mt-1 opacity-75">Single product vehicle-to-vehicle transfer</p>
+                        </div>
+                        <a href="{% url 'crossover_list' %}" class="btn btn-light">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <div class="step-indicator active" id="step-indicator-1">
+                                <span class="step-number">1</span>
+                                <div class="step-title">Source & Destination</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="step-indicator" id="step-indicator-2">
+                                <span class="step-number">2</span>
+                                <div class="step-title">Product Selection</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="step-indicator" id="step-indicator-3">
+                                <span class="step-number">3</span>
+                                <div class="step-title">Quantities</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="step-indicator" id="step-indicator-4">
+                                <span class="step-number">4</span>
+                                <div class="step-title">Final Details</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form method="post" id="crossoverForm">
+                {% csrf_token %}
+                
+                <!-- Form Errors -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" id="form-errors">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Please fix these issues:</h6>
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Success Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {% if message.tags == 'success' %}
+                                <i class="fas fa-check-circle"></i>
+                            {% elif message.tags == 'error' %}
+                                <i class="fas fa-exclamation-circle"></i>
+                            {% elif message.tags == 'warning' %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                            {% else %}
+                                <i class="fas fa-info-circle"></i>
+                            {% endif %}
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Step 1: Source & Destination -->
+                <div class="card mb-4 form-step" id="step-1">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-shipping-fast text-primary"></i>
+                            Step 1: Source & Destination
+                        </h5>
+                        <small class="text-muted">Select the source transit order and destination dealer</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.source_order_transit.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.source_order_transit.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.source_order_transit }}
+                                    {% if form.source_order_transit.errors %}
+                                        <div class="text-danger small mt-1">{{ form.source_order_transit.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.source_order_transit.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.destination_dealer.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.destination_dealer.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.destination_dealer }}
+                                    {% if form.destination_dealer.errors %}
+                                        <div class="text-danger small mt-1">{{ form.destination_dealer.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.destination_dealer.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-primary btn-lg" onclick="nextStep(2)">
+                                Continue to Product Selection <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Product Selection -->
+                <div class="card mb-4 form-step" id="step-2" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-box text-success"></i>
+                            Step 2: Product Selection
+                        </h5>
+                        <small class="text-muted">Choose the product for this crossover</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.product.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.product.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.product }}
+                                    {% if form.product.errors %}
+                                        <div class="text-danger small mt-1">{{ form.product.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.product.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Product Info Panel -->
+                        <div class="alert alert-info" id="product-info" style="display: none;">
+                            <h6><i class="fas fa-info-circle"></i> Product Information</h6>
+                            <div id="product-details"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary btn-lg" onclick="prevStep(1)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="button" class="btn btn-primary btn-lg" onclick="nextStep(3)">
+                                Continue to Quantities <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Quantities -->
+                <div class="card mb-4 form-step" id="step-3" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calculator text-warning"></i>
+                            Step 3: Set Quantities
+                        </h5>
+                        <small class="text-muted">Enter the bag quantities for crossover</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.requested_bags.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.requested_bags.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.requested_bags }}
+                                    {% if form.requested_bags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.requested_bags.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.requested_bags.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.actual_transferred_bags.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.actual_transferred_bags.label }}
+                                    </label>
+                                    {{ form.actual_transferred_bags }}
+                                    {% if form.actual_transferred_bags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.actual_transferred_bags.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.actual_transferred_bags.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validation Alert -->
+                        <div class="alert alert-warning" id="quantity-validation-alert" style="display: none;">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Validation Issues</h6>
+                            <div id="quantity-validation-content"></div>
+                        </div>
+
+                        <!-- Available Stock Info -->
+                        <div class="card bg-light" id="stock-info" style="display: none;">
+                            <div class="card-body">
+                                <h6><i class="fas fa-warehouse"></i> Stock Information</h6>
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="h5 text-info" id="available-bags">0</div>
+                                        <small>Available Bags</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h5 text-primary" id="requested-display">0</div>
+                                        <small>Requested</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h5 text-success" id="remaining-bags">0</div>
+                                        <small>Remaining</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-secondary btn-lg" onclick="prevStep(2)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="button" class="btn btn-primary btn-lg" onclick="nextStep(4)">
+                                Continue to Final Details <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Final Details -->
+                <div class="card mb-4 form-step" id="step-4" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-circle text-success"></i>
+                            Step 4: Final Details
+                        </h5>
+                        <small class="text-muted">Approval details and notes</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.approved_date.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.approved_date.label }}
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.approved_date }}
+                                    {% if form.approved_date.errors %}
+                                        <div class="text-danger small mt-1">{{ form.approved_date.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.approved_date.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.supervised_by.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.supervised_by.label }}
+                                    </label>
+                                    {{ form.supervised_by }}
+                                    {% if form.supervised_by.errors %}
+                                        <div class="text-danger small mt-1">{{ form.supervised_by.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.supervised_by.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.crossover_notes.id_for_label }}" class="form-label fw-bold">
+                                        {{ form.crossover_notes.label }}
+                                    </label>
+                                    {{ form.crossover_notes }}
+                                    {% if form.crossover_notes.errors %}
+                                        <div class="text-danger small mt-1">{{ form.crossover_notes.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ form.crossover_notes.help_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Final Summary -->
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h6><i class="fas fa-check-double"></i> Final Review</h6>
+                                <div id="final-summary">
+                                    <!-- Will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-secondary btn-lg" onclick="prevStep(3)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg" id="submit-btn" onclick="return validateAndSubmit()">
+                                <i class="fas fa-save"></i> {{ submit_text }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Step Indicator Styles */
+.step-indicator {
+    position: relative;
+    padding: 1rem 0;
+}
+
+.step-indicator::before {
+    content: '';
+    position: absolute;
+    top: 2rem;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: #dee2e6;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+.step-indicator:last-child::before {
+    display: none;
+}
+
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    background: #6c757d;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 1.2rem;
+    position: relative;
+    z-index: 2;
+}
+
+.step-indicator.active .step-number {
+    background: #007bff;
+}
+
+.step-indicator.completed .step-number {
+    background: #28a745;
+}
+
+.step-title {
+    margin-top: 0.5rem;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.step-indicator.active .step-title {
+    color: #007bff;
+}
+
+.step-indicator.completed .step-title {
+    color: #28a745;
+}
+
+/* Form Styles */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.form-label {
+    color: #495057;
+    font-size: 0.95rem;
+}
+
+.form-control, .form-select {
+    border: 2px solid #e9ecef;
+    padding: 0.75rem;
+    font-size: 1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-control-lg {
+    border-width: 3px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.form-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+/* Validation styles */
+.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .step-indicator {
+        padding: 0.5rem 0;
+    }
+    
+    .step-number {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .step-title {
+        font-size: 0.9rem;
+    }
+    
+    .btn-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+    
+    .form-control-lg {
+        font-size: 1rem;
+    }
+}
+</style>
+
+<script>
+// Global variables
+let currentStep = 1;
+let availableStock = 0;
+
+// Form step navigation
+function nextStep(step) {
+    // Validate current step before proceeding
+    if (step === 2 && !validateStep1()) return;
+    if (step === 3 && !validateStep2()) return;
+    if (step === 4 && !validateStep3()) return;
+    
+    // Hide all steps
+    document.querySelectorAll('.form-step').forEach(el => el.style.display = 'none');
+    
+    // Show target step
+    document.getElementById('step-' + step).style.display = 'block';
+    
+    // Update step indicators
+    updateStepIndicators(step);
+    currentStep = step;
+    
+    // Load data for specific steps
+    if (step === 3) {
+        loadProductAvailability();
+    } else if (step === 4) {
+        updateFinalSummary();
+    }
+}
+
+function prevStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.form-step').forEach(el => el.style.display = 'none');
+    
+    // Show target step
+    document.getElementById('step-' + step).style.display = 'block';
+    
+    // Update step indicators
+    updateStepIndicators(step);
+    currentStep = step;
+}
+
+function updateStepIndicators(currentStep) {
+    document.querySelectorAll('.step-indicator').forEach((el, index) => {
+        el.classList.remove('active', 'completed');
+        if (index + 1 < currentStep) {
+            el.classList.add('completed');
+        } else if (index + 1 === currentStep) {
+            el.classList.add('active');
+        }
+    });
+}
+
+function validateStep1() {
+    const sourceOrder = document.getElementById('{{ form.source_order_transit.id_for_label }}').value;
+    const destinationDealer = document.getElementById('{{ form.destination_dealer.id_for_label }}').value;
+    
+    if (!sourceOrder) {
+        showNotification('Please select a source transit order', 'error');
+        return false;
+    }
+    
+    if (!destinationDealer) {
+        showNotification('Please select a destination dealer', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+function validateStep2() {
+    const product = document.getElementById('{{ form.product.id_for_label }}').value;
+    
+    if (!product) {
+        showNotification('Please select a product', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+function validateStep3() {
+    const requestedBags = document.getElementById('{{ form.requested_bags.id_for_label }}').value;
+    
+    if (!requestedBags || parseInt(requestedBags) <= 0) {
+        showNotification('Please enter a valid number of requested bags', 'error');
+        return false;
+    }
+    
+    if (availableStock > 0 && parseInt(requestedBags) > availableStock) {
+        showNotification(`Cannot request ${requestedBags} bags. Only ${availableStock} available.`, 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+// Load product availability for selected combination
+async function loadProductAvailability() {
+    const sourceOrderId = document.getElementById('{{ form.source_order_transit.id_for_label }}').value;
+    const productId = document.getElementById('{{ form.product.id_for_label }}').value;
+    const stockInfo = document.getElementById('stock-info');
+    
+    if (!sourceOrderId || !productId) {
+        stockInfo.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const response = await fetch('{% url "get_available_bags" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                source_order_transit_id: sourceOrderId,
+                product_id: productId
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            availableStock = data.available_bags;
+            document.getElementById('available-bags').textContent = data.available_bags;
+            stockInfo.style.display = 'block';
+            
+            // Set max attribute on requested bags input
+            const requestedInput = document.getElementById('{{ form.requested_bags.id_for_label }}');
+            requestedInput.setAttribute('max', data.available_bags);
+            
+            updateQuantityDisplay();
+        } else {
+            showNotification('Error loading availability: ' + data.error, 'error');
+            stockInfo.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading availability:', error);
+        showNotification('Network error loading availability', 'error');
+        stockInfo.style.display = 'none';
+    }
+}
+
+function updateQuantityDisplay() {
+    const requestedBags = parseInt(document.getElementById('{{ form.requested_bags.id_for_label }}').value) || 0;
+    const remaining = Math.max(0, availableStock - requestedBags);
+    
+    document.getElementById('requested-display').textContent = requestedBags;
+    document.getElementById('remaining-bags').textContent = remaining;
+    
+    // Color code remaining based on amount
+    const remainingEl = document.getElementById('remaining-bags');
+    if (remaining === 0) {
+        remainingEl.className = 'h5 text-warning';
+    } else if (remaining < 10) {
+        remainingEl.className = 'h5 text-info';
+    } else {
+        remainingEl.className = 'h5 text-success';
+    }
+}
+
+function updateFinalSummary() {
+    const sourceOrder = document.getElementById('{{ form.source_order_transit.id_for_label }}');
+    const destinationDealer = document.getElementById('{{ form.destination_dealer.id_for_label }}');
+    const product = document.getElementById('{{ form.product.id_for_label }}');
+    const requestedBags = document.getElementById('{{ form.requested_bags.id_for_label }}').value || 0;
+    const actualBags = document.getElementById('{{ form.actual_transferred_bags.id_for_label }}').value || 0;
+    
+    let summaryHtml = `
+        <div class="row mb-2">
+            <div class="col-sm-4"><strong>Source Order:</strong></div>
+            <div class="col-sm-8">${sourceOrder.selectedOptions[0]?.text || 'Not selected'}</div>
+        </div>
+        <div class="row mb-2">
+            <div class="col-sm-4"><strong>Destination:</strong></div>
+            <div class="col-sm-8">${destinationDealer.selectedOptions[0]?.text || 'Not selected'}</div>
+        </div>
+        <div class="row mb-2">
+            <div class="col-sm-4"><strong>Product:</strong></div>
+            <div class="col-sm-8">${product.selectedOptions[0]?.text || 'Not selected'}</div>
+        </div>
+        <div class="row mb-2">
+            <div class="col-sm-4"><strong>Requested:</strong></div>
+            <div class="col-sm-8">${requestedBags} bags</div>
+        </div>
+        <div class="row mb-2">
+            <div class="col-sm-4"><strong>Actual Transferred:</strong></div>
+            <div class="col-sm-8">${actualBags} bags</div>
+        </div>
+    `;
+    
+    document.getElementById('final-summary').innerHTML = summaryHtml;
+}
+
+function showNotification(message, type = 'info') {
+    if (window.GodownJS && window.GodownJS.showToast) {
+        window.GodownJS.showToast(message, type);
+    } else {
+        alert(message);
+    }
+}
+
+function validateAndSubmit() {
+    // Validate all steps before submission
+    if (!validateStep1()) {
+        showNotification('Please complete Step 1: Source & Destination', 'error');
+        nextStep(1);
+        return false;
+    }
+    
+    if (!validateStep2()) {
+        showNotification('Please complete Step 2: Product Selection', 'error');
+        nextStep(2);
+        return false;
+    }
+    
+    if (!validateStep3()) {
+        showNotification('Please complete Step 3: Quantities', 'error');
+        nextStep(3);
+        return false;
+    }
+    
+    // Final validation
+    const approvedDate = document.getElementById('{{ form.approved_date.id_for_label }}').value;
+    if (!approvedDate) {
+        showNotification('Please set the approval date and time', 'error');
+        return false;
+    }
+    
+    // Show loading state
+    const submitBtn = document.getElementById('submit-btn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.classList.add('loading');
+    
+    // Add a slight delay to show the loading state before form submission
+    setTimeout(function() {
+        document.getElementById('crossoverForm').submit();
+    }, 200);
+    
+    return true;
+}
+
+function validateAllFields() {
+    const form = document.getElementById('crossoverForm');
+    const requiredFields = form.querySelectorAll('[required]');
+    let allValid = true;
+    const errors = [];
+    
+    requiredFields.forEach(field => {
+        if (!field.value || field.value.trim() === '') {
+            field.classList.add('is-invalid');
+            allValid = false;
+            
+            const label = form.querySelector(`label[for="${field.id}"]`);
+            const fieldName = label ? label.textContent.replace('*', '').trim() : field.name;
+            errors.push(`${fieldName} is required`);
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    // Additional business logic validation
+    const requestedBags = parseInt(document.getElementById('{{ form.requested_bags.id_for_label }}').value) || 0;
+    const actualBags = parseInt(document.getElementById('{{ form.actual_transferred_bags.id_for_label }}').value) || 0;
+    
+    if (actualBags > requestedBags) {
+        errors.push(`Actual transferred bags (${actualBags}) cannot exceed requested bags (${requestedBags})`);
+        document.getElementById('{{ form.actual_transferred_bags.id_for_label }}').classList.add('is-invalid');
+        allValid = false;
+    }
+    
+    if (availableStock > 0 && requestedBags > availableStock) {
+        errors.push(`Cannot request ${requestedBags} bags. Only ${availableStock} available.`);
+        document.getElementById('{{ form.requested_bags.id_for_label }}').classList.add('is-invalid');
+        allValid = false;
+    }
+    
+    return { isValid: allValid, errors: errors };
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up form submission handler
+    const form = document.getElementById('crossoverForm');
+    form.addEventListener('submit', function(e) {
+        // Prevent default submission if not validated
+        if (currentStep !== 4) {
+            e.preventDefault();
+            showNotification('Please complete all steps before submitting', 'warning');
+            return false;
+        }
+    });
+    
+    // Set up change handlers
+    document.getElementById('{{ form.source_order_transit.id_for_label }}').addEventListener('change', function() {
+        if (currentStep >= 3) {
+            loadProductAvailability();
+        }
+    });
+    
+    document.getElementById('{{ form.product.id_for_label }}').addEventListener('change', function() {
+        if (currentStep >= 3) {
+            loadProductAvailability();
+        }
+    });
+    
+    document.getElementById('{{ form.requested_bags.id_for_label }}').addEventListener('input', updateQuantityDisplay);
+    
+    // Add real-time validation for key fields
+    document.getElementById('{{ form.requested_bags.id_for_label }}').addEventListener('blur', function() {
+        if (availableStock > 0 && parseInt(this.value) > availableStock) {
+            this.classList.add('is-invalid');
+            showNotification(`Cannot request ${this.value} bags. Only ${availableStock} available.`, 'error');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+    
+    document.getElementById('{{ form.actual_transferred_bags.id_for_label }}').addEventListener('blur', function() {
+        const requested = parseInt(document.getElementById('{{ form.requested_bags.id_for_label }}').value) || 0;
+        const actual = parseInt(this.value) || 0;
+        
+        if (actual > requested) {
+            this.classList.add('is-invalid');
+            showNotification(`Actual transferred (${actual}) cannot exceed requested (${requested})`, 'error');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+    
+    // Initialize form helpers
+    if (window.GodownJS && window.GodownJS.initializeTransitFormHelpers) {
+        window.GodownJS.initializeTransitFormHelpers();
+    }
+});
+
+// CSRF token helper
+function getCSRFToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfInput ? csrfInput.value : '';
+}
+</script>
+{% endblock %}

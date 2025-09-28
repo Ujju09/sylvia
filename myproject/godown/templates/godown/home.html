@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'godown/css/godown.css' %}">
+
+<div class="simple-dashboard-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h3 class="dashboard-title">
+                Overview
+            </h3>
+            <div class="header-meta">
+                <span class="date-display">{{ today_date|date:"d M Y" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid ">
+        <!-- Godown Inventory Summary Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Today's Opening
+                </h2>
+            </div>
+            
+            <div class="inventory-cards-grid">
+                {% if godown_summaries %}
+                    {% for summary in godown_summaries %}
+                    <div class="inventory-card">
+                        <div class="card-header">
+                            <h3 class="godown-name">{{ summary.godown_name }}</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="stock-summary">
+                                <div class="stock-item">
+                                    <span class="stock-label">Total Bags Available</span>
+                                    <span class="stock-value">{{ summary.total_bags|floatformat:0 }}</span>
+                                </div>
+                                <div class="stock-item">
+                                    <span class="stock-label">Products</span>
+                                    <span class="stock-value">{{ summary.products_count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <a href="{% url 'godown_detail' summary.godown_id %}" class="btn-view-details">
+                                <i class="fas fa-eye"></i>
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No godown data available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+       
+        
+        <!-- Quick Links Section -->
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-link"></i>
+                    Quick Links
+                </h2>
+            </div>
+            
+            <div class="quick-links-grid">
+                <a href="{% url 'loading_record_create' %}" class="quick-link-card priority">
+                    <div class="link-icon">
+                        <i class="fas fa-truck-loading"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">New Loading</h3>
+                        <p class="link-description">Create loading record</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'godown_inventory_list' %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">Inventory</h3>
+                        <p class="link-description">View stock levels</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'orderintransit_list' %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-truck-moving"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">Transit Orders</h3>
+                        <p class="link-description">Track shipments</p>
+                    </div>
+                </a> 
+
+               
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

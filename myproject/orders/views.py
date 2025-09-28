@@ -443,6 +443,7 @@ def analytics(request):
 @login_required
 def export_analytics(request):
     from datetime import datetime
+    from django.utils import timezone
 
     # Get date range parameters for register
     start_date_str = request.GET.get('start_date')
@@ -547,14 +548,27 @@ def export_analytics(request):
         headers = ['S.No.', 'Order Date', 'Truck Number', 'Product', 'Qty (MT)', 'Dealer Name', 'MRN Date', 'Billing Date']
         table_data = [headers]
 
+        # Create paragraph style for dealer names with wrapping
+        dealer_name_style = ParagraphStyle(
+            'DealerNameStyle',
+            parent=styles['Normal'],
+            fontSize=8,
+            leading=10,
+            wordWrap='LTR'
+        )
+
         for row in data:
+            # Handle dealer name with text wrapping
+            dealer_name_text = row['Dealer Name'] if row['Dealer Name'] else '_____________'
+            dealer_name_paragraph = Paragraph(dealer_name_text, dealer_name_style)
+
             table_row = [
                 str(row['S.No.']),
                 row['Order Date'],
                 row['Truck Number'],
                 row['Product'],
                 row['Qty (MT)'],
-                row['Dealer Name'] if row['Dealer Name'] else '_____________',
+                dealer_name_paragraph,  # Use Paragraph for text wrapping
                 row['MRN Date'] if row['MRN Date'] else '_____________',
                 row['Billing Date'] if row['Billing Date'] else '_____________'
             ]
@@ -566,9 +580,9 @@ def export_analytics(request):
             0.6*inch,   # S.No.
             0.9*inch,   # Order Date
             1.1*inch,   # Truck Number
-            2.2*inch,   # Product
+            1.8*inch,   # Product (reduced from 2.2 to give more space to Dealer Name)
             0.8*inch,   # Qty (MT)
-            1.5*inch,   # Dealer Name
+            1.9*inch,   # Dealer Name (increased from 1.5 to accommodate longer names)
             0.9*inch,   # MRN Date
             0.9*inch,   # Billing Date
         ]
@@ -621,7 +635,7 @@ def export_analytics(request):
         fontSize=8,
         textColor=colors.HexColor('#666666')
     )
-    gen_date = datetime.now().strftime('%d %B %Y at %I:%M %p')
+    gen_date = timezone.localtime(timezone.now()).strftime('%d %B %Y')
     elements.append(Paragraph(f'Generated on: {gen_date}', footer_style))
 
     # Build PDF

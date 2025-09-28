@@ -1,4 +1,5 @@
 /* Theme colors inspired by the logo: vibrant orange, deep red, and white */
+/* Version: 2.1 - Enhanced Dashboard Components - Updated for Production */
 :root {
   --primary: #e94e1b;
   --secondary: #f77c2b;
@@ -75,44 +76,7 @@ body {
   margin-right: 1rem;
 }
 
-/* Daily Report Cards */
-.daily-report-card {
-  border: 1px solid #dee2e6;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  border-radius: 0 !important;
-}
-
-.daily-report-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
-}
-
-.daily-report-card .card-body {
-  padding: 1.5rem;
-}
-
-.daily-report-card .card-footer {
-  border-top: 1px solid #dee2e6;
-  background-color: #f8f9fa !important;
-  padding: 0.75rem 1.5rem;
-}
-
-.daily-report-card .report-icon {
-  opacity: 0.8;
-}
-
-/* Custom colors for report cards */
-.daily-report-card .text-primary {
-  color: var(--primary) !important;
-}
-
-.daily-report-card .text-success {
-  color: #28a745 !important;
-}
-
-.daily-report-card .text-info {
-  color: #17a2b8 !important;
-}
+/* Daily Report Cards - Enhanced version in dashboard components section */
 
 /* Quick Actions */
 .btn-lg {

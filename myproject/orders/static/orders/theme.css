@@ -194,25 +194,272 @@ body {
   min-width: 120px;
 }
 
+/* ============================================================================
+   ENHANCED DASHBOARD COMPONENTS
+   ============================================================================ */
+
+/* Enhanced Loading States and Animations */
+.loading-state {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-state::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.6),
+        transparent
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.update-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: #28a745;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Enhanced Daily Report Cards */
+.daily-report-card {
+    border: 1px solid #dee2e6;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border-radius: 0 !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.daily-report-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.daily-report-card .card-body {
+    padding: 1.5rem;
+    position: relative;
+}
+
+/* Enhanced Weekly Report Cards */
+.weekly-report-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.weekly-report-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Progress Indicators */
+.progress-indicator {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    animation: progressGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes progressGlow {
+    0% { opacity: 0.8; }
+    100% { opacity: 1; }
+}
+
+/* Real-time Status Indicators */
+.real-time-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: #28a745;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    animation: pulse 2s infinite;
+}
+
+/* Achievement Badges */
+.achievement-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+    60% { transform: translateY(-3px); }
+}
+
+/* Enhanced Report Icons */
+.report-icon {
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.daily-report-card:hover .report-icon {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Gradient Backgrounds for Cards */
+.gradient-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+}
+
+.gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);
+}
+
+.gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c9e7 100%);
+}
+
+.gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ffdd57 100%);
+}
+
+/* Enhanced Text Colors with Gradients */
+.text-gradient-primary {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Interactive Elements */
+.interactive-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.interactive-card:hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-indicator::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.status-indicator.status-active::before {
+    background: #28a745;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.status-pending::before {
+    background: #ffc107;
+}
+
+.status-indicator.status-inactive::before {
+    background: #6c757d;
+}
+
+/* Enhanced Tooltips */
+.enhanced-tooltip {
+    position: relative;
+}
+
+.enhanced-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+}
+
+.enhanced-tooltip:hover::after {
+    opacity: 1;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .daily-report-card .display-4 {
     font-size: 2rem;
   }
-  
+
   .btn-lg {
     width: 100%;
     margin: 0.25rem 0;
   }
-  
+
   .vehicle-hover-action {
     position: static;
     opacity: 1;
     margin-top: 0.5rem;
     transform: none;
   }
-  
+
   .create-order-btn {
     width: 100%;
+  }
+
+  .daily-report-card:hover {
+    transform: translateY(-1px);
+  }
+
+  .weekly-report-card:hover {
+    transform: translateY(-1px);
   }
 }

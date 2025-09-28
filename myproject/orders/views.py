@@ -405,325 +405,234 @@ def update_order(request, order_id):
 
 @login_required
 def analytics(request):
-    from sylvia.models import Order, Dealer
-    from django.db.models import Sum
-    from datetime import date
-    import random
-    
-    now = timezone.now()
-    today = date.today()
-    orders = Order.objects.all()
+    from sylvia.models import Order
+    from datetime import date, datetime
 
-    # Time between Order, MRN, Billing
-    orders_with_dates = orders.exclude(mrn_date=None).exclude(bill_date=None)
-    order_to_mrn = ExpressionWrapper(F('mrn_date') - F('order_date'), output_field=DurationField())
-    mrn_to_bill = ExpressionWrapper(F('bill_date') - F('mrn_date'), output_field=DurationField())
-    order_to_bill = ExpressionWrapper(F('bill_date') - F('order_date'), output_field=DurationField())
+    # Get date range parameters
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
 
-    time_stats = orders_with_dates.aggregate(
-        avg_order_to_mrn=Avg(order_to_mrn),
-        avg_mrn_to_bill=Avg(mrn_to_bill),
-        avg_order_to_bill=Avg(order_to_bill),
-        min_order_to_mrn=Min(order_to_mrn),
-        max_order_to_mrn=Max(order_to_mrn),
-        min_mrn_to_bill=Min(mrn_to_bill),
-        max_mrn_to_bill=Max(mrn_to_bill),
-        min_order_to_bill=Min(order_to_bill),
-        max_order_to_bill=Max(order_to_bill),
-    )
+    orders = None
+    start_date = None
+    end_date = None
 
+    # If date range is provided, filter orders
+    if start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
+            # Filter orders by date range (using order_date)
+            orders = Order.objects.filter(
+                order_date__date__gte=start_date,
+                order_date__date__lte=end_date
+            ).select_related('dealer', 'vehicle', 'depot').prefetch_related('order_items__product').order_by('order_date')
 
-    # PROACTIVE FEATURE 2: Daily Dealer Contact Recommendations (Enhanced with Active/Dormant Mix)
-    active_dealers = Dealer.objects.filter(is_active=True)
-    active_recommendations = []
-    dormant_recommendations = []
-    
-    for dealer in active_dealers:
-        dealer_orders = orders.filter(dealer=dealer)
-        
-        # Calculate order history metrics
-        last_30_days = dealer_orders.filter(order_date__gte=now - timedelta(days=30))
-        
-        monthly_orders = last_30_days.count()
-        total_quantity_month = last_30_days.aggregate(
-            total=Sum('order_items__quantity')
-        )['total'] or 0
-        
-        # Get most ordered products - Alternative approach for better reliability
-        from collections import defaultdict
-        product_summary = defaultdict(float)
-        
-        # Aggregate product quantities manually for better control
-        for order in dealer_orders:
-            for item in order.order_items.all():
-                product_summary[item.product.name] += float(item.quantity)
-        
-        # Convert to sorted list of tuples (product_name, total_quantity)
-        popular_products = sorted(product_summary.items(), key=lambda x: x[1], reverse=True)[:3]
-        
-        # Also create a simple string summary for fallback
-        product_summary_text = ", ".join([f"{name} ({qty:.0f}MT)" for name, qty in popular_products]) if popular_products else "No order history"
-        
-        # Calculate days since last order
-        last_order = dealer_orders.order_by('-order_date').first()
-        days_since_last_order = (now.date() - last_order.order_date.date()).days if last_order else 999
-        
-        # Calculate monthly frequency (orders per month over last 6 months)
-        six_months_ago = now - timedelta(days=180)
-        six_month_orders = dealer_orders.filter(order_date__gte=six_months_ago).count()
-        monthly_frequency = round(six_month_orders / 6, 1) if six_month_orders > 0 else 0
-        
-        # Define dealer status: dormant if no orders in last 30-60 days
-        is_dormant = days_since_last_order > 35 or (monthly_frequency > 0 and monthly_orders == 0)
-        
-        # Scoring logic for recommendation priority
-        score = 0
-        
-        if is_dormant:
-            # Dormant dealer scoring - higher priority for re-engagement
-            if monthly_frequency > 1:  # Was a regular customer
-                score += 15
-            elif monthly_frequency > 0.5:  # Was semi-regular
-                score += 12
-            elif six_month_orders > 0:  # Had some orders historically
-                score += 8
-            else:  # Completely new or very old customer
-                score += 5
-            
-            # Boost for high historical volume
-            if dealer_orders.aggregate(total=Sum('order_items__quantity'))['total'] or 0 > 200:
-                score += 5
-        else:
-            # Active dealer scoring - maintain relationships
-            if monthly_frequency > 1 and days_since_last_order > 15:
-                score += 10
-            elif monthly_frequency > 0.5 and days_since_last_order > 20:
-                score += 8
-            elif days_since_last_order > 25:
-                score += 6
-            
-            # Higher score for high-volume active dealers
-            if total_quantity_month > 100:
-                score += 5
-            elif total_quantity_month > 50:
-                score += 3
-        
-        # Slight randomization to vary recommendations daily
-        random.seed(today.toordinal() + dealer.id)  # Consistent per day per dealer
-        score += random.randint(1, 3)
-        
-        if score >= 5:  # Only recommend dealers with meaningful scores
-            dealer_data = {
-                'dealer': dealer,
-                'score': score,
-                'monthly_orders': monthly_orders,
-                'monthly_frequency': monthly_frequency,
-                'total_quantity_month': round(float(total_quantity_month), 2),
-                'days_since_last_order': days_since_last_order,
-                'popular_products': popular_products,  # List of tuples (name, quantity)
-                'product_summary_text': product_summary_text,  # Simple string fallback
-                'last_order_date': last_order.order_date.date() if last_order else None,
-                'is_dormant': is_dormant,
-                'dealer_status': 'Dormant' if is_dormant else 'Active',
-            }
-            
-            if is_dormant:
-                dormant_recommendations.append(dealer_data)
-            else:
-                active_recommendations.append(dealer_data)
-    
-    # Sort both lists by score
-    active_recommendations.sort(key=lambda x: -x['score'])
-    dormant_recommendations.sort(key=lambda x: -x['score'])
-    
-    # Mix recommendations: ensure at least 1 dormant dealer if available
-    daily_dealer_recommendations = []
-    
-    # Add top dormant dealer first (if available)
-    if dormant_recommendations:
-        daily_dealer_recommendations.append(dormant_recommendations[0])
-    
-    # Add active dealers to fill remaining slots
-    remaining_slots = 3 - len(daily_dealer_recommendations)
-    daily_dealer_recommendations.extend(active_recommendations[:remaining_slots])
-    
-    # If we still have slots and more dormant dealers, add them
-    if len(daily_dealer_recommendations) < 3 and len(dormant_recommendations) > 1:
-        remaining_slots = 3 - len(daily_dealer_recommendations)
-        daily_dealer_recommendations.extend(dormant_recommendations[1:1+remaining_slots])
-    
-    # Final sort by score to maintain priority order
-    daily_dealer_recommendations.sort(key=lambda x: -x['score'])
-
-    # Dealer-wise weekly/monthly stats
-    dealer_stats = []
-    for dealer in Dealer.objects.all():
-        dealer_orders = orders.filter(dealer=dealer)
-        weekly = dealer_orders.filter(order_date__gte=now-timedelta(days=7)).count()
-        monthly = dealer_orders.filter(order_date__gte=now-timedelta(days=30)).count()
-        avg_order_to_mrn = dealer_orders.exclude(mrn_date=None).aggregate(avg=Avg(order_to_mrn))['avg']
-        avg_mrn_to_bill = dealer_orders.exclude(mrn_date=None).exclude(bill_date=None).aggregate(avg=Avg(mrn_to_bill))['avg']
-        dealer_stats.append({
-            'dealer_id': dealer.id,
-            'dealer': dealer.name,
-            'weekly_orders': weekly,
-            'monthly_orders': monthly,
-            'avg_order_to_mrn': avg_order_to_mrn,
-            'avg_mrn_to_bill': avg_mrn_to_bill,
-        })
-
-    # Longest pending dealers (orders with no MRN or bill date)
-    pending_orders = orders.filter(mrn_date=None) | orders.filter(bill_date=None)
-    pending_dealers = pending_orders.values('dealer__name').annotate(
-        pending_count=Count('id'),
-        oldest_order=Min('order_date')
-    ).order_by('-pending_count', 'oldest_order')[:10]
-
-    # Additional analytics
-    product_stats = orders.values('order_items__product__name').annotate(
-        total_orders=Count('id'),
-        avg_quantity=Avg('order_items__quantity')
-    ).order_by('-total_orders')
-
-    depot_stats = orders.values('depot__name').annotate(
-        total_orders=Count('id')
-    ).order_by('-total_orders')
-
-    completed_orders = orders.filter(status='BILLED').count()
-    mrn_pending_orders = orders.filter(status='PENDING').count()
-    total_orders = orders.count()
-    percent_completed = (completed_orders / total_orders * 100) if total_orders else 0
+        except ValueError:
+            # Invalid date format
+            start_date = end_date = None
+            orders = None
 
     context = {
-        'time_stats': time_stats,
-        'dealer_stats': dealer_stats,
-        'mrn_created_orders': mrn_pending_orders,
-        'pending_dealers': pending_dealers,
-        'product_stats': product_stats,
-        'depot_stats': depot_stats,
-        'percent_completed': percent_completed,
-        'total_orders': total_orders,
-        'completed_orders': completed_orders,
-        # New proactive features
-        'daily_dealer_recommendations': daily_dealer_recommendations,
-        'today': today,
-        'months': [calendar.month_name[i] for i in range(1, 13)],  # For month filter dropdown
+        'orders': orders,
+        'start_date': start_date,
+        'end_date': end_date,
     }
     return render(request, 'orders/analytics.html', context)
 
 @login_required
 def export_analytics(request):
-    # Get filters from GET params
-    dealer_id = request.GET.get('dealer')
-    status = request.GET.get('status')
-    month = request.GET.get('month')
-    year = request.GET.get('year')
-    export_format = request.GET.get('format', 'excel')
+    from datetime import datetime
 
-    orders = Order.objects.all()
-    if dealer_id:
-        orders = orders.filter(dealer_id=dealer_id)
-    if status and status != 'ALL':
-        orders = orders.filter(status=status)
-    if month and year:
-        orders = orders.filter(order_date__month=int(month), order_date__year=int(year))
+    # Get date range parameters for register
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
 
-    # Prepare data for export
+    if not start_date_str or not end_date_str:
+        return HttpResponse('Date range is required for order register', status=400)
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return HttpResponse('Invalid date format', status=400)
+
+    # Filter orders by date range
+    orders = Order.objects.filter(
+        order_date__date__gte=start_date,
+        order_date__date__lte=end_date
+    ).select_related('dealer', 'vehicle', 'depot').prefetch_related('order_items__product').order_by('order_date')
+
+    # Prepare data for register format
     data = []
-    for order in orders:
-        data.append({
-            'Order Number': order.order_number,
-            'Dealer': order.dealer.name,
-            'Vehicle': order.vehicle.truck_number,
-            'Depot': order.depot.name if order.depot else '',
-            'Order Date': order.order_date.strftime('%Y-%m-%d'),
-            'MRN Date': order.mrn_date.strftime('%Y-%m-%d') if order.mrn_date else '',
-            'Invoice Date': order.bill_date.strftime('%Y-%m-%d') if order.bill_date else '',
-            'Status': order.status,
-            'Product Types': ', '.join([item.product.name for item in order.order_items.all()]),
-            'Total Quantity': order.get_total_quantity(),
-        })
+    serial_number = 1
 
-    if export_format == 'excel':
-        df = pd.DataFrame(data)
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Orders')
-        output.seek(0)
-        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=orders_export.xlsx'
-        return response
-    elif export_format == 'pdf':
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles import getSampleStyleSheet
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
-        elements = []
-        brand_name = "Shyam Distributors"
-        brand_desc = "CFA Garhwa and Palamu"
-        styles = getSampleStyleSheet()
-        elements.append(Paragraph(f'<b>{brand_name}</b>', styles['Title']))
-        elements.append(Paragraph(brand_desc, styles['Normal']))
-        elements.append(Spacer(1, 18))
-        if data:
-            headers = [k for k in data[0].keys() if k != 'Order Number']
-            table_data = [headers]
-            for row in data:
-                table_data.append([str(row[h]) for h in headers])
-            from reportlab.lib.units import inch
-            max_table_width = 7.5 * inch
-            col_count = len(headers)
-            # Assign proportional widths (Product Types gets more)
-            base_width = max_table_width / col_count
-            col_widths = [base_width for _ in headers]
-            if 'Product Types' in headers:
-                idx = headers.index('Product Types')
-                col_widths[idx] = base_width * 1.5
-                # Reduce other columns
-                for i in range(len(col_widths)):
-                    if i != idx:
-                        col_widths[i] = base_width * 0.85
-            # Word wrap for long cells
-            from reportlab.platypus import Paragraph
-            from reportlab.lib.styles import ParagraphStyle
-            cell_style = ParagraphStyle('cell', fontName='Helvetica', fontSize=8, leading=10)
-            header_style = ParagraphStyle('header', fontName='Helvetica-Bold', fontSize=9, leading=11)
-            table_data_wrapped = [[Paragraph(h, header_style) for h in headers]]
-            for row in data:
-                table_data_wrapped.append([Paragraph(str(row[h]), cell_style) for h in headers])
-            table = Table(table_data_wrapped, colWidths=col_widths)
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f0f0f0')),
-                ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#222222')),
-                ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-                ('FONTSIZE', (0,0), (-1,0), 9),
-                ('FONTSIZE', (0,1), (-1,-1), 8),
-                ('BOTTOMPADDING', (0,0), (-1,0), 6),
-                ('TOPPADDING', (0,0), (-1,0), 6),
-                ('LEFTPADDING', (0,0), (-1,-1), 3),
-                ('RIGHTPADDING', (0,0), (-1,-1), 3),
-                ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
-            ]))
-            elements.append(table)
-        else:
-            elements.append(Paragraph('No data available.', styles['Normal']))
-        elements.append(Spacer(1, 24))
-        from datetime import datetime
-        gen_date = datetime.now().strftime('%d %B %Y, %I:%M %p')
-        elements.append(Paragraph(f'<i>Generated on: {gen_date}</i>', styles['Normal']))
-        doc.build(elements)
-        buffer.seek(0)
-        response = HttpResponse(buffer, content_type='application/pdf')
-        filename = f"orders_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        response['Content-Disposition'] = f'attachment; filename={filename}'
-        return response
+    for order in orders:
+        # Apply blanking rules
+        dealer_name = ""
+        if order.dealer.name.lower() != "anonymous" and order.depot.name != "Unknown Depot":
+            dealer_name = order.dealer.name
+
+        mrn_date = ""
+        if order.mrn_date:
+            mrn_date = order.mrn_date.strftime('%d-%m-%Y')
+
+        billing_date = ""
+        if order.bill_date:
+            billing_date = order.bill_date.strftime('%d-%m-%Y')
+
+        # Combine all products for this order
+        products = ', '.join([item.product.name for item in order.order_items.all()])
+        total_quantity = order.get_total_quantity()
+
+        data.append({
+            'S.No.': serial_number,
+            'Order Date': order.order_date.strftime('%d-%m-%Y'),
+            'Truck Number': order.vehicle.truck_number,
+            'Product': products,
+            'Qty (MT)': f"{total_quantity:.2f}" if total_quantity else "0.00",
+            'Dealer Name': dealer_name,
+            'MRN Date': mrn_date,
+            'Billing Date': billing_date,
+        })
+        serial_number += 1
+
+    # Generate PDF register
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+
+    buffer = io.BytesIO()
+    # Use landscape orientation for better table fit
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch,
+        topMargin=0.75*inch,
+        bottomMargin=0.75*inch
+    )
+    elements = []
+
+    # Company header
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        spaceAfter=6,
+        alignment=1  # Center alignment
+    )
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        spaceAfter=12,
+        alignment=1  # Center alignment
+    )
+
+    elements.append(Paragraph('<b>SHYAM DISTRIBUTORS</b>', title_style))
+    elements.append(Paragraph('CFA Garhwa and Palamu', subtitle_style))
+    elements.append(Paragraph('<b>ORDER REGISTER</b>', subtitle_style))
+
+    # Date range info
+    date_range_text = f"From: {start_date.strftime('%d %B %Y')} &nbsp;&nbsp;&nbsp; To: {end_date.strftime('%d %B %Y')}"
+    elements.append(Paragraph(date_range_text, subtitle_style))
+    elements.append(Spacer(1, 20))
+
+    if data:
+        # Prepare table data
+        headers = ['S.No.', 'Order Date', 'Truck Number', 'Product', 'Qty (MT)', 'Dealer Name', 'MRN Date', 'Billing Date']
+        table_data = [headers]
+
+        for row in data:
+            table_row = [
+                str(row['S.No.']),
+                row['Order Date'],
+                row['Truck Number'],
+                row['Product'],
+                row['Qty (MT)'],
+                row['Dealer Name'] if row['Dealer Name'] else '_____________',
+                row['MRN Date'] if row['MRN Date'] else '_____________',
+                row['Billing Date'] if row['Billing Date'] else '_____________'
+            ]
+            table_data.append(table_row)
+
+        # Column widths optimized for landscape A4
+        page_width = landscape(A4)[0] - (2 * 0.5 * inch)  # Total available width
+        col_widths = [
+            0.6*inch,   # S.No.
+            0.9*inch,   # Order Date
+            1.1*inch,   # Truck Number
+            2.2*inch,   # Product
+            0.8*inch,   # Qty (MT)
+            1.5*inch,   # Dealer Name
+            0.9*inch,   # MRN Date
+            0.9*inch,   # Billing Date
+        ]
+
+        # Create table with styling optimized for printing
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            # Header styling
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#e8e8e8')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('TOPPADDING', (0,0), (-1,0), 8),
+
+            # Data row styling
+            ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,1), (-1,-1), 9),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f9f9f9')]),
+            ('BOTTOMPADDING', (0,1), (-1,-1), 6),
+            ('TOPPADDING', (0,1), (-1,-1), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (-1,-1), 4),
+
+            # Grid and borders
+            ('GRID', (0,0), (-1,-1), 0.75, colors.black),
+            ('LINEBELOW', (0,0), (-1,0), 1.5, colors.black),
+
+            # Text alignment adjustments
+            ('ALIGN', (0,0), (0,-1), 'CENTER'),    # S.No. center
+            ('ALIGN', (1,0), (1,-1), 'CENTER'),    # Date center
+            ('ALIGN', (2,0), (2,-1), 'CENTER'),    # Truck center
+            ('ALIGN', (3,0), (3,-1), 'LEFT'),      # Product left
+            ('ALIGN', (4,0), (4,-1), 'CENTER'),    # Qty center
+            ('ALIGN', (5,0), (5,-1), 'LEFT'),      # Dealer left
+            ('ALIGN', (6,0), (6,-1), 'CENTER'),    # MRN Date center
+            ('ALIGN', (7,0), (7,-1), 'CENTER'),    # Billing Date center
+        ]))
+
+        elements.append(table)
     else:
-        return HttpResponse('Invalid format', status=400)
+        elements.append(Paragraph('No orders found in the selected date range.', styles['Normal']))
+
+    # Footer
+    elements.append(Spacer(1, 30))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#666666')
+    )
+    gen_date = datetime.now().strftime('%d %B %Y at %I:%M %p')
+    elements.append(Paragraph(f'Generated on: {gen_date}', footer_style))
+
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+
+    # Response
+    response = HttpResponse(buffer, content_type='application/pdf')
+    filename = f"order_register_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    return response
 
 
 @login_required

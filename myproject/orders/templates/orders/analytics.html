@@ -1,201 +1,208 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container py-4">
-  <h2 class="mb-4 text-primary">Order Analytics</h2>
-  
-  
+  <h2 class="mb-4 text-primary"><i class="fas fa-book"></i> Order Register</h2>
+  <p class="text-muted mb-4">Generate physical register for record-keeping</p>
 
-  <!-- Export/Filter Form -->
-  <form class="card p-3 mb-4" method="get" action="{% url 'export_analytics' %}" target="_blank">
-    <div class="row align-items-end">
-      <div class="col-md-3 mb-2">
-        <label for="dealer">Dealer</label>
-        <select class="form-control" id="dealer" name="dealer">
-          <option value="">All Dealers</option>
-          {% for stat in dealer_stats %}
-            <option value="{{ stat.dealer_id }}">{{ stat.dealer }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2 mb-2">
-        <label for="status">Status</label>
-        <select class="form-control" id="status" name="status">
-          <option value="PENDING">Pending</option>
-          <option value="MRN_CREATED">MRN Created</option>
-          <option value="BILLED">Billed</option>
-        </select>
-      </div>
-      <div class="col-md-2 mb-2">
-        <label for="month">Month</label>
-        <select class="form-control" id="month" name="month">
-          <option value="">Any</option>
-          {% for m in months %}
-            <option value="{{ m }}">{{ m }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2 mb-2">
-        <label for="year">Year</label>
-        <input type="number" class="form-control" id="year" name="year" min="2020" max="2100" placeholder="Year">
-      </div>
-      <div class="col-md-2 mb-2">
-        <label for="format">Format</label>
-        <select class="form-control" id="format" name="format">
-          <option value="excel">Excel</option>
-          <option value="pdf">PDF</option>
-        </select>
-      </div>
-      <div class="col-md-1 mb-2">
-        <button type="submit" class="btn btn-primary w-100">Export</button>
-      </div>
+  <!-- Date Range Selection Form -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Select Date Range</h5>
     </div>
-  </form>
-
-
-
-  <!-- PROACTIVE ALERTS SECTION -->
-  <div class="row mb-4">
- 
-  
-  <!-- Detailed Dealer Contact Analysis Table -->
-  {% if daily_dealer_recommendations %}
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-table"></i> People you need to follow up with</h5>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead class="thead-light">
-                <tr>
-                  <th>Dealer</th>
-                  <th>Status</th>
-                  <th>Last Order</th>
-                  <th>Monthly Freq.</th>
-                  <th>Recent Qty (30d)</th>
-                  <th>Popular Products (All Time)</th>
-                  <th>Contact</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rec in daily_dealer_recommendations %}
-                <tr class="{% if rec.is_dormant %}table-warning{% else %}table-success{% endif %}">
-                  <td>
-                    <strong>{{ rec.dealer.name }}</strong><br>
-                    <small class="text-muted">Score: {{ rec.score }}</small>
-                  </td>
-                  <td>
-                    <span >
-                      {{ rec.dealer_status }}
-                    </span>
-                  </td>
-                  <td>
-                    {{ rec.last_order_date|date:"M j, Y"|default:"Never" }}<br>
-                    <small class="text-muted">{{ rec.days_since_last_order }} days ago</small>
-                  </td>
-                  <td>{{ rec.monthly_frequency }}/month</td>
-                  <td>{{ rec.total_quantity_month }}MT</td>
-                  <td>
-                    {% if rec.popular_products %}
-                      {% for product in rec.popular_products %}
-                        <div class="mb-1">
-                          <span >{{ product.0 }}</span>
-                          <small class="text-muted">{{ product.1|floatformat:0 }}MT</small>
-                        </div>
-                      {% endfor %}
-                    {% else %}
-                      <em class="text-muted">No order history</em>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <small>{{ rec.dealer.phone|default:"No phone" }}</small>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+    <div class="card-body">
+      <form id="registerForm" method="get">
+        <div class="row align-items-end">
+          <div class="col-md-3 mb-2">
+            <label for="start_date">Start Date</label>
+            <input type="date" class="form-control" id="start_date" name="start_date"
+                   value="{{ request.GET.start_date }}" required>
+          </div>
+          <div class="col-md-3 mb-2">
+            <label for="end_date">End Date</label>
+            <input type="date" class="form-control" id="end_date" name="end_date"
+                   value="{{ request.GET.end_date }}" required>
+          </div>
+          <div class="col-md-2 mb-2">
+            <button type="submit" class="btn btn-secondary w-100">
+              <i class="fas fa-eye"></i> Preview
+            </button>
+          </div>
+          <div class="col-md-2 mb-2">
+            <button type="submit" class="btn btn-primary w-100"
+                    formaction="{% url 'export_analytics' %}" formtarget="_blank">
+              <i class="fas fa-print"></i> Print Register
+            </button>
           </div>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick Date Range Buttons -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h6 class="mb-3">Quick Select:</h6>
+      <div class="row">
+        <div class="col-md-2 mb-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="setDateRange('today')">
+            Today
+          </button>
+        </div>
+        <div class="col-md-2 mb-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="setDateRange('yesterday')">
+            Yesterday
+          </button>
+        </div>
+        <div class="col-md-2 mb-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="setDateRange('this_week')">
+            This Week
+          </button>
+        </div>
+        <div class="col-md-2 mb-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="setDateRange('last_week')">
+            Last Week
+          </button>
+        </div>
+        <div class="col-md-2 mb-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="setDateRange('this_month')">
+            This Month
+          </button>
+        </div>
+        <div class="col-md-2 mb-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="setDateRange('last_month')">
+            Last Month
+          </button>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Preview Table -->
+  {% if orders %}
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fas fa-table"></i> Order Register Preview
+        <span class="badge badge-primary ml-2">{{ orders|length }} orders</span>
+      </h5>
+      <small class="text-muted">
+        From {{ start_date|date:"d M Y" }} to {{ end_date|date:"d M Y" }}
+      </small>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th width="8%">S.No.</th>
+              <th width="12%">Order Date</th>
+              <th width="15%">Truck Number</th>
+              <th width="20%">Product</th>
+              <th width="10%">Qty (MT)</th>
+              <th width="15%">Dealer Name</th>
+              <th width="10%">MRN Date</th>
+              <th width="10%">Billing Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for order in orders %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ order.order_date|date:"d-m-Y" }}</td>
+              <td>{{ order.vehicle.truck_number }}</td>
+              <td>
+                {% for item in order.order_items.all %}
+                  {{ item.product.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              </td>
+              <td>{{ order.get_total_quantity|floatformat:2 }}</td>
+              <td>
+                {% if order.dealer.name|lower != "anonymous" and order.depot.name != "Unknown Depot" %}
+                  {{ order.dealer.name }}
+                {% else %}
+                  <span class="text-muted">_____________</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if order.mrn_date %}
+                  {{ order.mrn_date|date:"d-m-Y" }}
+                {% else %}
+                  <span class="text-muted">_____________</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if order.bill_date %}
+                  {{ order.bill_date|date:"d-m-Y" }}
+                {% else %}
+                  <span class="text-muted">_____________</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% elif request.GET.start_date %}
+  <div class="card">
+    <div class="card-body text-center">
+      <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+      <h5>No Orders Found</h5>
+      <p class="text-muted">No orders were found in the selected date range.</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="card-body text-center">
+      <i class="fas fa-calendar-alt fa-3x text-primary mb-3"></i>
+      <h5>Select Date Range</h5>
+      <p class="text-muted">Please select a date range above to preview the order register.</p>
     </div>
   </div>
   {% endif %}
-  
-  <div class="row mb-4">
-    <div class="col-md-6">
-      <div class="card p-3 mb-3">
-        <h5>Order Completion</h5>
-        <p>Total Orders: <strong>{{ total_orders }}</strong></p>
-        <p>MRN Pending Orders: <strong>{{ mrn_created_orders }}</strong></p>
-        <p>Billed Orders: <strong>{{ completed_orders }}</strong></p>
-        <p>Completion Rate: <strong>{{ percent_completed|floatformat:2 }}%</strong></p>
-      </div>
-      <div class="card p-3 mb-3">
-        <h5>Time Between Stages (Avg)</h5>
-        <ul>
-          <li>Order → MRN: <strong>{{ time_stats.avg_order_to_mrn|default:'-' }}</strong></li>
-          <li>MRN → Billing: <strong>{{ time_stats.avg_mrn_to_bill|default:'-' }}</strong></li>
-          <li>Order → Billing: <strong>{{ time_stats.avg_order_to_bill|default:'-' }}</strong></li>
-        </ul>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="card p-3 mb-3">
-        <h5>Longest Pending Dealers</h5>
-        <table class="table table-sm">
-          <thead><tr><th>Dealer</th><th>Pending Orders</th><th>Oldest Order</th></tr></thead>
-          <tbody>
-            {% for d in pending_dealers %}
-            <tr>
-              <td>{{ d.dealer__name }}</td>
-              <td>{{ d.pending_count }}</td>
-              <td>{{ d.oldest_order|date:'jS M Y' }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="3">No pending dealers</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-    <div class="col-md-6">
-      <div class="card p-3 mb-3">
-        <h5>Product Stats</h5>
-        <table class="table table-sm">
-          <thead><tr><th>Product</th><th>Total Orders</th><th>Avg Quantity</th></tr></thead>
-          <tbody>
-            {% for p in product_stats %}
-            <tr>
-              <td>{{ p.order_items__product__name }}</td>
-              <td>{{ p.total_orders }}</td>
-              <td>{{ p.avg_quantity|floatformat:2 }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="3">No product data</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="card p-3 mb-3">
-        <h5>Depot Stats</h5>
-        <table class="table table-sm">
-          <thead><tr><th>Depot</th><th>Total Orders</th></tr></thead>
-          <tbody>
-            {% for d in depot_stats %}
-            <tr>
-              <td>{{ d.depot__name }}</td>
-              <td>{{ d.total_orders }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="2">No depot data</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 </div>
+
+<script>
+function setDateRange(period) {
+  const today = new Date();
+  const startDateInput = document.getElementById('start_date');
+  const endDateInput = document.getElementById('end_date');
+
+  let startDate, endDate;
+
+  switch(period) {
+    case 'today':
+      startDate = endDate = today;
+      break;
+    case 'yesterday':
+      startDate = endDate = new Date(today);
+      startDate.setDate(today.getDate() - 1);
+      endDate = startDate;
+      break;
+    case 'this_week':
+      startDate = new Date(today);
+      startDate.setDate(today.getDate() - today.getDay());
+      endDate = today;
+      break;
+    case 'last_week':
+      startDate = new Date(today);
+      startDate.setDate(today.getDate() - today.getDay() - 7);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      break;
+    case 'this_month':
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = today;
+      break;
+    case 'last_month':
+      startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+      break;
+  }
+
+  startDateInput.value = startDate.toISOString().split('T')[0];
+  endDateInput.value = endDate.toISOString().split('T')[0];
+}
+</script>
 {% endblock %}

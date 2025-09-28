@@ -33,17 +33,34 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
             <li class="nav-item"><a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a></li>
-            <li class="nav-item"><a class="nav-link {% if request.path == '/orders/order-workflow/' %}active{% endif %}" href="/orders/order-workflow/">New Order</a></li>
             <li class="nav-item"><a class="nav-link {% if '/orders/dispatch-table/' in request.path %}active{% endif %}" href="/orders/dispatch-table/">🔆AI</a></li>
             <li class="nav-item"><a class="nav-link {% if request.path == '/orders/orders/' %}active{% endif %}" href="/orders/orders/">Order List</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/orders/vehicles/' in request.path %}active{% endif %}" href="/orders/vehicles/">Vehicles</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/orders/dealers/' in request.path %}active{% endif %}" href="/orders/dealers/">Dealers</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.path == '/orders/analytics/' %}active{% endif %}" href="/orders/analytics/">Registers</a></li>
+
+            <!-- Manage Dropdown -->
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle {% if request.path == '/orders/order-workflow/' or '/orders/vehicles/' in request.path or '/orders/dealers/' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Manage
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item {% if request.path == '/orders/order-workflow/' %}active{% endif %}" href="/orders/order-workflow/">New Order</a></li>
+                <li><a class="dropdown-item {% if '/orders/vehicles/' in request.path %}active{% endif %}" href="/orders/vehicles/">Vehicles</a></li>
+                <li><a class="dropdown-item {% if '/orders/dealers/' in request.path %}active{% endif %}" href="/orders/dealers/">Dealers</a></li>
+              </ul>
+            </li>
+
             <li class="nav-item"><a class="nav-link {% if '/godown/' in request.path %}active{% endif %}" href="/godown/">Godown</a></li>
+
             {% if user.is_authenticated %}
-              <li class="nav-item">
-                <span class="nav-link">{{ user.get_full_name|default:user.username }}</span>
+              <!-- User Dropdown -->
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  {{ user.get_full_name|default:user.username }}
+                </a>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="/logout/">Logout</a></li>
+                </ul>
               </li>
-              <li class="nav-item"><a class="nav-link" href="/logout/">Logout</a></li>
             {% else %}
               <li class="nav-item"><a class="nav-link {% if request.path == '/login/' %}active{% endif %}" href="/login/">Login</a></li>
             {% endif %}

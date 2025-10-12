@@ -41,4 +41,7 @@ urlpatterns = [
     path('loading/<str:loading_request_id>/', views.loading_record_detail, name='loading_record_detail'),
     path('loading/<str:loading_request_id>/edit/', views.loading_record_update, name='loading_record_update'),
     path('loading/dashboard/', views.loading_record_dashboard, name='loading_record_dashboard'),
+
+    # Audit Checklist PDF Generation
+    path('audit-pdf/<int:godown_id>/', views.generate_audit_pdf, name='generate_audit_pdf'),
 ]

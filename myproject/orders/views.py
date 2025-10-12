@@ -24,10 +24,10 @@ def check_audit_reminder():
     today = timezone.now().date()
     year = today.year
     month = today.month
-    
+
     # Get last day of current month
     last_day_of_month = calendar.monthrange(year, month)[1]
-    
+
     # Calculate if we're in the last 7 days
     days_until_end = last_day_of_month - today.day
 
@@ -38,7 +38,31 @@ def check_audit_reminder():
             'month_name': calendar.month_name[month],
             'year': year
         }
-    
+
+    return {'show_reminder': False}
+
+
+def check_godown_audit_reminder():
+    """Check if godown audit reminder should be shown (10-15 of each month)"""
+    from godown.models import GodownLocation
+
+    today = timezone.now().date()
+    current_day = today.day
+
+    # Show reminder from 10th to 15th of every month
+    if 10 <= current_day <= 15:
+        # Get all active godowns
+        godowns = GodownLocation.objects.filter(is_active=True).order_by('name')
+
+        return {
+            'show_reminder': True,
+            'current_day': current_day,
+            'days_in_period': 6 - (current_day - 10),  # Days remaining in audit period
+            'month_name': calendar.month_name[today.month],
+            'year': today.year,
+            'godowns': godowns,
+        }
+
     return {'show_reminder': False}
 
 logger = logging.getLogger(__name__)
@@ -178,6 +202,7 @@ def home(request):
 
     # Check for audit reminder
     audit_reminder = check_audit_reminder()
+    godown_audit_reminder = check_godown_audit_reminder()
 
     context = {
         'app_settings': {
@@ -198,6 +223,7 @@ def home(request):
         },
         'current_date': today,
         'audit_reminder': audit_reminder,
+        'godown_audit_reminder': godown_audit_reminder,
     }
     return render(request, 'home.html', context)
 

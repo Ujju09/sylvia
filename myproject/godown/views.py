@@ -1,12 +1,20 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, Max
 from django.contrib import messages
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 import json
+from datetime import timedelta
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, mm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 from .models import OrderInTransit, GodownLocation, CrossoverRecord, GodownInventory, LoadingRequest, GodownDailyBalance
 from .forms import OrderInTransitForm, CrossoverRecordForm, GodownInventoryForm, LoadingRecordForm
@@ -1263,5 +1271,362 @@ def check_inventory_availability(request):
             
         except (ValueError, json.JSONDecodeError, GodownLocation.DoesNotExist, Product.DoesNotExist) as e:
             return JsonResponse({'success': False, 'error': str(e)})
-    
+
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+# =============================================================================
+# GODOWN AUDIT CHECKLIST PDF GENERATION
+# =============================================================================
+
+@login_required
+def generate_audit_pdf(request, godown_id):
+    """Generate comprehensive godown audit checklist PDF"""
+
+    godown = get_object_or_404(GodownLocation, id=godown_id)
+    today = timezone.now().date()
+
+    # Fetch inventory data
+    latest_dates = GodownDailyBalance.objects.filter(
+        godown=godown,
+        balance_date__lte=today
+    ).values('product').annotate(latest_date=Max('balance_date'))
+
+    inventory_data = []
+    for date_info in latest_dates:
+        balance = GodownDailyBalance.objects.filter(
+            godown=godown,
+            product_id=date_info['product'],
+            balance_date=date_info['latest_date']
+        ).select_related('product').first()
+
+        if balance and balance.closing_balance > 0:
+            inventory_data.append({
+                'product_name': balance.product.name,
+                'product_code': balance.product.code,
+                'closing_balance': balance.closing_balance,
+                'good_bags': balance.good_condition_bags,
+                'damaged_bags': balance.damaged_bags,
+                'balance_date': balance.balance_date,
+            })
+
+    # Fetch loading records from last 30 days
+    thirty_days_ago = today - timedelta(days=30)
+    loading_records = LoadingRequest.objects.filter(
+        godown=godown,
+        created_at__date__gte=thirty_days_ago
+    ).select_related('dealer', 'product').order_by('-created_at')[:10]
+
+    # Create PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                           rightMargin=20*mm, leftMargin=20*mm,
+                           topMargin=20*mm, bottomMargin=20*mm)
+
+    # Container for PDF elements
+    elements = []
+
+    # Define styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#2c3e50'),
+        spaceAfter=12,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=12,
+        textColor=colors.HexColor('#34495e'),
+        spaceAfter=8,
+        spaceBefore=12,
+        fontName='Helvetica-Bold'
+    )
+
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.HexColor('#2c3e50'),
+    )
+
+    checkbox_style = ParagraphStyle(
+        'Checkbox',
+        parent=styles['Normal'],
+        fontSize=9,
+        leftIndent=15,
+        spaceAfter=4,
+    )
+
+    # Title
+    elements.append(Paragraph(f"<b>Shyam Distributors | AUDIT CHECKLIST</b>", title_style))
+    elements.append(Paragraph(f"<b>{godown.name} ({godown.code})</b>", title_style))
+    elements.append(Paragraph(f"Audit Date: {today.strftime('%B %d, %Y')}", normal_style))
+    elements.append(Spacer(1, 10*mm))
+
+    # Section 1: Structural Audit
+    elements.append(Paragraph("<b>1. STRUCTURAL AUDIT CHECKLIST</b>", heading_style))
+    elements.append(Paragraph("<b>Auditor:</b> _________________ | <b>Date:</b> _________", normal_style))
+    elements.append(Spacer(1, 5*mm))
+
+    elements.append(Paragraph("<b>VISUAL INSPECTION (DO-CONFIRM)</b>", normal_style))
+    elements.append(Spacer(1, 2*mm))
+
+    structural_checks = [
+        "[ ] <b>Roof:</b> No visible leaks, cracks, or water stains",
+        "[ ] <b>Walls:</b> No major cracks, dampness, or structural damage",
+        "[ ] <b>Floor:</b> Surface intact, no major cracks or uneven settling",
+        "[ ] <b>Windows/Ventilation:</b> All functional, no broken panes, adequate airflow",
+        "[ ] <b>Doors:</b> Open/close properly, no warping or damage",
+        "[ ] <b>Lighting:</b> All lights functional, adequate visibility",
+    ]
+
+    for check in structural_checks:
+        elements.append(Paragraph(check, checkbox_style))
+
+    elements.append(Spacer(1, 5*mm))
+    elements.append(Paragraph("<b>CEMENT STORAGE CONDITIONS</b>", normal_style))
+    elements.append(Spacer(1, 2*mm))
+
+    storage_checks = [
+        "[ ] <b>Elevation:</b> Cement bags stored with tarpaulins on the ground",
+        "[ ] <b>Wall clearance:</b> Minimum 12 inches from walls",
+        "[ ] <b>Stack height:</b> Not exceeding safe limits (max 12 bags high)",
+        "[ ] <b>Coverage:</b> Protected from direct weather exposure",
+    ]
+
+    for check in storage_checks:
+        elements.append(Paragraph(check, checkbox_style))
+
+    elements.append(Spacer(1, 5*mm))
+    elements.append(Paragraph("<b>OVERALL STRUCTURAL RATING</b>", normal_style))
+    elements.append(Paragraph("Rate overall condition (circle one): <b>1</b> (Critical) | <b>2</b> (Major concerns) | <b>3</b> (Moderate) | <b>4</b> (Minor) | <b>5</b> (Excellent)", normal_style))
+    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph("<b>Action required if rated 1-2:</b> _________________________________", normal_style))
+    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph("<b>Auditor Signature:</b> _________________ <b>Time:</b> _________", normal_style))
+
+    elements.append(PageBreak())
+
+    # Section 2: Security Audit
+    elements.append(Paragraph("<b>2. SECURITY AUDIT CHECKLIST</b>", heading_style))
+    elements.append(Paragraph("<b>Auditor:</b> _________________ | <b>Date:</b> _________", normal_style))
+    elements.append(Spacer(1, 5*mm))
+
+    elements.append(Paragraph("<b>PHYSICAL SECURITY (DO-CONFIRM)</b>", normal_style))
+    elements.append(Spacer(1, 2*mm))
+
+    security_checks = [
+        "[ ] <b>Main Lock:</b> Functions smoothly, no signs of tampering",
+        "[ ] <b>Spare Keys:</b> Accounted for (Expected: ___ | Present: ___)",
+        "[ ] <b>Door Hinges:</b> Secure, no loose bolts",
+    ]
+
+    for check in security_checks:
+        elements.append(Paragraph(check, checkbox_style))
+
+    elements.append(Spacer(1, 8*mm))
+
+    # Section 3: Inventory Audit with DATABASE DATA
+    elements.append(Paragraph("<b>3. INVENTORY AUDIT CHECKLIST</b>", heading_style))
+    elements.append(Paragraph("<b>Duration:</b> 30-45 minutes", normal_style))
+    elements.append(Paragraph("<b>Auditor:</b> _________________ | <b>Date:</b> _________", normal_style))
+    elements.append(Spacer(1, 5*mm))
+
+    elements.append(Paragraph("<b>PRE-AUDIT PREPARATION</b>", normal_style))
+    elements.append(Paragraph("[ ] <b>Software Opening Balance Retrieved:</b> Date/Time: _________", checkbox_style))
+    elements.append(Paragraph("[ ] <b>Previous Audit Report:</b> Reviewed for pending issues", checkbox_style))
+    elements.append(Spacer(1, 5*mm))
+
+    # Opening Balance from Software (Database)
+    elements.append(Paragraph("<b>OPENING BALANCE FROM SOFTWARE:</b>", normal_style))
+    elements.append(Spacer(1, 3*mm))
+
+    if inventory_data:
+        # Create table with inventory data (without Item column, no colors)
+        inventory_table_data = [
+            ['Brand/Grade', 'Bags Count', 'Good Bags', 'Damaged', 'Last Updated']
+        ]
+
+        for item in inventory_data:
+            inventory_table_data.append([
+                f"{item['product_name']}\n({item['product_code']})",
+                str(item['closing_balance']),
+                str(item['good_bags']),
+                str(item['damaged_bags']),
+                item['balance_date'].strftime('%Y-%m-%d')
+            ])
+
+        inventory_table = Table(inventory_table_data, colWidths=[95, 70, 70, 65, 75])
+        inventory_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(inventory_table)
+    else:
+        elements.append(Paragraph("<i>No inventory data available for this godown.</i>", normal_style))
+
+    elements.append(Spacer(1, 8*mm))
+
+    # Physical Count (Empty for manual entry, without Item column)
+    elements.append(Paragraph("<b>PHYSICAL COUNT:</b>", normal_style))
+    elements.append(Spacer(1, 3*mm))
+
+    physical_count_table_data = [
+        ['Brand/Grade', 'Bags Count', 'Loose Bags', 'Damaged'],
+        ['___________', '_______', '_______', '_____'],
+        ['___________', '_______', '_______', '_____'],
+        ['___________', '_______', '_______', '_____'],
+    ]
+
+    physical_count_table = Table(physical_count_table_data, colWidths=[105, 90, 90, 90])
+    physical_count_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+    ]))
+    elements.append(physical_count_table)
+
+    elements.append(Spacer(1, 8*mm))
+
+    # Verification Checks
+    elements.append(Paragraph("<b>VERIFICATION CHECKS</b>", normal_style))
+    elements.append(Spacer(1, 2*mm))
+
+    verification_checks = [
+        "[ ] <b>Variance Analysis:</b> Difference = Physical - Software",
+        "  • Acceptable range: ±___ bags",
+        "  • Variance: _____ bags (Within/Outside acceptable range)",
+        "[ ] <b>FIFO Compliance:</b> Older stock accessible and being used first",
+        "[ ] <b>Damaged Stock:</b> Segregated and marked clearly",
+        "[ ] <b>Manufacturing Dates:</b> Checked on random samples (min. 10%)",
+        "  • Oldest cement date found: __________",
+        "  • Action if >90 days: __________________",
+        "[ ] <b>Brand/Grade Segregation:</b> Properly separated and labeled",
+    ]
+
+    for check in verification_checks:
+        elements.append(Paragraph(check, checkbox_style))
+
+    elements.append(Spacer(1, 5*mm))
+    elements.append(Paragraph("<b>DISCREPANCY RESOLUTION</b>", normal_style))
+    elements.append(Paragraph("[ ] Recounted suspected areas", checkbox_style))
+    elements.append(Paragraph("[ ] Checked recent loading records", checkbox_style))
+    elements.append(Paragraph("[ ] Verified any damaged/lost material documentation", checkbox_style))
+    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph("<b>Variance Reason (if identified):</b> _________________________", normal_style))
+    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph("<b>Approved by Manager (if variance >___ bags):</b> ______________", normal_style))
+    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph("<b>Auditor Signature:</b> _________________ <b>Time:</b> _________", normal_style))
+
+    elements.append(PageBreak())
+
+    # Section 4: Records & Administration Audit with LOADING DATA
+    elements.append(Paragraph("<b>4. RECORDS & ADMINISTRATION AUDIT CHECKLIST</b>", heading_style))
+    elements.append(Paragraph("<b>Frequency:</b> Monthly | <b>Duration:</b> 20-30 minutes", normal_style))
+    elements.append(Paragraph("<b>Auditor:</b> _________________ | <b>Date:</b> _________", normal_style))
+    elements.append(Spacer(1, 5*mm))
+
+    elements.append(Paragraph("<b>RECENT LOADING RECORDS (Last 30 Days):</b>", normal_style))
+    elements.append(Spacer(1, 3*mm))
+
+    if loading_records.exists():
+        loading_table_data = [
+            ['Date', 'Loading ID', 'Dealer', 'Product', 'Bags Loaded']
+        ]
+
+        for record in loading_records[:10]:  # Limit to 10 records
+            loading_table_data.append([
+                record.created_at.strftime('%Y-%m-%d'),
+                record.loading_request_id,
+                record.dealer.name[:20],  # Truncate long names
+                record.product.code,
+                str(record.loaded_bags),
+            ])
+
+        loading_table = Table(loading_table_data, colWidths=[55, 75, 100, 60, 60])
+        loading_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 1), (-1, -1), 7),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(loading_table)
+    else:
+        elements.append(Paragraph("<i>No loading records found in the last 30 days.</i>", normal_style))
+
+    elements.append(Spacer(1, 8*mm))
+
+    elements.append(Paragraph("<b>DOCUMENT VERIFICATION</b>", normal_style))
+    elements.append(Spacer(1, 2*mm))
+
+    doc_checks = [
+        "[ ] <b>Material Receiving Documents (MRD):</b> Last 30 days reviewed",
+        "  • Total MRDs in period: _____",
+        "  • Sample checked: _____ (minimum 10 or 20%, whichever is greater)",
+        "[ ] <b>MRD-to-Software Matching:</b> All sampled MRDs entered in software",
+        "  • Discrepancies found: _____ (Details below if any)",
+        "[ ] <b>Loading Records:</b> Match software dispatch entries",
+        "  • Sample checked: _____ loads",
+        "  • Discrepancies: _____ (Details below if any)",
+    ]
+
+    for check in doc_checks:
+        elements.append(Paragraph(check, checkbox_style))
+
+    elements.append(Spacer(1, 5*mm))
+    elements.append(Paragraph("<b>REGISTER MAINTENANCE</b>", normal_style))
+    elements.append(Paragraph("[ ] Cash Disbursement to the labours", checkbox_style))
+
+    elements.append(Spacer(1, 5*mm))
+    elements.append(Paragraph("<b>COMPLIANCE CHECKS</b>", normal_style))
+    elements.append(Paragraph("[ ] <b>Damaged Material Register:</b> All damaged stock documented", checkbox_style))
+
+    elements.append(Spacer(1, 10*mm))
+
+    # Audit Completion Summary
+    elements.append(Paragraph("<b>AUDIT COMPLETION SUMMARY</b>", heading_style))
+    elements.append(Spacer(1, 3*mm))
+
+    elements.append(Paragraph("<b>Overall Godown Status:</b> [] Satisfactory | [] Needs Attention | [] Critical", normal_style))
+    elements.append(Spacer(1, 5*mm))
+
+    elements.append(Paragraph("<b>Priority Actions Required:</b>", normal_style))
+    elements.append(Paragraph("1. ___________________________________________", checkbox_style))
+    elements.append(Paragraph("2. ___________________________________________", checkbox_style))
+    elements.append(Paragraph("3. ___________________________________________", checkbox_style))
+
+    elements.append(Spacer(1, 8*mm))
+    elements.append(Paragraph("<b>Next Audit Due:</b> __________", normal_style))
+    elements.append(Spacer(1, 5*mm))
+    elements.append(Paragraph("<b>Final Review & Signature:</b> _________________ <b>Date:</b> _________", normal_style))
+
+    # Build PDF
+    doc.build(elements)
+
+    # Get PDF from buffer and return as response
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Godown_Audit_{godown.code}_{today.strftime("%Y%m%d")}.pdf"'
+    response.write(pdf)
+
+    return response

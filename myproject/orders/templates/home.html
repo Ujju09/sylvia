@@ -32,6 +32,49 @@
       </div>
       {% endif %}
 
+      <!-- Godown Audit Reminder Banner -->
+      {% if godown_audit_reminder.show_reminder %}
+      <div class="alert alert-info alert-dismissible fade show mb-4" role="alert" id="godownAuditReminderBanner">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <h5 class="alert-heading mb-3">
+              <i class="fas fa-warehouse me-2"></i>Godown Audit Period ({{ godown_audit_reminder.month_name }} {{ godown_audit_reminder.current_day }}-15)
+            </h5>
+            <p class="mb-3">
+              <strong>{{ godown_audit_reminder.days_in_period }} day{{ godown_audit_reminder.days_in_period|pluralize }} remaining</strong>
+              in the godown audit period. Please conduct audits for all godowns.
+            </p>
+            <div class="mb-3">
+              <small class="text-dark">
+                <i class="fas fa-clipboard-check me-1"></i>Structural inspection<br>
+                <i class="fas fa-shield-alt me-1"></i>Security verification<br>
+                <i class="fas fa-boxes me-1"></i>Inventory count and reconciliation<br>
+                <i class="fas fa-file-alt me-1"></i>Records and documentation audit
+              </small>
+            </div>
+            {% if godown_audit_reminder.godowns %}
+            <div class="mt-3">
+              <strong>Download Audit Checklists:</strong>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                {% for godown in godown_audit_reminder.godowns %}
+                <a href="{% url 'generate_audit_pdf' godown.id %}"
+                   class="btn btn-sm btn-primary"
+                   target="_blank"
+                   title="Download audit checklist for {{ godown.name }}">
+                  <i class="fas fa-file-pdf me-1"></i>{{ godown.name }} ({{ godown.code }})
+                </a>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-md-12 mt-2 text-end">
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="text-center mb-5">
         <h1 class="display-4 mb-3">{{ app_settings.site_title|default:"Move People ― Move Mountains" }}</h1>
         <p class="lead">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong></p>

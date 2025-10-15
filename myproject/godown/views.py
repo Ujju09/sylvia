@@ -16,9 +16,10 @@ from reportlab.lib.units import inch, mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
-from .models import OrderInTransit, GodownLocation, CrossoverRecord, GodownInventory, LoadingRequest, GodownDailyBalance
+from .models import OrderInTransit, GodownLocation, CrossoverRecord, GodownInventory, LoadingRequest, GodownDailyBalance, LoadingRequestImage
 from .forms import OrderInTransitForm, CrossoverRecordForm, GodownInventoryForm, LoadingRecordForm
 from sylvia.models import Product, Dealer
+from sylvia.storage import KrutrimStorageClient
 
 
 @login_required
@@ -984,24 +985,24 @@ def loading_record_list(request):
 
 @login_required
 def loading_record_create(request):
-    """Create a new Loading Record with inventory validation"""
-    
+    """Create a new Loading Record with inventory validation and image upload"""
+
     if request.method == 'POST':
-        form = LoadingRecordForm(request.POST)
+        form = LoadingRecordForm(request.POST, request.FILES)
         if form.is_valid():
             loading_record = form.save(commit=False)
             loading_record.created_by = request.user
-            
+
             # Validate inventory availability before saving
             from .utils import LedgerCalculator
             current_balance = LedgerCalculator.calculate_current_balance(
-                loading_record.godown, 
+                loading_record.godown,
                 loading_record.product
             )
-            
+
             if loading_record.loaded_bags > current_balance:
                 messages.error(
-                    request, 
+                    request,
                     f'Insufficient inventory! Available: {current_balance} bags, '
                     f'Requested: {loading_record.loaded_bags} bags. '
                     f'Please check current inventory levels.'
@@ -1015,66 +1016,106 @@ def loading_record_create(request):
                     'inventory_warning': True
                 }
                 return render(request, 'godown/loadingrecord/form.html', context)
-            
+
             loading_record.save()
-            
-            messages.success(
-                request, 
-                f'Loading Record "{loading_record.loading_request_id}" has been created successfully! '
-                f'{loading_record.loaded_bags} bags loaded for {loading_record.dealer.name}. '
-                f'Remaining inventory: {current_balance - loading_record.loaded_bags} bags.'
-            )
+
+            # Handle image uploads
+            uploaded_images = request.FILES.getlist('loading_images')
+            uploaded_count = 0
+            failed_uploads = []
+
+            if uploaded_images:
+                storage = KrutrimStorageClient()
+
+                for idx, image_file in enumerate(uploaded_images):
+                    # Upload to Krutrim storage
+                    success, url_or_error, storage_key, metadata = storage.upload_loading_image(
+                        image_file, loading_record.loading_request_id
+                    )
+
+                    if success:
+                        # Create LoadingRequestImage record
+                        LoadingRequestImage.objects.create(
+                            loading_request=loading_record,
+                            image_url=url_or_error,
+                            storage_key=storage_key,
+                            original_filename=metadata['original_filename'],
+                            file_size=metadata['file_size'],
+                            content_type=metadata['content_type'],
+                            is_primary=(idx == 0),  # First image is primary
+                            created_by=request.user
+                        )
+                        uploaded_count += 1
+                    else:
+                        failed_uploads.append(f"{image_file.name}: {url_or_error}")
+
+            # Success message
+            success_msg = f'Loading Record "{loading_record.loading_request_id}" has been created successfully! ' \
+                         f'{loading_record.loaded_bags} bags loaded for {loading_record.dealer.name}. ' \
+                         f'Remaining inventory: {current_balance - loading_record.loaded_bags} bags.'
+
+            if uploaded_count > 0:
+                success_msg += f' {uploaded_count} image(s) uploaded.'
+
+            messages.success(request, success_msg)
+
+            if failed_uploads:
+                messages.warning(
+                    request,
+                    f'Failed to upload {len(failed_uploads)} image(s): ' + '; '.join(failed_uploads)
+                )
+
             return redirect('loading_record_detail', loading_request_id=loading_record.loading_request_id)
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
         form = LoadingRecordForm()
-    
+
     context = {
         'form': form,
         'title': 'New Loading Record',
         'submit_text': 'Save Loading Record',
         'help_text': 'Fill out this simple form to record a loading operation'
     }
-    
+
     return render(request, 'godown/loadingrecord/form.html', context)
 
 
 @login_required
 def loading_record_detail(request, loading_request_id):
-    """Display detailed view of a Loading Record with ledger integration"""
-    
+    """Display detailed view of a Loading Record with ledger integration and images"""
+
     loading_record = get_object_or_404(LoadingRequest, loading_request_id=loading_request_id)
-    
+
     # Calculate completion metrics
     completion_percentage = 0
     if loading_record.requested_bags > 0:
         completion_percentage = (loading_record.loaded_bags / loading_record.requested_bags) * 100
-    
+
     # Calculate difference
     bags_difference = loading_record.loaded_bags - loading_record.requested_bags
-    
+
     # Get ledger entry for this loading record
     from .models import GodownInventoryLedger
     ledger_entry = GodownInventoryLedger.objects.filter(
         source_loading_request=loading_record,
         transaction_type='OUTWARD_LOADING'
     ).first()
-    
+
     # Get current inventory balance for this product at this godown
     from .utils import LedgerCalculator
     current_balance = LedgerCalculator.calculate_current_balance(
-        loading_record.godown, 
+        loading_record.godown,
         loading_record.product
     )
-    
+
     # Get recent loading records for same dealer
     recent_records = LoadingRequest.objects.filter(
         dealer=loading_record.dealer
     ).exclude(loading_request_id=loading_record.loading_request_id).select_related(
         'product', 'godown'
     ).order_by('-created_at')[:5]
-    
+
     # Get loading transactions summary for this product-godown combination (last 7 days)
     from datetime import timedelta
     week_ago = timezone.now().date() - timedelta(days=7)
@@ -1084,7 +1125,10 @@ def loading_record_detail(request, loading_request_id):
         start_date=week_ago,
         end_date=timezone.now().date()
     )
-    
+
+    # Get uploaded images for this loading request
+    loading_images = loading_record.loading_images.all().order_by('-is_primary', '-upload_timestamp')
+
     context = {
         'loading_record': loading_record,
         'completion_percentage': round(completion_percentage, 1),
@@ -1093,37 +1137,38 @@ def loading_record_detail(request, loading_request_id):
         'ledger_entry': ledger_entry,
         'current_balance': current_balance,
         'loading_summary': loading_summary,
+        'loading_images': loading_images,
         'title': f'Loading Record - {loading_record.loading_request_id}'
     }
-    
+
     return render(request, 'godown/loadingrecord/detail.html', context)
 
 
 @login_required
 def loading_record_update(request, loading_request_id):
-    """Update an existing Loading Record with inventory validation"""
-    
+    """Update an existing Loading Record with inventory validation and image upload"""
+
     loading_record = get_object_or_404(LoadingRequest, loading_request_id=loading_request_id)
-    
+
     if request.method == 'POST':
-        form = LoadingRecordForm(request.POST, instance=loading_record)
+        form = LoadingRecordForm(request.POST, request.FILES, instance=loading_record)
         if form.is_valid():
             updated_record = form.save(commit=False)
-            
+
             # Validate inventory availability for changes
             if updated_record.loaded_bags != loading_record.loaded_bags:
                 from .utils import LedgerCalculator
                 current_balance = LedgerCalculator.calculate_current_balance(
-                    updated_record.godown, 
+                    updated_record.godown,
                     updated_record.product
                 )
-                
+
                 # Calculate the additional bags needed (if increase) or returned (if decrease)
                 bag_change = updated_record.loaded_bags - loading_record.loaded_bags
-                
+
                 if bag_change > 0 and bag_change > current_balance:
                     messages.error(
-                        request, 
+                        request,
                         f'Insufficient inventory for increase! Additional bags needed: {bag_change}, '
                         f'Available: {current_balance} bags. '
                         f'Please check current inventory levels.'
@@ -1138,28 +1183,75 @@ def loading_record_update(request, loading_request_id):
                         'inventory_warning': True
                     }
                     return render(request, 'godown/loadingrecord/form.html', context)
-            
+
             updated_record.updated_at = timezone.now()
             updated_record.save()
-            
-            messages.success(
-                request, 
-                f'Loading Record "{updated_record.loading_request_id}" has been updated successfully!'
-            )
+
+            # Handle new image uploads
+            uploaded_images = request.FILES.getlist('loading_images')
+            uploaded_count = 0
+            failed_uploads = []
+
+            if uploaded_images:
+                storage = KrutrimStorageClient()
+
+                # Check if this is the first image (make it primary if no images exist)
+                existing_images_count = loading_record.loading_images.count()
+
+                for idx, image_file in enumerate(uploaded_images):
+                    # Upload to Krutrim storage
+                    success, url_or_error, storage_key, metadata = storage.upload_loading_image(
+                        image_file, loading_record.loading_request_id
+                    )
+
+                    if success:
+                        # Create LoadingRequestImage record
+                        LoadingRequestImage.objects.create(
+                            loading_request=loading_record,
+                            image_url=url_or_error,
+                            storage_key=storage_key,
+                            original_filename=metadata['original_filename'],
+                            file_size=metadata['file_size'],
+                            content_type=metadata['content_type'],
+                            is_primary=(existing_images_count == 0 and idx == 0),  # First image is primary if no previous images
+                            created_by=request.user
+                        )
+                        uploaded_count += 1
+                    else:
+                        failed_uploads.append(f"{image_file.name}: {url_or_error}")
+
+            # Success message
+            success_msg = f'Loading Record "{updated_record.loading_request_id}" has been updated successfully!'
+
+            if uploaded_count > 0:
+                success_msg += f' {uploaded_count} image(s) uploaded.'
+
+            messages.success(request, success_msg)
+
+            if failed_uploads:
+                messages.warning(
+                    request,
+                    f'Failed to upload {len(failed_uploads)} image(s): ' + '; '.join(failed_uploads)
+                )
+
             return redirect('loading_record_detail', loading_request_id=updated_record.loading_request_id)
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
         form = LoadingRecordForm(instance=loading_record)
-    
+
+    # Get existing images for display
+    existing_images = loading_record.loading_images.all().order_by('-is_primary', '-upload_timestamp')
+
     context = {
         'form': form,
         'loading_record': loading_record,
+        'existing_images': existing_images,
         'title': f'Update Loading Record - {loading_record.loading_request_id}',
         'submit_text': 'Update Record',
         'help_text': 'Make changes to this loading record'
     }
-    
+
     return render(request, 'godown/loadingrecord/form.html', context)
 
 

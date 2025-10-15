@@ -85,9 +85,11 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 - Order workflow management
 - Analytics dashboard
 - Complete vehicle management (list, add, edit, delete)
-- Complete dealer management (list, add, edit, delete) 
+- Complete dealer management (list, add, edit, delete)
 - Product and depot management (add forms)
 - Export functionality (Excel/PDF)
+- Enhanced order list with visual indicators for remarks and MRN images
+- Comprehensive order detail view with remarks display and image gallery
 
 ## Business Workflow
 
@@ -98,6 +100,42 @@ python3 manage.py migrate && python3 manage.py createsuperuser --noinput && pyth
 5. **Billing**: Invoice generation and payment tracking
 6. **Analytics**: Performance tracking and reporting with enhanced filtering
 7. **Proactive Dealer Management**: Daily recommendations for dealer outreach with complete order history
+
+## UI Enhancements
+
+### Order Management Interface
+
+#### Enhanced Order List View
+The order list interface provides comprehensive visibility and navigation aids:
+
+- **Visual Indicators Column**: Displays at-a-glance information for each order
+  - **Remarks Badge**: Yellow warning badge with comment icon when order has remarks
+  - **Images Badge**: Blue info badge with image icon and count showing number of MRN images
+- **Interactive Tooltips**: Hover over indicators to see preview information
+  - Remarks tooltip shows truncated remarks content (up to 100 characters)
+  - Images tooltip shows exact count with proper pluralization
+- **Quick Navigation**: Visual cues help prioritize which orders need attention
+- **Responsive Design**: Indicators adapt to different screen sizes
+
+#### Comprehensive Order Detail View
+The order detail page provides complete order information with enhanced visibility:
+
+- **Remarks Display**: Dedicated remarks section with visual styling
+  - Only shows when remarks exist to avoid clutter
+  - Uses card layout with proper typography for easy reading
+  - Preserves line breaks for multi-line remarks using `|linebreaks` filter
+  - Positioned in the order status area for logical grouping
+- **MRN Image Gallery**: Visual gallery of all uploaded proof images
+  - Thumbnail grid with modal preview functionality
+  - Image metadata display (filename, type, upload date, file size)
+  - Primary image indicators and user attribution
+  - Secure image serving with presigned URLs
+
+#### Navigation Benefits
+- **Informed Decision Making**: Quickly identify orders with additional documentation
+- **Efficient Workflow**: Prioritize orders needing attention based on visual cues
+- **Complete Context**: Access all order information including remarks and images in one view
+- **User-Friendly**: Intuitive icons and tooltips provide guidance without training
 
 ## MRN Image Upload System
 

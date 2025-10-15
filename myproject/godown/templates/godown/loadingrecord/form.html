@@ -23,7 +23,7 @@
 
     <div class="dashboard-grid">
         <div class="dashboard-section full-width">
-            <form method="post" class="form-section">
+            <form method="post" enctype="multipart/form-data" class="form-section">
                 {% csrf_token %}
                 
                 <!-- Basic Information -->
@@ -96,7 +96,7 @@
                     <i class="fas fa-sticky-note text-warning me-2"></i>
                     Additional Information (Optional)
                 </h6>
-                
+
                 <div class="row g-3 mb-4">
                     <div class="col-12 col-md-4">
                         <label for="{{ form.supervised_by.id_for_label }}" class="form-label">Supervisor</label>
@@ -127,6 +127,56 @@
                     </div>
                 </div>
 
+                <!-- Image Upload Section -->
+                <h6 class="mb-3">
+                    <i class="fas fa-camera text-info me-2"></i>
+                    Upload Proof Images (Optional)
+                </h6>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label for="loading_images" class="form-label">Loading Proof Images</label>
+                        <input type="file"
+                               class="form-control form-control-lg"
+                               id="loading_images"
+                               name="loading_images"
+                               multiple
+                               accept="image/jpeg,image/jpg,image/png,image/webp">
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Upload photos of loading process, truck, bag count verification, or quality checks.
+                            Supported formats: JPG, PNG, WEBP. Multiple images allowed.
+                        </div>
+                        <div id="image-preview" class="mt-2 d-flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- Show existing images if updating -->
+                {% if existing_images %}
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <h6 class="mb-2">
+                            <i class="fas fa-images text-secondary me-2"></i>
+                            Existing Images ({{ existing_images.count }})
+                        </h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for image in existing_images %}
+                            <div class="position-relative" style="width: 120px; height: 120px;">
+                                <img src="{{ image.image_url }}"
+                                     alt="{{ image.original_filename }}"
+                                     class="img-thumbnail w-100 h-100 object-fit-cover">
+                                {% if image.is_primary %}
+                                <span class="badge bg-primary position-absolute top-0 end-0 m-1" style="font-size: 0.7rem;">
+                                    <i class="fas fa-star"></i> Primary
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Form Errors -->
                 {% if form.non_field_errors %}
                     <div class="alert alert-danger mb-3">
@@ -154,4 +204,45 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Image preview functionality
+document.getElementById('loading_images').addEventListener('change', function(e) {
+    const preview = document.getElementById('image-preview');
+    preview.innerHTML = '';
+
+    const files = Array.from(e.target.files);
+
+    files.forEach((file, index) => {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const div = document.createElement('div');
+                div.className = 'position-relative';
+                div.style.width = '120px';
+                div.style.height = '120px';
+
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                img.className = 'img-thumbnail w-100 h-100 object-fit-cover';
+                img.alt = file.name;
+
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-success position-absolute top-0 start-0 m-1';
+                badge.style.fontSize = '0.7rem';
+                badge.innerHTML = `<i class="fas fa-check"></i> ${index + 1}`;
+
+                div.appendChild(img);
+                div.appendChild(badge);
+                preview.appendChild(div);
+            };
+
+            reader.readAsDataURL(file);
+        }
+    });
+});
+</script>
 {% endblock %}

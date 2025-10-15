@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     GodownLocation, OrderInTransit, GodownInventory, CrossoverRecord,
-    LoadingRequest, DeliveryChallan, DeliveryChallanItem, ChallanItemBatchMapping,
+    LoadingRequest, LoadingRequestImage, DeliveryChallan, DeliveryChallanItem, ChallanItemBatchMapping,
     NotificationLog, NotificationRecipient, GodownInventoryLedger, LedgerBatchMapping,
     GodownDailyBalance, InventoryVariance
 )
@@ -183,6 +183,47 @@ class LoadingRequestAdmin(admin.ModelAdmin):
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at', 'created_by'),
+            'classes': ('collapse',)
+        })
+    )
+
+
+@admin.register(LoadingRequestImage)
+class LoadingRequestImageAdmin(admin.ModelAdmin):
+    list_display = [
+        'loading_request', 'image_type', 'original_filename',
+        'file_size', 'is_primary', 'upload_timestamp'
+    ]
+    list_filter = [
+        'image_type', 'is_primary', 'upload_timestamp', 'loading_request__godown'
+    ]
+    search_fields = [
+        'loading_request__loading_request_id', 'original_filename',
+        'description', 'storage_key'
+    ]
+    readonly_fields = [
+        'upload_timestamp', 'file_size', 'storage_key',
+        'created_at', 'updated_at', 'created_by'
+    ]
+    ordering = ['-upload_timestamp']
+
+    fieldsets = (
+        ('Loading Request', {
+            'fields': ('loading_request', 'image_type', 'is_primary')
+        }),
+        ('Image Details', {
+            'fields': ('image_url', 'original_filename', 'file_size', 'content_type')
+        }),
+        ('Storage Information', {
+            'fields': ('storage_key',),
+            'classes': ('collapse',)
+        }),
+        ('Description', {
+            'fields': ('description',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('upload_timestamp', 'created_at', 'updated_at', 'created_by'),
             'classes': ('collapse',)
         })
     )

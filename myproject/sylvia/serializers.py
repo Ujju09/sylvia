@@ -135,6 +135,58 @@ class OrderMRNImageSerializer(serializers.ModelSerializer):
         return None
 
 
+class LoadingRequestImageSerializer(serializers.ModelSerializer):
+    """Serializer for Loading Request proof images"""
+    created_by = UserSerializer(read_only=True)
+    secure_image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = None  # Will be set dynamically
+        fields = [
+            'id', 'loading_request', 'image_url', 'secure_image_url', 'image_type', 'original_filename',
+            'file_size', 'upload_timestamp', 'description', 'is_primary',
+            'storage_key', 'content_type', 'created_at', 'updated_at', 'created_by'
+        ]
+        read_only_fields = ['id', 'upload_timestamp', 'created_at', 'updated_at', 'created_by']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Import here to avoid circular imports
+        from godown.models import LoadingRequestImage
+        self.Meta.model = LoadingRequestImage
+
+    def get_secure_image_url(self, obj):
+        """Generate secure presigned URL for direct image access"""
+        try:
+            if obj.storage_key:
+                from .storage import krutrim_storage
+                # Generate presigned URL that expires in 1 hour
+                presigned_url = krutrim_storage.generate_presigned_url(obj.storage_key, expiration=3600)
+                if presigned_url:
+                    return presigned_url
+
+            # Fallback to proxy service if presigned URL fails
+            request = self.context.get('request')
+            if request:
+                from django.urls import reverse
+                return request.build_absolute_uri(
+                    reverse('loadingrequestimage-serve-image', kwargs={'pk': obj.pk})
+                )
+        except Exception as e:
+            # If anything fails, fallback to proxy service
+            request = self.context.get('request')
+            if request:
+                from django.urls import reverse
+                try:
+                    return request.build_absolute_uri(
+                        reverse('loadingrequestimage-serve-image', kwargs={'pk': obj.pk})
+                    )
+                except:
+                    pass
+
+        return None
+
+
 class OrderSerializer(serializers.ModelSerializer):
     dealer = DealerSerializer(read_only=True)
     dealer_id = serializers.IntegerField(write_only=True)

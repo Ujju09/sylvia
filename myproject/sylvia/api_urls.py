@@ -20,6 +20,9 @@ from .bi_views import (
 from memotab.api_views import SourceViewSet, CashCollectViewSet
 from memotab.api_views import UserViewSet as MemoTabUserViewSet
 
+# Import Godown ViewSets
+from godown.api_views import LoadingRequestImageViewSet
+
 # Create router and register viewsets
 router = DefaultRouter()
 router.register(r'depots', DepotViewSet)
@@ -39,6 +42,9 @@ router.register(r'dealer-context', DealerContextViewSet)
 router.register(r'memotab/sources', SourceViewSet, basename='memotab-source')
 router.register(r'memotab/cash-collections', CashCollectViewSet, basename='memotab-cashcollect')
 router.register(r'memotab/users', MemoTabUserViewSet, basename='memotab-user')
+
+# Godown ViewSets
+router.register(r'loading-request-images', LoadingRequestImageViewSet, basename='loadingrequestimage')
 
 urlpatterns = [
     # Authentication

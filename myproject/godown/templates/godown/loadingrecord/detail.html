@@ -137,62 +137,24 @@
         </div>
 
         <!-- Loading Proof Images Section -->
-        {% if loading_images %}
         <div class="dashboard-section full-width">
             <div class="section-header">
                 <h2 class="section-title">
                     <i class="fas fa-images"></i>
-                    Loading Proof Images ({{ loading_images.count }})
+                    Loading Proof Images <span id="image-count-badge" class="badge bg-info">Loading...</span>
                 </h2>
             </div>
 
             <div class="detail-zone">
-                <div class="row g-3">
-                    {% for image in loading_images %}
-                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                        <div class="position-relative">
-                            <a href="{{ image.image_url }}" target="_blank" class="d-block">
-                                <img src="{{ image.image_url }}"
-                                     alt="{{ image.original_filename }}"
-                                     class="img-thumbnail w-100"
-                                     style="height: 200px; object-fit: cover; cursor: pointer;"
-                                     title="Click to view full size">
-                            </a>
-                            {% if image.is_primary %}
-                            <span class="badge bg-primary position-absolute top-0 end-0 m-2">
-                                <i class="fas fa-star"></i> Primary
-                            </span>
-                            {% endif %}
-                            <div class="mt-2">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <small class="text-muted d-block">
-                                            <i class="fas fa-file me-1"></i>
-                                            {{ image.original_filename|truncatechars:20 }}
-                                        </small>
-                                        <small class="text-muted d-block">
-                                            <i class="fas fa-clock me-1"></i>
-                                            {{ image.upload_timestamp|date:"M d, Y g:i A" }}
-                                        </small>
-                                        {% if image.file_size %}
-                                        <small class="text-muted d-block">
-                                            <i class="fas fa-weight me-1"></i>
-                                            {{ image.file_size|filesizeformat }}
-                                        </small>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% if image.description %}
-                                <small class="text-muted d-block mt-2">{{ image.description }}</small>
-                                {% endif %}
-                            </div>
-                        </div>
+                <div class="row g-3" id="loading-images-container">
+                    <!-- Images will be loaded here via JavaScript -->
+                    <div class="col-12 text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+                        <p class="text-muted">Loading images...</p>
                     </div>
-                    {% endfor %}
                 </div>
             </div>
         </div>
-        {% endif %}
 
         {% if loading_record.special_instructions or loading_record.loading_notes %}
         <div class="dashboard-section full-width">
@@ -309,5 +271,167 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get loading request ID from the template
+    const loadingRequestId = '{{ loading_record.loading_request_id }}';
+    const imagesContainer = document.getElementById('loading-images-container');
+    const countBadge = document.getElementById('image-count-badge');
+
+    // Load loading request images
+    loadLoadingImages();
+
+    function loadLoadingImages() {
+        fetch(`/api/v1/loading-request-images/by_loading_request/?loading_request_id=${loadingRequestId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(images => {
+            displayImages(images);
+        })
+        .catch(error => {
+            console.error('Error loading images:', error);
+            showErrorMessage();
+        });
+    }
+
+    function displayImages(images) {
+        imagesContainer.innerHTML = '';
+
+        if (images.length === 0) {
+            showNoImagesMessage();
+            return;
+        }
+
+        // Update the image count badge
+        if (countBadge) {
+            countBadge.textContent = `${images.length}`;
+        }
+
+        images.forEach(image => {
+            const imageDiv = document.createElement('div');
+            imageDiv.className = 'col-12 col-sm-6 col-md-4 col-lg-3';
+            imageDiv.innerHTML = `
+                <div class="position-relative">
+                    <a href="${image.secure_image_url || image.image_url}" target="_blank" class="d-block">
+                        <img src="${image.secure_image_url || image.image_url}"
+                             alt="${escapeHtml(image.original_filename)}"
+                             class="img-thumbnail w-100"
+                             style="height: 200px; object-fit: cover; cursor: pointer;"
+                             title="Click to view full size"
+                             onerror="this.onerror=null; this.src='/static/images/placeholder.png'; this.alt='Failed to load image';">
+                    </a>
+                    ${image.is_primary ? `
+                    <span class="badge bg-primary position-absolute top-0 end-0 m-2">
+                        <i class="fas fa-star"></i> Primary
+                    </span>
+                    ` : ''}
+                    <div class="mt-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <small class="text-muted d-block">
+                                    <i class="fas fa-file me-1"></i>
+                                    ${escapeHtml(truncate(image.original_filename, 20))}
+                                </small>
+                                <small class="text-muted d-block">
+                                    <i class="fas fa-clock me-1"></i>
+                                    ${formatDate(image.upload_timestamp)}
+                                </small>
+                                ${image.file_size ? `
+                                <small class="text-muted d-block">
+                                    <i class="fas fa-weight me-1"></i>
+                                    ${formatFileSize(image.file_size)}
+                                </small>
+                                ` : ''}
+                            </div>
+                        </div>
+                        ${image.description ? `
+                        <small class="text-muted d-block mt-2">${escapeHtml(image.description)}</small>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            imagesContainer.appendChild(imageDiv);
+        });
+    }
+
+    function showNoImagesMessage() {
+        if (countBadge) {
+            countBadge.textContent = '0';
+        }
+
+        imagesContainer.innerHTML = `
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">No loading proof images uploaded yet</h6>
+                    <p class="text-muted small">Images will appear here once they are uploaded.</p>
+                    <a href="{% url 'loading_record_update' loading_record.loading_request_id %}" class="btn btn-outline-primary">
+                        <i class="fas fa-plus"></i> Upload Images
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+
+    function showErrorMessage() {
+        if (countBadge) {
+            countBadge.textContent = 'Error';
+            countBadge.className = 'badge bg-warning';
+        }
+
+        imagesContainer.innerHTML = `
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h6 class="text-warning">Error loading images</h6>
+                    <p class="text-muted small">There was an error loading the loading proof images. Please try refreshing the page.</p>
+                    <button class="btn btn-outline-primary" onclick="loadLoadingImages()">
+                        <i class="fas fa-refresh"></i> Retry
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Utility functions
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function formatFileSize(bytes) {
+        if (!bytes) return 'Unknown size';
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        if (bytes === 0) return '0 Bytes';
+        const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+        return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    function truncate(str, maxLength) {
+        if (!str) return '';
+        if (str.length <= maxLength) return str;
+        return str.substring(0, maxLength - 3) + '...';
+    }
+});
+</script>
 
 {% endblock %}

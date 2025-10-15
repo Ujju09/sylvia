@@ -388,7 +388,7 @@ class CrossoverRecord(BaseModel):
 
 class LoadingRequest(BaseModel):
     """Model for outbound loading requests from stored inventory"""
-    
+
     LOADING_STATUS_CHOICES = [
         ('REQUESTED', 'Loading Requested'),
         ('APPROVED', 'Approved for Loading'),
@@ -397,20 +397,20 @@ class LoadingRequest(BaseModel):
         ('COMPLETED', 'Loading Completed'),
         ('CANCELLED', 'Cancelled'),
     ]
-    
+
     PRIORITY_CHOICES = [
         ('LOW', 'Low Priority'),
         ('MEDIUM', 'Medium Priority'),
         ('HIGH', 'High Priority'),
         ('URGENT', 'Urgent'),
     ]
-    
+
     # Identification
     loading_request_id = models.CharField(
         max_length=50, unique=True, editable=False,
         help_text="Auto-generated loading request identifier"
     )
-    
+
     # Core details
     godown = models.ForeignKey(
         GodownLocation, on_delete=models.CASCADE, related_name='loading_requests'
@@ -419,21 +419,21 @@ class LoadingRequest(BaseModel):
         'sylvia.Dealer', on_delete=models.CASCADE, related_name='loading_requests',
         help_text="Dealer for whom loading is requested"
     )
-  
+
     product = models.ForeignKey(
         'sylvia.Product', on_delete=models.CASCADE, related_name='loading_requests'
     )
-    
+
     # Quantity details
     requested_bags = models.PositiveIntegerField(
         help_text="Number of bags requested for loading"
     )
-    
+
     loaded_bags = models.PositiveIntegerField(
         default=0,
         help_text="Actual bags loaded onto vehicle"
     )
-    
+
     # Status and priority
     # status = models.CharField(
     #     max_length=25, choices=LOADING_STATUS_CHOICES, default='REQUESTED'
@@ -441,7 +441,7 @@ class LoadingRequest(BaseModel):
     # priority = models.CharField(
     #     max_length=10, choices=PRIORITY_CHOICES, default='MEDIUM'
     # )
-    
+
     # Timing
     # requested_date = models.DateTimeField(
     #     auto_now_add=True,
@@ -462,14 +462,14 @@ class LoadingRequest(BaseModel):
     #     null=True, blank=True,
     #     help_text="When loading was completed"
     # )
-    
+
     # Authorization
     supervised_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='supervised_loadings',
         help_text="User who supervised the loading"
     )
-    
+
     # Documentation
     special_instructions = models.TextField(
         blank=True,
@@ -479,7 +479,7 @@ class LoadingRequest(BaseModel):
         blank=True,
         help_text="Notes about the loading process"
     )
-    
+
     def save(self, *args, **kwargs):
         if not self.loading_request_id:
             # Generate loading request ID: LR_YYYYMMDD_SEQUENCE
@@ -489,10 +489,10 @@ class LoadingRequest(BaseModel):
             ).count()
             self.loading_request_id = f'LR_{date_str}_{today_count + 1:04d}'
         super().save(*args, **kwargs)
-    
+
     def __str__(self):
         return f"{self.loading_request_id} - {self.dealer.name} ({self.requested_bags} bags)"
-    
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = "Loading Records"
@@ -501,6 +501,65 @@ class LoadingRequest(BaseModel):
             models.Index(fields=['dealer']),
             models.Index(fields=['godown']),
             models.Index(fields=['loading_request_id']),
+        ]
+
+
+class LoadingRequestImage(BaseModel):
+    """Model to store proof images for loading requests"""
+
+    LOADING_IMAGE_TYPE_CHOICES = [
+        ('LOADING_PROOF', 'Loading Proof Document'),
+        ('TRUCK_PHOTO', 'Truck/Vehicle Photo'),
+        ('QUALITY_CHECK', 'Quality Check Photo'),
+        ('BAG_COUNT', 'Bag Count Verification'),
+        ('OTHER', 'Other Documentation'),
+    ]
+
+    loading_request = models.ForeignKey(
+        LoadingRequest, on_delete=models.CASCADE, related_name='loading_images'
+    )
+    image_url = models.URLField(
+        max_length=500, help_text="Krutrim Storage URL for the image"
+    )
+    image_type = models.CharField(
+        max_length=20, choices=LOADING_IMAGE_TYPE_CHOICES, default='LOADING_PROOF'
+    )
+    original_filename = models.CharField(max_length=255, blank=True)
+    file_size = models.PositiveIntegerField(
+        null=True, blank=True, help_text="File size in bytes"
+    )
+    upload_timestamp = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(
+        blank=True, help_text="Optional description of the image"
+    )
+    is_primary = models.BooleanField(
+        default=False, help_text="Mark as primary loading proof image"
+    )
+
+    # Storage metadata
+    storage_key = models.CharField(
+        max_length=255, blank=True, help_text="Krutrim storage key/path"
+    )
+    content_type = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return f"{self.loading_request.loading_request_id} - {self.get_image_type_display()}"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one primary image per loading request
+        if self.is_primary:
+            LoadingRequestImage.objects.filter(
+                loading_request=self.loading_request, is_primary=True
+            ).update(is_primary=False)
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['-upload_timestamp']
+        verbose_name = "Loading Request Image"
+        verbose_name_plural = "Loading Request Images"
+        indexes = [
+            models.Index(fields=['loading_request', '-upload_timestamp']),
+            models.Index(fields=['image_type', 'is_primary']),
         ]
 
 

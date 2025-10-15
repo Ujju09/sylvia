@@ -136,6 +136,64 @@
             </div>
         </div>
 
+        <!-- Loading Proof Images Section -->
+        {% if loading_images %}
+        <div class="dashboard-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-images"></i>
+                    Loading Proof Images ({{ loading_images.count }})
+                </h2>
+            </div>
+
+            <div class="detail-zone">
+                <div class="row g-3">
+                    {% for image in loading_images %}
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <div class="position-relative">
+                            <a href="{{ image.image_url }}" target="_blank" class="d-block">
+                                <img src="{{ image.image_url }}"
+                                     alt="{{ image.original_filename }}"
+                                     class="img-thumbnail w-100"
+                                     style="height: 200px; object-fit: cover; cursor: pointer;"
+                                     title="Click to view full size">
+                            </a>
+                            {% if image.is_primary %}
+                            <span class="badge bg-primary position-absolute top-0 end-0 m-2">
+                                <i class="fas fa-star"></i> Primary
+                            </span>
+                            {% endif %}
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-file me-1"></i>
+                                            {{ image.original_filename|truncatechars:20 }}
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ image.upload_timestamp|date:"M d, Y g:i A" }}
+                                        </small>
+                                        {% if image.file_size %}
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-weight me-1"></i>
+                                            {{ image.file_size|filesizeformat }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% if image.description %}
+                                <small class="text-muted d-block mt-2">{{ image.description }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         {% if loading_record.special_instructions or loading_record.loading_notes %}
         <div class="dashboard-section full-width">
             <div class="section-header">
@@ -144,7 +202,7 @@
                     Notes
                 </h2>
             </div>
-            
+
             <div class="row g-3">
                 {% if loading_record.special_instructions %}
                 <div class="col-12 col-md-6">
@@ -157,7 +215,7 @@
                     </div>
                 </div>
                 {% endif %}
-                
+
                 {% if loading_record.loading_notes %}
                 <div class="col-12 col-md-6">
                     <div class="detail-zone">

@@ -37,7 +37,7 @@ class KrutrimStorageClient:
         canonical_querystring = parsed_url.query or ''
         
         # Create timestamp
-        t = datetime.datetime.utcnow()
+        t = datetime.datetime.now()
         amzdate = t.strftime('%Y%m%dT%H%M%SZ')
         datestamp = t.strftime('%Y%m%d')
         
@@ -120,9 +120,18 @@ class KrutrimStorageClient:
         """Generate unique storage key for the file"""
         # Create a unique identifier
         unique_id = str(uuid.uuid4())[:8]
-        
+
         # Create hierarchical key: orders/{order_number}/mrn_images/{unique_id}_{filename}
         storage_key = f"sylvia/orders/{order_number}/mrn_images/{unique_id}_{filename}"
+        return storage_key
+
+    def _generate_loading_storage_key(self, loading_request_id: str, filename: str) -> str:
+        """Generate unique storage key for loading request images"""
+        # Create a unique identifier
+        unique_id = str(uuid.uuid4())[:8]
+
+        # Create hierarchical key: godown/loading_requests/{loading_request_id}/images/{unique_id}_{filename}
+        storage_key = f"godown/loading_requests/{loading_request_id}/images/{unique_id}_{filename}"
         return storage_key
     
     def upload_image(self, file_obj: Union[InMemoryUploadedFile, TemporaryUploadedFile], 
@@ -196,7 +205,79 @@ class KrutrimStorageClient:
             error_msg = f"Error uploading image: {str(e)}"
             logger.error(error_msg)
             return False, error_msg, None, None
-    
+
+    def upload_loading_image(self, file_obj: Union[InMemoryUploadedFile, TemporaryUploadedFile],
+                            loading_request_id: str) -> Tuple[bool, str, Optional[str], Optional[Dict]]:
+        """
+        Upload loading request image to Krutrim Storage using custom HTTP client
+        Returns: (success, url_or_error_message, storage_key, metadata)
+        """
+        try:
+            # Validate file
+            is_valid, validation_message = self._validate_image_file(file_obj)
+            if not is_valid:
+                return False, validation_message, None, None
+
+            # Generate storage key for loading requests
+            storage_key = self._generate_loading_storage_key(loading_request_id, file_obj.name)
+
+            # Reset file pointer
+            file_obj.seek(0)
+
+            # Construct upload URL
+            upload_url = f"{self.endpoint_url}/{self.bucket_name}/{quote(storage_key, safe='/')}"
+
+            # Get content type
+            content_type = file_obj.content_type or mimetypes.guess_type(file_obj.name)[0] or 'application/octet-stream'
+
+            # Read file content to calculate SHA256 hash (required for SigV4)
+            file_content = file_obj.read()
+            payload_hash = hashlib.sha256(file_content).hexdigest()
+
+            # Create headers with AWS Signature Version 4
+            headers = self._create_auth_headers_v4(
+                method='PUT',
+                url=upload_url,
+                content_type=content_type,
+                payload_hash=payload_hash
+            )
+
+            # Upload file using HTTP PUT request
+            try:
+                response = requests.put(
+                    upload_url,
+                    data=file_content,
+                    headers=headers,
+                    timeout=60
+                )
+
+                if response.status_code in [200, 201]:
+                    # Construct the public URL
+                    image_url = upload_url
+
+                    metadata = {
+                        'original_filename': file_obj.name,
+                        'file_size': file_obj.size,
+                        'content_type': content_type,
+                        'storage_key': storage_key
+                    }
+
+                    return True, image_url, storage_key, metadata
+                else:
+                    error_msg = f"Krutrim Storage upload failed: HTTP {response.status_code} - {response.text}"
+                    logger.error(error_msg)
+                    return False, error_msg, None, None
+
+            except requests.exceptions.RequestException as e:
+                error_msg = f"Error during HTTP upload: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg, None, None
+
+        except Exception as e:
+            error_msg = f"Error uploading loading image: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg, None, None
+
     def delete_image(self, storage_key: str) -> Tuple[bool, str]:
         """Delete image from Krutrim Storage using custom HTTP client"""
         try:

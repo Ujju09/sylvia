@@ -44,4 +44,7 @@ urlpatterns = [
 
     # Audit Checklist PDF Generation
     path('audit-pdf/<int:godown_id>/', views.generate_audit_pdf, name='generate_audit_pdf'),
+
+    # Opening Stock Image Sharing
+    path('share-opening-stock/', views.share_opening_stock_image, name='share_opening_stock_image'),
 ]

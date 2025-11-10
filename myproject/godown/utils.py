@@ -5,9 +5,11 @@ Provides centralized business logic for audit and reporting functions.
 
 from django.db.models import Sum, Max, Count
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 from decimal import Decimal
 from typing import Dict, List
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 from .models import (
     GodownInventoryLedger, GodownDailyBalance, InventoryVariance,
@@ -625,3 +627,288 @@ def get_inventory_audit_summary(godown=None, product=None, date_range_days=30) -
         'variance_summary': variance_summary,
         'audit_timestamp': timezone.now()
     }
+
+
+def generate_opening_stock_image(products_data, date_str):
+    """
+    Generate a clean, minimal image showing opening stock for all products.
+
+    Args:
+        products_data: List of dicts with keys: product_name, opening_stock
+        date_str: Date string to display (e.g., "11 Nov, 2025")
+
+    Returns:
+        PIL Image object
+    """
+    # Image dimensions - portrait format for mobile sharing
+    width = 1080
+    height = 1920
+
+    # Colors
+    bg_color = (255, 255, 255)  # White
+    text_color = (40, 40, 40)  # Dark gray
+    watermark_color = (220, 220, 220)  # Very light gray
+
+    # Create image
+    img = Image.new('RGB', (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Try to use a nice font, fall back to default if not available
+    try:
+        title_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 60)
+        date_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 48)
+        header_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 44)
+        content_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 40)
+        watermark_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 36)
+    except:
+        # Fallback to default font
+        title_font = ImageFont.load_default()
+        date_font = ImageFont.load_default()
+        header_font = ImageFont.load_default()
+        content_font = ImageFont.load_default()
+        watermark_font = ImageFont.load_default()
+
+    # Draw date in top left corner
+    date_x = 60
+    date_y = 80
+    draw.text((date_x, date_y), date_str, fill=text_color, font=date_font)
+
+   
+    # Table starting position
+    table_start_y = 320
+    row_height = 70
+
+    # Draw table headers
+    col1_x = 80  # Product name column
+    col2_x = 750  # Opening stock column
+
+    header_y = table_start_y
+    draw.text((col1_x, header_y), "Product", fill=text_color, font=header_font)
+    draw.text((col2_x, header_y), "Opening Stock", fill=text_color, font=header_font)
+
+    # Draw a subtle line under headers
+    line_y = header_y + 60
+    draw.line([(60, line_y), (width - 60, line_y)], fill=(200, 200, 200), width=2)
+
+    # Draw product rows
+    current_y = line_y + 30
+    for product in products_data:
+        if current_y > height - 300:  # Leave space for watermark
+            break
+
+        # Product name
+        product_name = product['product_name']
+        if len(product_name) > 30:
+            product_name = product_name[:27] + "..."
+        draw.text((col1_x, current_y), product_name, fill=text_color, font=content_font)
+
+        # Opening stock
+        stock_text = str(product['opening_stock'])
+        draw.text((col2_x, current_y), stock_text, fill=text_color, font=content_font)
+
+        current_y += row_height
+
+    # Draw total if available
+    if products_data:
+        total_stock = sum(p['opening_stock'] for p in products_data)
+        current_y += 20
+        # Draw line before total
+        draw.line([(60, current_y), (width - 60, current_y)], fill=(200, 200, 200), width=2)
+        current_y += 30
+        draw.text((col1_x, current_y), "Total", fill=text_color, font=header_font)
+        draw.text((col2_x, current_y), str(total_stock), fill=text_color, font=header_font)
+
+    # Draw watermark at bottom left
+    watermark_text = "Shyam Distributors"
+    watermark_x = 60
+    watermark_y = height - 120
+    draw.text((watermark_x, watermark_y), watermark_text, fill=watermark_color, font=watermark_font)
+
+    return img
+
+
+def generate_opening_stock_image_bytes(products_data, date_str):
+    """
+    Generate opening stock image and return as bytes for HTTP response.
+
+    Args:
+        products_data: List of dicts with keys: product_name, opening_stock
+        date_str: Date string to display
+
+    Returns:
+        BytesIO object containing PNG image data
+    """
+    img = generate_opening_stock_image(products_data, date_str)
+
+    # Convert to bytes
+    img_io = io.BytesIO()
+    img.save(img_io, format='PNG', quality=95)
+    img_io.seek(0)
+
+    return img_io
+
+
+def generate_opening_stock_matrix_image(products_matrix, godown_codes, godown_names, date_str):
+    """
+    Generate a matrix-style image showing opening stock for all products across all godowns.
+
+    Args:
+        products_matrix: Dict with structure {product_name: {godown_code: opening_stock}}
+        godown_codes: List of godown codes (determines column order)
+        godown_names: Dict mapping godown_code to godown_name
+        date_str: Date string to display (e.g., "11 Nov, 2025")
+
+    Returns:
+        PIL Image object
+    """
+    # Calculate dynamic width based on number of godowns
+    # Base width + column width for each godown + total column
+    num_godowns = len(godown_codes)
+    base_width = 400  # For product name column
+    column_width = 160  # Width per godown column
+    total_column_width = 160  # Width for total column
+
+    width = base_width + (num_godowns * column_width) + total_column_width + 100  # Extra padding
+    height = 1920
+
+    # Colors
+    bg_color = (255, 255, 255)  # White
+    text_color = (40, 40, 40)  # Dark gray
+    header_color = (30, 30, 30)  # Darker for headers
+    watermark_color = (220, 220, 220)  # Very light gray
+    line_color = (200, 200, 200)  # Light gray for lines
+
+    # Create image
+    img = Image.new('RGB', (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Try to use nice fonts
+    try:
+        date_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 38)
+        header_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 34)
+        content_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 32)
+        watermark_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 32)
+    except:
+        date_font = ImageFont.load_default()
+        header_font = ImageFont.load_default()
+        content_font = ImageFont.load_default()
+        watermark_font = ImageFont.load_default()
+
+    # Draw date in top left corner
+    date_x = 40
+    date_y = 60
+    draw.text((date_x, date_y), date_str, fill=text_color, font=date_font)
+
+    # Table starting position
+    table_start_y = 180
+    row_height = 60
+
+    # Column positions
+    product_col_x = 40
+    godown_col_start_x = product_col_x + base_width
+
+    # Draw column headers
+    header_y = table_start_y
+
+    # Product column header
+    draw.text((product_col_x, header_y), "Product", fill=header_color, font=header_font)
+
+    # Godown column headers (use first 3-4 letters of godown code for compact display)
+    current_x = godown_col_start_x
+    for godown_code in godown_codes:
+        # Use godown code for header (compact)
+        header_text = godown_code if len(godown_code) <= 6 else godown_code[:6]
+        draw.text((current_x + 10, header_y), header_text, fill=header_color, font=header_font)
+        current_x += column_width
+
+    # Total column header
+    draw.text((current_x + 10, header_y), "Total", fill=header_color, font=header_font)
+
+    # Draw line under headers
+    line_y = header_y + 50
+    draw.line([(30, line_y), (width - 30, line_y)], fill=line_color, width=2)
+
+    # Draw product rows
+    current_y = line_y + 20
+    product_names = sorted(products_matrix.keys())
+
+    # Column totals (sum per godown)
+    column_totals = {code: 0 for code in godown_codes}
+    grand_total = 0
+
+    for product_name in product_names:
+        if current_y > height - 250:  # Leave space for totals and watermark
+            break
+
+        # Product name (truncate if too long)
+        display_name = product_name if len(product_name) <= 25 else product_name[:22] + "..."
+        draw.text((product_col_x, current_y), display_name, fill=text_color, font=content_font)
+
+        # Stock values for each godown
+        current_x = godown_col_start_x
+        row_total = 0
+
+        for godown_code in godown_codes:
+            stock = products_matrix[product_name].get(godown_code, 0)
+            display_text = str(stock) if stock > 0 else "-"
+
+            # Right-align numbers
+            draw.text((current_x + 10, current_y), display_text, fill=text_color, font=content_font)
+
+            row_total += stock
+            column_totals[godown_code] += stock
+            current_x += column_width
+
+        # Row total
+        draw.text((current_x + 10, current_y), str(row_total), fill=header_color, font=content_font)
+        grand_total += row_total
+
+        current_y += row_height
+
+    # Draw line before totals
+    totals_line_y = current_y + 10
+    draw.line([(30, totals_line_y), (width - 30, totals_line_y)], fill=line_color, width=2)
+
+    # Draw totals row
+    totals_y = totals_line_y + 20
+    draw.text((product_col_x, totals_y), "Total", fill=header_color, font=header_font)
+
+    # Column totals
+    current_x = godown_col_start_x
+    for godown_code in godown_codes:
+        draw.text((current_x + 10, totals_y), str(column_totals[godown_code]), fill=header_color, font=header_font)
+        current_x += column_width
+
+    # Grand total
+    draw.text((current_x + 10, totals_y), str(grand_total), fill=header_color, font=header_font)
+
+    # Draw watermark at bottom left
+    watermark_text = "Shyam Distributors"
+    watermark_x = 40
+    watermark_y = height - 100
+    draw.text((watermark_x, watermark_y), watermark_text, fill=watermark_color, font=watermark_font)
+
+    return img
+
+
+def generate_opening_stock_matrix_image_bytes(products_matrix, godown_codes, godown_names, date_str):
+    """
+    Generate opening stock matrix image and return as bytes for HTTP response.
+
+    Args:
+        products_matrix: Dict with structure {product_name: {godown_code: opening_stock}}
+        godown_codes: List of godown codes
+        godown_names: Dict mapping godown_code to godown_name
+        date_str: Date string to display
+
+    Returns:
+        BytesIO object containing PNG image data
+    """
+    img = generate_opening_stock_matrix_image(products_matrix, godown_codes, godown_names, date_str)
+
+    # Convert to bytes
+    img_io = io.BytesIO()
+    img.save(img_io, format='PNG', quality=95)
+    img_io.seek(0)
+
+    return img_io

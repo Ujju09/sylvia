@@ -1722,3 +1722,68 @@ def generate_audit_pdf(request, godown_id):
     response.write(pdf)
 
     return response
+
+
+@login_required
+def share_opening_stock_image(request):
+    """Generate and serve a matrix image showing current stock for all products across all godowns"""
+    from .utils import generate_opening_stock_matrix_image_bytes
+    from django.db.models import Max
+
+    today = timezone.now().date()
+
+    # Get latest daily balances for all godown-product combinations (current stock)
+    latest_dates = GodownDailyBalance.objects.filter(
+        balance_date__lte=today
+    ).values(
+        'godown', 'product'
+    ).annotate(
+        latest_date=Max('balance_date')
+    )
+
+    # Build matrix data structure
+    # products_matrix: {product_name: {godown_code: opening_stock}}
+    products_matrix = {}
+    godown_codes = []  # Ordered list of godown codes
+    godown_names = {}  # Map code to name
+
+    for date_info in latest_dates:
+        balance = GodownDailyBalance.objects.filter(
+            godown_id=date_info['godown'],
+            product_id=date_info['product'],
+            balance_date=date_info['latest_date']
+        ).select_related('godown', 'product').first()
+
+        if balance and balance.closing_balance > 0:
+            product_name = balance.product.name
+            godown_code = balance.godown.code
+            godown_name = balance.godown.name
+
+            # Initialize product entry if not exists
+            if product_name not in products_matrix:
+                products_matrix[product_name] = {}
+
+            # Add stock for this godown (using closing_balance as current stock)
+            products_matrix[product_name][godown_code] = balance.closing_balance
+
+            # Track godown codes (maintain order)
+            if godown_code not in godown_codes:
+                godown_codes.append(godown_code)
+                godown_names[godown_code] = godown_name
+
+    # Format date string (e.g., "11 Nov, 2025")
+    date_str = today.strftime("%d %b, %Y")
+
+    # Generate matrix image
+    img_io = generate_opening_stock_matrix_image_bytes(
+        products_matrix=products_matrix,
+        godown_codes=godown_codes,
+        godown_names=godown_names,
+        date_str=date_str
+    )
+
+    # Return as PNG response
+    response = HttpResponse(img_io, content_type='image/png')
+    response['Content-Disposition'] = f'inline; filename="Current_Stock_Matrix_{today.strftime("%Y%m%d")}.png"'
+
+    return response

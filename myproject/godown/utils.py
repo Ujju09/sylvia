@@ -17,6 +17,54 @@ from .models import (
 )
 
 
+def _load_font(size, bold=False):
+    """
+    Load a TrueType font with fallback support for cross-platform compatibility.
+
+    Tries multiple font sources in order:
+    1. DejaVu fonts (bundled with many Linux distributions)
+    2. System fonts (Arial, Helvetica, etc.)
+    3. Pillow's default font
+
+    Args:
+        size: Font size in points
+        bold: Whether to load bold variant
+
+    Returns:
+        ImageFont object
+    """
+    # List of fonts to try, in order of preference
+    font_candidates = [
+        # DejaVu fonts (common on Linux servers)
+        "DejaVuSans-Bold" if bold else "DejaVuSans",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+
+        # System fonts (macOS, Windows)
+        "Arial-Bold" if bold else "Arial",
+        "Helvetica-Bold" if bold else "Helvetica",
+
+        # Full paths for macOS
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial.ttf",
+
+        # Windows paths
+        "C:\\Windows\\Fonts\\arialbd.ttf" if bold else "C:\\Windows\\Fonts\\arial.ttf",
+    ]
+
+    # Try each font candidate
+    for font_name in font_candidates:
+        try:
+            return ImageFont.truetype(font_name, size)
+        except (OSError, IOError):
+            continue
+
+    # If all else fails, use default font
+    try:
+        return ImageFont.load_default(size=size)
+    except:
+        return ImageFont.load_default()
+
+
 class LedgerCalculator:
     """
     Central class for all ledger calculations, balance updates, and variance detection.
@@ -653,20 +701,12 @@ def generate_opening_stock_image(products_data, date_str):
     img = Image.new('RGB', (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Try to use a nice font, fall back to default if not available
-    try:
-        title_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 60)
-        date_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 48)
-        header_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 44)
-        content_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 40)
-        watermark_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 36)
-    except:
-        # Fallback to default font
-        title_font = ImageFont.load_default()
-        date_font = ImageFont.load_default()
-        header_font = ImageFont.load_default()
-        content_font = ImageFont.load_default()
-        watermark_font = ImageFont.load_default()
+    # Load fonts with cross-platform support
+    title_font = _load_font(60, bold=True)
+    date_font = _load_font(48)
+    header_font = _load_font(44, bold=True)
+    content_font = _load_font(40)
+    watermark_font = _load_font(36)
 
     # Draw date in top left corner
     date_x = 60
@@ -761,15 +801,25 @@ def generate_opening_stock_matrix_image(products_matrix, godown_codes, godown_na
     Returns:
         PIL Image object
     """
-    # Calculate dynamic width based on number of godowns
-    # Base width + column width for each godown + total column
+    # Calculate dynamic dimensions based on number of godowns and products
     num_godowns = len(godown_codes)
+    num_products = len(products_matrix)
+
     base_width = 400  # For product name column
     column_width = 160  # Width per godown column
     total_column_width = 160  # Width for total column
 
     width = base_width + (num_godowns * column_width) + total_column_width + 100  # Extra padding
-    height = 1920
+
+    # Dynamic height calculation (max 7 products expected)
+    # Top padding (date) + table header + products rows + totals row + bottom padding (watermark)
+    top_padding = 150
+    header_height = 90
+    row_height = 60
+    totals_height = 90
+    bottom_padding = 150
+
+    height = top_padding + header_height + (num_products * row_height) + totals_height + bottom_padding
 
     # Colors
     bg_color = (255, 255, 255)  # White
@@ -782,17 +832,11 @@ def generate_opening_stock_matrix_image(products_matrix, godown_codes, godown_na
     img = Image.new('RGB', (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Try to use nice fonts
-    try:
-        date_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 38)
-        header_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 34)
-        content_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 32)
-        watermark_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 32)
-    except:
-        date_font = ImageFont.load_default()
-        header_font = ImageFont.load_default()
-        content_font = ImageFont.load_default()
-        watermark_font = ImageFont.load_default()
+    # Load fonts with cross-platform support
+    date_font = _load_font(38)
+    header_font = _load_font(34, bold=True)
+    content_font = _load_font(32)
+    watermark_font = _load_font(32)
 
     # Draw date in top left corner
     date_x = 40
@@ -837,9 +881,6 @@ def generate_opening_stock_matrix_image(products_matrix, godown_codes, godown_na
     grand_total = 0
 
     for product_name in product_names:
-        if current_y > height - 250:  # Leave space for totals and watermark
-            break
-
         # Product name (truncate if too long)
         display_name = product_name if len(product_name) <= 25 else product_name[:22] + "..."
         draw.text((product_col_x, current_y), display_name, fill=text_color, font=content_font)
@@ -882,10 +923,10 @@ def generate_opening_stock_matrix_image(products_matrix, godown_codes, godown_na
     # Grand total
     draw.text((current_x + 10, totals_y), str(grand_total), fill=header_color, font=header_font)
 
-    # Draw watermark at bottom left
+    # Draw watermark at bottom left (with proper spacing)
     watermark_text = "Shyam Distributors"
     watermark_x = 40
-    watermark_y = height - 100
+    watermark_y = height - 80  # Closer to bottom with dynamic height
     draw.text((watermark_x, watermark_y), watermark_text, fill=watermark_color, font=watermark_font)
 
     return img

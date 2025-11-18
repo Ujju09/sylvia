@@ -1764,7 +1764,7 @@ def share_opening_stock_image(request):
                 products_matrix[product_name] = {}
 
             # Add stock for this godown (using closing_balance as current stock)
-            products_matrix[product_name][godown_code] = balance.closing_balance
+            products_matrix[product_name][godown_code] = balance.closing_balance/20  # Assuming 20 bags per ton
 
             # Track godown codes (maintain order)
             if godown_code not in godown_codes:

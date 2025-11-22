@@ -200,6 +200,30 @@ def home(request):
     dealers_served_today = Order.objects.filter(created_at__date=today).values('dealer').distinct().count()
     vehicles_loaded_today = Order.objects.filter(created_at__date=today).values('vehicle').distinct().count()
 
+    # 5. Recent Activity
+    recent_orders = Order.objects.select_related('dealer', 'vehicle').order_by('-created_at')[:5]
+    
+    # 6. Order Pipeline Status
+    status_counts = Order.objects.values('status').annotate(count=Count('id'))
+    pipeline_data = {
+        'PENDING': 0,
+        'CONFIRMED': 0,
+        'MRN_CREATED': 0,
+        'BILLED': 0
+    }
+    for item in status_counts:
+        if item['status'] in pipeline_data:
+            pipeline_data[item['status']] = item['count']
+            
+    # 7. Daily Trend (Last 7 Days)
+    daily_trend_labels = []
+    daily_trend_data = []
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        day_count = Order.objects.filter(created_at__date=d).count()
+        daily_trend_labels.append(d.strftime('%d %b'))
+        daily_trend_data.append(day_count)
+
     # Check for audit reminder
     audit_reminder = check_audit_reminder()
     godown_audit_reminder = check_godown_audit_reminder()
@@ -224,6 +248,10 @@ def home(request):
         'current_date': today,
         'audit_reminder': audit_reminder,
         'godown_audit_reminder': godown_audit_reminder,
+        'recent_orders': recent_orders,
+        'pipeline_data': pipeline_data,
+        'trend_labels': json.dumps(daily_trend_labels),
+        'trend_data': json.dumps(daily_trend_data),
     }
     return render(request, 'home.html', context)
 

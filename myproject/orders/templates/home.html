@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container py-5">
   <div class="row justify-content-center">
-    <div class="col-md-10">
+    <div class="col-md-12">
       <!-- Data Audit Reminder Banner -->
       {% if audit_reminder.show_reminder %}
       <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert" id="auditReminderBanner">
@@ -75,160 +75,286 @@
       </div>
       {% endif %}
 
-      <div class="text-center mb-5">
-        <h1 class="display-4 mb-3">{{ app_settings.site_title|default:"Move People ― Move Mountains" }}</h1>
-        <p class="lead">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong></p>
+      <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+          <h1 class="display-5 mb-1">{{ app_settings.site_title|default:"Move People ― Move Mountains" }}</h1>
+          <p class="lead text-muted mb-0">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong></p>
+        </div>
+        <div>
+             <a href="/orders/order-workflow/" class="btn btn-primary btn-lg shadow-sm">
+              <i class="fas fa-plus me-2"></i>New Order
+            </a>
+        </div>
       </div>
       
-      <!-- Today's Achievements Section -->
-      <div class="row g-4 mb-4">
-        <div class="col-12">
-          <h4 class="text-center mb-3"><i class="fas fa-trophy text-warning me-2"></i>Today's Achievements</h4>
-        </div>
-        
+      <!-- Top Stats Row -->
+      <div class="row g-4 mb-5">
         <!-- Orders Entered Card -->
-        <div class="col-lg-3 col-md-6">
-          <div class="card daily-report-card h-100">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start">
+        <div class="col-xl-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100 overflow-hidden">
+            <div class="card-body position-relative">
+              <div class="d-flex justify-content-between align-items-start z-1 position-relative">
                 <div>
-                  <h6 class="card-title text-primary">Orders Entered</h6>
-                  <h2 class="display-4 fw-bold text-primary">{{ daily_reports.orders_entered }}</h2>
-                  <p class="text-muted mb-0 small">data entry work</p>
+                  <p class="text-uppercase fw-bold text-muted small mb-1">Orders Today</p>
+                  <h2 class="display-5 fw-bold text-primary mb-0">{{ daily_reports.orders_entered }}</h2>
                 </div>
-                <div class="report-icon">
+                <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
                   <i class="fas fa-keyboard fa-2x text-primary"></i>
                 </div>
+              </div>
+              <div class="mt-3">
+                 <span class="badge bg-success-subtle text-success rounded-pill">
+                    <i class="fas fa-arrow-up me-1"></i>Active
+                 </span>
+                 <span class="text-muted small ms-1">Data Entry</span>
               </div>
             </div>
           </div>
         </div>
         
         <!-- MRN Progress Card -->
-        <div class="col-lg-3 col-md-6">
-          <div class="card daily-report-card h-100">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start">
+        <div class="col-xl-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100 overflow-hidden">
+            <div class="card-body position-relative">
+              <div class="d-flex justify-content-between align-items-start z-1 position-relative">
                 <div>
-                  <h6 class="card-title text-success">MRN Created</h6>
-                  <h2 class="display-4 fw-bold text-success">{{ daily_reports.mrn_created }}</h2>
-                  <p class="text-muted mb-0 small">workflow progress</p>
+                  <p class="text-uppercase fw-bold text-muted small mb-1">MRN Created</p>
+                  <h2 class="display-5 fw-bold text-success mb-0">{{ daily_reports.mrn_created }}</h2>
                 </div>
-                <div class="report-icon">
+                <div class="bg-success bg-opacity-10 p-3 rounded-circle">
                   <i class="fas fa-clipboard-check fa-2x text-success"></i>
                 </div>
+              </div>
+               <div class="mt-3">
+                 <span class="badge bg-success-subtle text-success rounded-pill">
+                    <i class="fas fa-check me-1"></i>On Track
+                 </span>
+                 <span class="text-muted small ms-1">Workflow</span>
               </div>
             </div>
           </div>
         </div>
         
         <!-- Orders Billed Card -->
-        <div class="col-lg-3 col-md-6">
-          <div class="card daily-report-card h-100">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start">
+        <div class="col-xl-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100 overflow-hidden">
+            <div class="card-body position-relative">
+              <div class="d-flex justify-content-between align-items-start z-1 position-relative">
                 <div>
-                  <h6 class="card-title text-info">Orders Billed</h6>
-                  <h2 class="display-4 fw-bold text-info">{{ daily_reports.orders_billed }}</h2>
-                  <p class="text-muted mb-0 small">billing completed</p>
+                  <p class="text-uppercase fw-bold text-muted small mb-1">Billed Today</p>
+                  <h2 class="display-5 fw-bold text-info mb-0">{{ daily_reports.orders_billed }}</h2>
                 </div>
-                <div class="report-icon">
+                <div class="bg-info bg-opacity-10 p-3 rounded-circle">
                   <i class="fas fa-file-invoice-dollar fa-2x text-info"></i>
                 </div>
+              </div>
+               <div class="mt-3">
+                 <span class="badge bg-info-subtle text-info rounded-pill">
+                    <i class="fas fa-dollar-sign me-1"></i>Revenue
+                 </span>
+                 <span class="text-muted small ms-1">Completed</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Dealers Served Card -->
-        <div class="col-lg-3 col-md-6">
-          <div class="card daily-report-card h-100">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start">
+        <div class="col-xl-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100 overflow-hidden">
+            <div class="card-body position-relative">
+              <div class="d-flex justify-content-between align-items-start z-1 position-relative">
                 <div>
-                  <h6 class="card-title text-warning">Dealers Served</h6>
-                  <h2 class="display-4 fw-bold text-warning">{{ daily_reports.dealers_served }}</h2>
-                  <p class="text-muted mb-0 small">customers helped</p>
+                  <p class="text-uppercase fw-bold text-muted small mb-1">Dealers Served</p>
+                  <h2 class="display-5 fw-bold text-warning mb-0">{{ daily_reports.dealers_served }}</h2>
                 </div>
-                <div class="report-icon">
+                <div class="bg-warning bg-opacity-10 p-3 rounded-circle">
                   <i class="fas fa-handshake fa-2x text-warning"></i>
                 </div>
+              </div>
+               <div class="mt-3">
+                 <span class="badge bg-warning-subtle text-warning rounded-pill">
+                    <i class="fas fa-users me-1"></i>Engagement
+                 </span>
+                 <span class="text-muted small ms-1">Unique</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- This Week's Impact Section -->
+      <div class="row g-4 mb-5">
+        <!-- Charts & Pipeline -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-chart-line me-2 text-primary"></i>Order Trend (Last 7 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="orderTrendChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+             <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-filter me-2 text-primary"></i>Pipeline Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-secondary bg-opacity-10 p-2 me-3">
+                                    <i class="fas fa-clock text-secondary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Pending</h6>
+                                    <small class="text-muted">Awaiting confirmation</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-secondary rounded-pill">{{ pipeline_data.PENDING }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                                    <i class="fas fa-check-circle text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Confirmed</h6>
+                                    <small class="text-muted">Ready for MRN</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">{{ pipeline_data.CONFIRMED }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-3">
+                                    <i class="fas fa-box-open text-warning"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">MRN Created</h6>
+                                    <small class="text-muted">Material received</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ pipeline_data.MRN_CREATED }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-success bg-opacity-10 p-2 me-3">
+                                    <i class="fas fa-file-invoice text-success"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Billed</h6>
+                                    <small class="text-muted">Completed orders</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-success rounded-pill">{{ pipeline_data.BILLED }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity & Weekly Stats -->
       <div class="row g-4">
-        <div class="col-12">
-          <h4 class="text-center mb-3"><i class="fas fa-chart-line text-success me-2"></i>This Week's Impact</h4>
+        <div class="col-lg-8">
+           <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-history me-2 text-primary"></i>Recent Orders</h5>
+                    <a href="/orders/orders/" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-0 ps-4">Order #</th>
+                                    <th class="border-0">Dealer</th>
+                                    <th class="border-0">Date</th>
+                                    <th class="border-0">Status</th>
+                                    <th class="border-0 text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-primary">#{{ order.order_number }}</td>
+                                    <td>{{ order.dealer.name }}</td>
+                                    <td>{{ order.created_at|date:"M d, H:i" }}</td>
+                                    <td>
+                                        {% if order.status == 'PENDING' %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary">Pending</span>
+                                        {% elif order.status == 'CONFIRMED' %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary">Confirmed</span>
+                                        {% elif order.status == 'MRN_CREATED' %}
+                                            <span class="badge bg-warning bg-opacity-10 text-warning">MRN Created</span>
+                                        {% elif order.status == 'BILLED' %}
+                                            <span class="badge bg-success bg-opacity-10 text-success">Billed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-light text-muted">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">No recent orders found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+           </div>
         </div>
         
-        <div class="col-lg-4 col-md-6">
-          <div class="card weekly-report-card h-100 border-success">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start">
-                <div>
-                  <h6 class="card-title text-success">Total Orders Processed</h6>
-                  <h3 class="display-5 fw-bold text-success">{{ weekly_reports.orders_entered }}</h3>
-                  <p class="text-muted mb-0 small">last 7 days</p>
-                </div>
-                <div class="report-icon">
-                  <i class="fas fa-calendar-week fa-2x text-success"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-4 col-md-6">
-          <div class="card weekly-report-card h-100 border-info">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start">
-                <div>
-                  <h6 class="card-title text-info">Orders Billed</h6>
-                  <h3 class="display-5 fw-bold text-info">{{ weekly_reports.orders_billed }}</h3>
-                  <p class="text-muted mb-0 small">billing completed</p>
-                </div>
-                <div class="report-icon">
-                  <i class="fas fa-file-invoice-dollar fa-2x text-info"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-4 col-md-6">
-          <div class="card weekly-report-card h-100 border-warning">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start">
-                <div>
-                  <h6 class="card-title text-warning">Material Moved</h6>
-                  <h3 class="display-5 fw-bold text-warning">{{ weekly_reports.total_quantity }}</h3>
-                  <p class="text-muted mb-0 small">MT processed</p>
-                </div>
-                <div class="report-icon">
-                  <i class="fas fa-truck fa-2x text-warning"></i>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="col-lg-4">
+           <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+               <div class="card-body">
+                   <h5 class="card-title fw-bold mb-4"><i class="fas fa-calendar-week me-2"></i>Weekly Summary</h5>
+                   
+                   <div class="mb-4">
+                       <small class="text-white-50 text-uppercase fw-bold">Total Orders</small>
+                       <div class="d-flex align-items-baseline">
+                           <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.orders_entered }}</h2>
+                           <span class="ms-2 text-white-50">last 7 days</span>
+                       </div>
+                   </div>
+                   
+                   <div class="mb-4">
+                       <small class="text-white-50 text-uppercase fw-bold">Orders Billed</small>
+                       <div class="d-flex align-items-baseline">
+                           <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.orders_billed }}</h2>
+                           <span class="ms-2 text-white-50">completed</span>
+                       </div>
+                   </div>
+                   
+                   <div class="mb-0">
+                       <small class="text-white-50 text-uppercase fw-bold">Material Moved</small>
+                       <div class="d-flex align-items-baseline">
+                           <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.total_quantity }}</h2>
+                           <span class="ms-2 text-white-50">MT</span>
+                       </div>
+                   </div>
+               </div>
+           </div>
         </div>
       </div>
       
       <!-- Quick Actions -->
       <div class="row mt-5">
         <div class="col-12 text-center">
-          <h4 class="mb-4">Quick Actions</h4>
+          <h5 class="text-muted mb-4 text-uppercase fw-bold small">Quick Actions</h5>
           <div class="d-flex justify-content-center gap-3 flex-wrap">
-            <a href="/orders/order-workflow/" class="btn btn-primary btn-lg">
-              <i class="fas fa-plus me-2"></i>Create New Order
+            <a href="/orders/order-workflow/" class="btn btn-outline-primary btn-lg px-4">
+              <i class="fas fa-plus me-2"></i>Create Order
             </a>
-            <a href="/orders/orders/" class="btn btn-outline-secondary btn-lg">
+            <a href="/orders/orders/" class="btn btn-outline-secondary btn-lg px-4">
               <i class="fas fa-list me-2"></i>View Orders
             </a>
-            <a href="/orders/analytics/" class="btn btn-outline-info btn-lg">
+            <a href="/orders/analytics/" class="btn btn-outline-info btn-lg px-4">
               <i class="fas fa-chart-bar me-2"></i>Analytics
             </a>
           </div>
@@ -237,4 +363,61 @@
     </div>
   </div>
 </div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('orderTrendChart').getContext('2d');
+    var trendData = {{ trend_data|safe }};
+    var trendLabels = {{ trend_labels|safe }};
+    
+    var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Orders',
+                data: trendData,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        borderDash: [2, 2]
+                    },
+                    ticks: {
+                        stepSize: 1
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

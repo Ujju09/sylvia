@@ -1047,11 +1047,11 @@ def generate_stock_aging_image(aging_data, date_str):
         
         draw.text((col_prod, current_y + 20), prod_name, fill=text_color, font=content_font)
         
-        draw_centered(str(item['bucket_0_30']), col_0_30, current_y + 20, content_font, text_color)
-        draw_centered(str(item['bucket_31_60']), col_31_60, current_y + 20, content_font, text_color)
-        draw_centered(str(item['bucket_61_90']), col_61_90, current_y + 20, content_font, text_color)
-        draw_centered(str(item['bucket_90_plus']), col_90_plus, current_y + 20, content_font, danger_color)
-        draw_centered(str(item['total_stock']), col_total, current_y + 20, _load_font(32, bold=True), text_color)
+        draw_centered(f"{item['bucket_0_30']:.1f}", col_0_30, current_y + 20, content_font, text_color)
+        draw_centered(f"{item['bucket_31_60']:.1f}", col_31_60, current_y + 20, content_font, text_color)
+        draw_centered(f"{item['bucket_61_90']:.1f}", col_61_90, current_y + 20, content_font, text_color)
+        draw_centered(f"{item['bucket_90_plus']:.1f}", col_90_plus, current_y + 20, content_font, danger_color)
+        draw_centered(f"{item['total_stock']:.1f}", col_total, current_y + 20, _load_font(32, bold=True), text_color)
 
         # Action Column
         action_text = item.get('action', '')
@@ -1089,11 +1089,11 @@ def generate_stock_aging_image(aging_data, date_str):
     
     draw.text((col_prod, current_y + 20), "TOTAL", fill=text_color, font=header_font)
     
-    draw_centered(str(total_0_30), col_0_30, current_y + 20, header_font, text_color)
-    draw_centered(str(total_31_60), col_31_60, current_y + 20, header_font, text_color)
-    draw_centered(str(total_61_90), col_61_90, current_y + 20, header_font, text_color)
-    draw_centered(str(total_90_plus), col_90_plus, current_y + 20, header_font, danger_color)
-    draw_centered(str(grand_total), col_total, current_y + 20, header_font, text_color)
+    draw_centered(f"{total_0_30:.1f}", col_0_30, current_y + 20, header_font, text_color)
+    draw_centered(f"{total_31_60:.1f}", col_31_60, current_y + 20, header_font, text_color)
+    draw_centered(f"{total_61_90:.1f}", col_61_90, current_y + 20, header_font, text_color)
+    draw_centered(f"{total_90_plus:.1f}", col_90_plus, current_y + 20, header_font, danger_color)
+    draw_centered(f"{grand_total:.1f}", col_total, current_y + 20, header_font, text_color)
     
     # Bottom line for table closure
     current_y += 80

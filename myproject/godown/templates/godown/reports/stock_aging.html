@@ -89,11 +89,11 @@
                 <thead class="bg-light">
                     <tr>
                         <th class="border-0 py-3">Product</th>
-                        <th class="text-center border-0 py-3">0-30 Days</th>
-                        <th class="text-center border-0 py-3">31-60 Days</th>
-                        <th class="text-center border-0 py-3">61-90 Days</th>
-                        <th class="text-center border-0 py-3">>90 Days</th>
-                        <th class="text-center border-0 py-3">Total Stock</th>
+                        <th class="text-center border-0 py-3">0-30 Days (Tons)</th>
+                        <th class="text-center border-0 py-3">31-60 Days (Tons)</th>
+                        <th class="text-center border-0 py-3">61-90 Days (Tons)</th>
+                        <th class="text-center border-0 py-3">>90 Days (Tons)</th>
+                        <th class="text-center border-0 py-3">Total Stock (Tons)</th>
                         <th class="text-center border-0 py-3">Action Required</th>
                     </tr>
                 </thead>
@@ -103,33 +103,33 @@
                         <td class="font-weight-bold py-3">{{ item.product_name }}</td>
                         <td class="text-center py-3">
                             {% if item.bucket_0_30 > 0 %}
-                            <span class="badge bg-light text-dark border">{{ item.bucket_0_30 }}</span>
+                            <span class="badge bg-light text-dark border">{{ item.bucket_0_30|floatformat:1 }}</span>
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
                         </td>
                         <td class="text-center py-3">
                             {% if item.bucket_31_60 > 0 %}
-                            <span class="badge bg-info text-white">{{ item.bucket_31_60 }}</span>
+                            <span class="badge bg-info text-white">{{ item.bucket_31_60|floatformat:1 }}</span>
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
                         </td>
                         <td class="text-center py-3">
                             {% if item.bucket_61_90 > 0 %}
-                            <span class="badge bg-warning text-dark">{{ item.bucket_61_90 }}</span>
+                            <span class="badge bg-warning text-dark">{{ item.bucket_61_90|floatformat:1 }}</span>
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
                         </td>
                         <td class="text-center py-3">
                             {% if item.bucket_90_plus > 0 %}
-                            <span class="badge bg-danger text-white">{{ item.bucket_90_plus }}</span>
+                            <span class="badge bg-danger text-white">{{ item.bucket_90_plus|floatformat:1 }}</span>
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
                         </td>
-                        <td class="text-center font-weight-bold py-3">{{ item.total_stock }}</td>
+                        <td class="text-center font-weight-bold py-3">{{ item.total_stock|floatformat:1 }}</td>
                         <td class="text-center py-3">
                             {% if "CRITICAL" in item.action %}
                             <span class="badge bg-danger p-2"><i class="fas fa-ban mr-1"></i> {{ item.action }}</span>
@@ -160,11 +160,11 @@
                 <tfoot class="bg-light font-weight-bold">
                     <tr>
                         <td class="py-3">TOTAL</td>
-                        <td class="text-center py-3">{{ total_0_30 }}</td>
-                        <td class="text-center py-3">{{ total_31_60 }}</td>
-                        <td class="text-center py-3">{{ total_61_90 }}</td>
-                        <td class="text-center text-danger py-3">{{ total_90_plus }}</td>
-                        <td class="text-center py-3">{{ grand_total }}</td>
+                        <td class="text-center py-3">{{ total_0_30|floatformat:1 }}</td>
+                        <td class="text-center py-3">{{ total_31_60|floatformat:1 }}</td>
+                        <td class="text-center py-3">{{ total_61_90|floatformat:1 }}</td>
+                        <td class="text-center text-danger py-3">{{ total_90_plus|floatformat:1 }}</td>
+                        <td class="text-center py-3">{{ grand_total|floatformat:1 }}</td>
                         <td></td>
                     </tr>
                 </tfoot>

@@ -1793,10 +1793,12 @@ def share_opening_stock_image(request):
 def stock_aging_report(request):
     """View to display stock aging report"""
     
-    # Get all active inventory
-    active_inventory = GodownInventory.objects.filter(
-        status='ACTIVE',
-        good_bags_available__gt=0
+    # Get all active inventory (including reserved and damaged)
+    from django.db.models import F
+    active_inventory = GodownInventory.objects.annotate(
+        total_physical=F('good_bags_available') + F('good_bags_reserved') + F('damaged_bags')
+    ).filter(
+        total_physical__gt=0
     ).select_related('product')
     
     today = timezone.now().date()
@@ -1820,7 +1822,7 @@ def stock_aging_report(request):
             
         # Calculate age
         age_days = (today - item.received_date.date()).days
-        quantity = item.good_bags_available
+        quantity = item.total_physical / 20.0
         
         # Add to appropriate bucket
         if age_days <= 30:
@@ -1877,13 +1879,14 @@ def stock_aging_report(request):
 
 @login_required
 def stock_aging_image(request):
-    """Generate and serve stock aging report image"""
-    from .utils import generate_stock_aging_image
+    """View to generate and return stock aging report image"""
     
-    # Get all active inventory
-    active_inventory = GodownInventory.objects.filter(
-        status='ACTIVE',
-        good_bags_available__gt=0
+    # Get all active inventory (including reserved and damaged)
+    from django.db.models import F
+    active_inventory = GodownInventory.objects.annotate(
+        total_physical=F('good_bags_available') + F('good_bags_reserved') + F('damaged_bags')
+    ).filter(
+        total_physical__gt=0
     ).select_related('product')
     
     today = timezone.now().date()
@@ -1907,7 +1910,7 @@ def stock_aging_image(request):
             
         # Calculate age
         age_days = (today - item.received_date.date()).days
-        quantity = item.good_bags_available
+        quantity = item.total_physical / 20.0
         
         # Add to appropriate bucket
         if age_days <= 30:
@@ -1920,36 +1923,36 @@ def stock_aging_image(request):
             product_data[product_id]['bucket_90_plus'] += quantity
             
         product_data[product_id]['total_stock'] += quantity
-
-        # Determine Action
-        if product_data[product_id]['bucket_90_plus'] > 0:
-            product_data[product_id]['action'] = "CRITICAL: Stop Sending"
-        elif product_data[product_id]['bucket_61_90'] > 0:
-            product_data[product_id]['action'] = "High Alert: Reduce Orders"
-        elif product_data[product_id]['bucket_31_60'] > 0:
-            product_data[product_id]['action'] = "Monitor Stock"
-        else:
-            product_data[product_id]['action'] = "Normal Procurement"
     
-    # Convert to list and sort by total stock
-    aging_data = sorted(
-        product_data.values(),
-        key=lambda x: x['total_stock'],
-        reverse=True
-    )
+    # Convert to list and determine actions
+    aging_data = []
+    for p_id, data in product_data.items():
+        # Determine action
+        if data['bucket_90_plus'] > 0:
+            data['action'] = "CRITICAL: Stop Sending"
+            data['action_class'] = "text-danger"
+        elif data['bucket_61_90'] > 0:
+            data['action'] = "High Alert: Reduce Orders"
+            data['action_class'] = "text-warning"
+        elif data['bucket_31_60'] > 0:
+            data['action'] = "Monitor Stock"
+            data['action_class'] = "text-info"
+        else:
+            data['action'] = "Normal Procurement"
+            data['action_class'] = "text-success"
+            
+        aging_data.append(data)
+        
+    # Sort by product name
+    aging_data.sort(key=lambda x: x['product_name'])
     
     # Generate image
-    date_str = today.strftime("%d %b, %Y")
-    img = generate_stock_aging_image(aging_data, date_str)
+    from .utils import generate_stock_aging_image
+    img = generate_stock_aging_image(aging_data, today.strftime("%d %b %Y"))
     
-    # Convert to bytes
-    img_io = BytesIO()
-    img.save(img_io, format='PNG', quality=95)
-    img_io.seek(0)
-    
-    # Return as PNG response
-    response = HttpResponse(img_io, content_type='image/png')
-    response['Content-Disposition'] = f'inline; filename="Stock_Aging_Report_{today.strftime("%Y%m%d")}.png"'
-    
+    # Return as response
+    from io import BytesIO
+    response = HttpResponse(content_type="image/png")
+    img.save(response, "PNG")
     return response
 

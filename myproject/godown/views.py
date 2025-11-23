@@ -1789,7 +1789,7 @@ def share_opening_stock_image(request):
     return response
 
 
-@login_required
+
 def stock_aging_report(request):
     """View to display stock aging report"""
     
@@ -1904,7 +1904,7 @@ def stock_aging_report(request):
     return render(request, 'godown/reports/stock_aging.html', context)
 
 
-@login_required
+
 def stock_aging_image(request):
     """View to generate and return stock aging report image"""
     

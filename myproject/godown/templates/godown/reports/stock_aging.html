@@ -27,7 +27,7 @@
             <div class="metric-card__content">
                 <div class="metric-value">
                     <span class="text-muted small font-weight-bold text-uppercase">Total Stock</span>
-                    <span class="metric-value__primary">{{ grand_total }}</span>
+                    <span class="metric-value__primary">{{ grand_total|floatformat:2 }}</span>
                 </div>
                 <div class="stat-icon text-info">
                     <i class="fas fa-boxes"></i>

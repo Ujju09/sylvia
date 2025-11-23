@@ -13,8 +13,10 @@
               <i class="fas fa-calendar-check me-2"></i>Monthly Data Audit Reminder
             </h5>
             <p class="mb-2">
-              <strong>{{ audit_reminder.days_remaining }} day{{ audit_reminder.days_remaining|pluralize }} remaining</strong> 
-              in {{ audit_reminder.month_name }} {{ audit_reminder.year }}. Time to prepare for monthly data audits and sanitization.
+              <strong>{{ audit_reminder.days_remaining }} day{{ audit_reminder.days_remaining|pluralize }}
+                remaining</strong>
+              in {{ audit_reminder.month_name }} {{ audit_reminder.year }}. Time to prepare for monthly data audits and
+              sanitization.
             </p>
             <div class="mb-2">
               <small class="text-dark">
@@ -38,10 +40,12 @@
         <div class="row align-items-center">
           <div class="col-md-12">
             <h5 class="alert-heading mb-3">
-              <i class="fas fa-warehouse me-2"></i>Godown Audit Period ({{ godown_audit_reminder.month_name }} {{ godown_audit_reminder.current_day }}-15)
+              <i class="fas fa-warehouse me-2"></i>Godown Audit Period ({{ godown_audit_reminder.month_name }} {{
+              godown_audit_reminder.current_day }}-15)
             </h5>
             <p class="mb-3">
-              <strong>{{ godown_audit_reminder.days_in_period }} day{{ godown_audit_reminder.days_in_period|pluralize }} remaining</strong>
+              <strong>{{ godown_audit_reminder.days_in_period }} day{{ godown_audit_reminder.days_in_period|pluralize }}
+                remaining</strong>
               in the godown audit period. Please conduct audits for all godowns.
             </p>
             <div class="mb-3">
@@ -57,10 +61,8 @@
               <strong>Download Audit Checklists:</strong>
               <div class="d-flex flex-wrap gap-2 mt-2">
                 {% for godown in godown_audit_reminder.godowns %}
-                <a href="{% url 'generate_audit_pdf' godown.id %}"
-                   class="btn btn-sm btn-primary"
-                   target="_blank"
-                   title="Download audit checklist for {{ godown.name }}">
+                <a href="{% url 'generate_audit_pdf' godown.id %}" class="btn btn-sm btn-primary" target="_blank"
+                  title="Download audit checklist for {{ godown.name }}">
                   <i class="fas fa-file-pdf me-1"></i>{{ godown.name }} ({{ godown.code }})
                 </a>
                 {% endfor %}
@@ -78,15 +80,16 @@
       <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
           <h1 class="display-5 mb-1">{{ app_settings.site_title|default:"Move People ― Move Mountains" }}</h1>
-          <p class="lead text-muted mb-0">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong></p>
+          <p class="lead text-muted mb-0">Daily Operations Dashboard | <strong>{{ current_date|date:"F j, Y" }}</strong>
+          </p>
         </div>
         <div>
-             <a href="/orders/order-workflow/" class="btn btn-primary btn-lg shadow-sm">
-              <i class="fas fa-plus me-2"></i>New Order
-            </a>
+          <a href="/orders/order-workflow/" class="btn btn-primary btn-lg shadow-sm">
+            <i class="fas fa-plus me-2"></i>New Order
+          </a>
         </div>
       </div>
-      
+
       <!-- Top Stats Row -->
       <div class="row g-4 mb-5">
         <!-- Orders Entered Card -->
@@ -103,15 +106,15 @@
                 </div>
               </div>
               <div class="mt-3">
-                 <span class="badge bg-success-subtle text-success rounded-pill">
-                    <i class="fas fa-arrow-up me-1"></i>Active
-                 </span>
-                 <span class="text-muted small ms-1">Data Entry</span>
+                <span class="badge bg-success-subtle text-success rounded-pill">
+                  <i class="fas fa-arrow-up me-1"></i>Active
+                </span>
+                <span class="text-muted small ms-1">Data Entry</span>
               </div>
             </div>
           </div>
         </div>
-        
+
         <!-- MRN Progress Card -->
         <div class="col-xl-3 col-md-6">
           <div class="card border-0 shadow-sm h-100 overflow-hidden">
@@ -125,16 +128,16 @@
                   <i class="fas fa-clipboard-check fa-2x text-success"></i>
                 </div>
               </div>
-               <div class="mt-3">
-                 <span class="badge bg-success-subtle text-success rounded-pill">
-                    <i class="fas fa-check me-1"></i>On Track
-                 </span>
-                 <span class="text-muted small ms-1">Workflow</span>
+              <div class="mt-3">
+                <span class="badge bg-success-subtle text-success rounded-pill">
+                  <i class="fas fa-check me-1"></i>On Track
+                </span>
+                <span class="text-muted small ms-1">Workflow</span>
               </div>
             </div>
           </div>
         </div>
-        
+
         <!-- Orders Billed Card -->
         <div class="col-xl-3 col-md-6">
           <div class="card border-0 shadow-sm h-100 overflow-hidden">
@@ -148,11 +151,11 @@
                   <i class="fas fa-file-invoice-dollar fa-2x text-info"></i>
                 </div>
               </div>
-               <div class="mt-3">
-                 <span class="badge bg-info-subtle text-info rounded-pill">
-                    <i class="fas fa-dollar-sign me-1"></i>Revenue
-                 </span>
-                 <span class="text-muted small ms-1">Completed</span>
+              <div class="mt-3">
+                <span class="badge bg-info-subtle text-info rounded-pill">
+                  <i class="fas fa-dollar-sign me-1"></i>Revenue
+                </span>
+                <span class="text-muted small ms-1">Completed</span>
               </div>
             </div>
           </div>
@@ -171,11 +174,11 @@
                   <i class="fas fa-handshake fa-2x text-warning"></i>
                 </div>
               </div>
-               <div class="mt-3">
-                 <span class="badge bg-warning-subtle text-warning rounded-pill">
-                    <i class="fas fa-users me-1"></i>Engagement
-                 </span>
-                 <span class="text-muted small ms-1">Unique</span>
+              <div class="mt-3">
+                <span class="badge bg-warning-subtle text-warning rounded-pill">
+                  <i class="fas fa-users me-1"></i>Engagement
+                </span>
+                <span class="text-muted small ms-1">Unique</span>
               </div>
             </div>
           </div>
@@ -185,164 +188,164 @@
       <div class="row g-4 mb-5">
         <!-- Charts & Pipeline -->
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-chart-line me-2 text-primary"></i>Order Trend (Last 7 Days)</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="orderTrendChart" height="100"></canvas>
-                </div>
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 py-3">
+              <h5 class="mb-0 fw-bold"><i class="fas fa-chart-line me-2 text-primary"></i>Order Trend (Last 7 Days)</h5>
             </div>
+            <div class="card-body">
+              <canvas id="orderTrendChart" height="100"></canvas>
+            </div>
+          </div>
         </div>
         <div class="col-lg-4">
-             <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-filter me-2 text-primary"></i>Pipeline Status</h5>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-secondary bg-opacity-10 p-2 me-3">
-                                    <i class="fas fa-clock text-secondary"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">Pending</h6>
-                                    <small class="text-muted">Awaiting confirmation</small>
-                                </div>
-                            </div>
-                            <span class="badge bg-secondary rounded-pill">{{ pipeline_data.PENDING }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
-                                    <i class="fas fa-check-circle text-primary"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">Confirmed</h6>
-                                    <small class="text-muted">Ready for MRN</small>
-                                </div>
-                            </div>
-                            <span class="badge bg-primary rounded-pill">{{ pipeline_data.CONFIRMED }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-3">
-                                    <i class="fas fa-box-open text-warning"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">MRN Created</h6>
-                                    <small class="text-muted">Material received</small>
-                                </div>
-                            </div>
-                            <span class="badge bg-warning text-dark rounded-pill">{{ pipeline_data.MRN_CREATED }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-success bg-opacity-10 p-2 me-3">
-                                    <i class="fas fa-file-invoice text-success"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">Billed</h6>
-                                    <small class="text-muted">Completed orders</small>
-                                </div>
-                            </div>
-                            <span class="badge bg-success rounded-pill">{{ pipeline_data.BILLED }}</span>
-                        </div>
-                    </div>
-                </div>
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 py-3">
+              <h5 class="mb-0 fw-bold"><i class="fas fa-filter me-2 text-primary"></i>Pipeline Status</h5>
             </div>
+            <div class="card-body">
+              <div class="list-group list-group-flush">
+                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                  <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-secondary bg-opacity-10 p-2 me-3">
+                      <i class="fas fa-clock text-secondary"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">Pending</h6>
+                      <small class="text-muted">Awaiting confirmation</small>
+                    </div>
+                  </div>
+                  <span class="badge bg-secondary rounded-pill">{{ pipeline_data.PENDING }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                  <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                      <i class="fas fa-check-circle text-primary"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">Confirmed</h6>
+                      <small class="text-muted">Ready for MRN</small>
+                    </div>
+                  </div>
+                  <span class="badge bg-primary rounded-pill">{{ pipeline_data.CONFIRMED }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                  <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-3">
+                      <i class="fas fa-box-open text-warning"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">MRN Created</h6>
+                      <small class="text-muted">Material received</small>
+                    </div>
+                  </div>
+                  <span class="badge bg-warning text-dark rounded-pill">{{ pipeline_data.MRN_CREATED }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                  <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-2 me-3">
+                      <i class="fas fa-file-invoice text-success"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">Billed</h6>
+                      <small class="text-muted">Completed orders</small>
+                    </div>
+                  </div>
+                  <span class="badge bg-success rounded-pill">{{ pipeline_data.BILLED }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Recent Activity & Weekly Stats -->
       <div class="row g-4">
         <div class="col-lg-8">
-           <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-history me-2 text-primary"></i>Recent Orders</h5>
-                    <a href="/orders/orders/" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th class="border-0 ps-4">Order #</th>
-                                    <th class="border-0">Dealer</th>
-                                    <th class="border-0">Date</th>
-                                    <th class="border-0">Status</th>
-                                    <th class="border-0 text-end pe-4">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for order in recent_orders %}
-                                <tr>
-                                    <td class="ps-4 fw-bold text-primary">#{{ order.order_number }}</td>
-                                    <td>{{ order.dealer.name }}</td>
-                                    <td>{{ order.created_at|date:"M d, H:i" }}</td>
-                                    <td>
-                                        {% if order.status == 'PENDING' %}
-                                            <span class="badge bg-secondary bg-opacity-10 text-secondary">Pending</span>
-                                        {% elif order.status == 'CONFIRMED' %}
-                                            <span class="badge bg-primary bg-opacity-10 text-primary">Confirmed</span>
-                                        {% elif order.status == 'MRN_CREATED' %}
-                                            <span class="badge bg-warning bg-opacity-10 text-warning">MRN Created</span>
-                                        {% elif order.status == 'BILLED' %}
-                                            <span class="badge bg-success bg-opacity-10 text-success">Billed</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-light text-muted">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">No recent orders found</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-           </div>
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+              <h5 class="mb-0 fw-bold"><i class="fas fa-history me-2 text-primary"></i>Recent Orders</h5>
+              <a href="/orders/orders/" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="bg-light">
+                    <tr>
+                      <th class="border-0 ps-4">Order #</th>
+                      <th class="border-0">Dealer</th>
+                      <th class="border-0">Date</th>
+                      <th class="border-0">Status</th>
+                      <th class="border-0 text-end pe-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for order in recent_orders %}
+                    <tr>
+                      <td class="ps-4 fw-bold text-primary">#{{ order.order_number }}</td>
+                      <td>{{ order.dealer.name }}</td>
+                      <td>{{ order.created_at|date:"M d, H:i" }}</td>
+                      <td>
+                        {% if order.status == 'PENDING' %}
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Pending</span>
+                        {% elif order.status == 'CONFIRMED' %}
+                        <span class="badge bg-primary bg-opacity-10 text-primary">Confirmed</span>
+                        {% elif order.status == 'MRN_CREATED' %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning">MRN Created</span>
+                        {% elif order.status == 'BILLED' %}
+                        <span class="badge bg-success bg-opacity-10 text-success">Billed</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-end pe-4">
+                        <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-light text-muted">
+                          <i class="fas fa-eye"></i>
+                        </a>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="5" class="text-center py-4 text-muted">No recent orders found</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-        
+
         <div class="col-lg-4">
-           <div class="card border-0 shadow-sm h-100 bg-primary text-white">
-               <div class="card-body">
-                   <h5 class="card-title fw-bold mb-4"><i class="fas fa-calendar-week me-2"></i>Weekly Summary</h5>
-                   
-                   <div class="mb-4">
-                       <small class="text-white-50 text-uppercase fw-bold">Total Orders</small>
-                       <div class="d-flex align-items-baseline">
-                           <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.orders_entered }}</h2>
-                           <span class="ms-2 text-white-50">last 7 days</span>
-                       </div>
-                   </div>
-                   
-                   <div class="mb-4">
-                       <small class="text-white-50 text-uppercase fw-bold">Orders Billed</small>
-                       <div class="d-flex align-items-baseline">
-                           <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.orders_billed }}</h2>
-                           <span class="ms-2 text-white-50">completed</span>
-                       </div>
-                   </div>
-                   
-                   <div class="mb-0">
-                       <small class="text-white-50 text-uppercase fw-bold">Material Moved</small>
-                       <div class="d-flex align-items-baseline">
-                           <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.total_quantity }}</h2>
-                           <span class="ms-2 text-white-50">MT</span>
-                       </div>
-                   </div>
-               </div>
-           </div>
+          <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+            <div class="card-body">
+              <h5 class="card-title fw-bold mb-4"><i class="fas fa-calendar-week me-2"></i>Weekly Summary</h5>
+
+              <div class="mb-4">
+                <small class="text-white-50 text-uppercase fw-bold">Total Orders</small>
+                <div class="d-flex align-items-baseline">
+                  <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.orders_entered }}</h2>
+                  <span class="ms-2 text-white-50">last 7 days</span>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <small class="text-white-50 text-uppercase fw-bold">Orders Billed</small>
+                <div class="d-flex align-items-baseline">
+                  <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.orders_billed }}</h2>
+                  <span class="ms-2 text-white-50">completed</span>
+                </div>
+              </div>
+
+              <div class="mb-0">
+                <small class="text-white-50 text-uppercase fw-bold">Material Moved</small>
+                <div class="d-flex align-items-baseline">
+                  <h2 class="display-6 fw-bold mb-0">{{ weekly_reports.total_quantity }}</h2>
+                  <span class="ms-2 text-white-50">MT</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      
+
       <!-- Quick Actions -->
       <div class="row mt-5">
         <div class="col-12 text-center">
@@ -357,6 +360,12 @@
             <a href="/orders/analytics/" class="btn btn-outline-info btn-lg px-4">
               <i class="fas fa-chart-bar me-2"></i>Analytics
             </a>
+            <a href="{% url 'stock_aging_image' %}" class="btn btn-outline-warning btn-lg px-4">
+              <i class="fas fa-hourglass-half me-2"></i>Aging Stock
+            </a>
+            <a href="{% url 'share_opening_stock_image' %}" class="btn btn-outline-success btn-lg px-4">
+              <i class="fas fa-box-open me-2"></i>Opening Stock
+            </a>
           </div>
         </div>
       </div>
@@ -367,57 +376,58 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     var ctx = document.getElementById('orderTrendChart').getContext('2d');
-    var trendData = {{ trend_data|safe }};
-    var trendLabels = {{ trend_labels|safe }};
-    
-    var chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: trendLabels,
-            datasets: [{
-                label: 'Orders',
-                data: trendData,
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
+    var trendData = {{ trend_data| safe
+  }};
+  var trendLabels = {{ trend_labels| safe }};
+
+  var chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: trendLabels,
+      datasets: [{
+        label: 'Orders',
+        data: trendData,
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        borderDash: [2, 2]
-                    },
-                    ticks: {
-                        stepSize: 1
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
+        tooltip: {
+          mode: 'index',
+          intersect: false,
         }
-    });
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            borderDash: [2, 2]
+          },
+          ticks: {
+            stepSize: 1
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
 });
 </script>
 {% endblock %}

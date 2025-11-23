@@ -47,4 +47,8 @@ urlpatterns = [
 
     # Opening Stock Image Sharing
     path('share-opening-stock/', views.share_opening_stock_image, name='share_opening_stock_image'),
+
+    # Stock Aging Report
+    path('reports/stock-aging/', views.stock_aging_report, name='stock_aging_report'),
+    path('reports/stock-aging/image/', views.stock_aging_image, name='stock_aging_image'),
 ]

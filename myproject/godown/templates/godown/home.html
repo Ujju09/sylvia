@@ -22,7 +22,8 @@
 
     <!-- Share Opening Stock Button -->
     <div style="margin-bottom: 20px; text-align: right;">
-        <a href="{% url 'share_opening_stock_image' %}" target="_blank" class="btn btn-primary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+        <a href="{% url 'share_opening_stock_image' %}" target="_blank" class="btn btn-primary"
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
             <i class="fas fa-share-alt"></i>
             Share Opening Stock
         </a>
@@ -37,45 +38,45 @@
                     Today's Opening
                 </h2>
             </div>
-            
+
             <div class="inventory-cards-grid">
                 {% if godown_summaries %}
-                    {% for summary in godown_summaries %}
-                    <div class="inventory-card">
-                        <div class="card-header">
-                            <h3 class="godown-name">{{ summary.godown_name }}</h3>
-                        </div>
-                        <div class="card-content">
-                            <div class="stock-summary">
-                                <div class="stock-item">
-                                    <span class="stock-label">Total Bags Available</span>
-                                    <span class="stock-value">{{ summary.total_bags|floatformat:0 }}</span>
-                                </div>
-                                <div class="stock-item">
-                                    <span class="stock-label">Products</span>
-                                    <span class="stock-value">{{ summary.products_count }}</span>
-                                </div>
+                {% for summary in godown_summaries %}
+                <div class="inventory-card">
+                    <div class="card-header">
+                        <h3 class="godown-name">{{ summary.godown_name }}</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stock-summary">
+                            <div class="stock-item">
+                                <span class="stock-label">Total Bags Available</span>
+                                <span class="stock-value">{{ summary.total_bags|floatformat:0 }}</span>
+                            </div>
+                            <div class="stock-item">
+                                <span class="stock-label">Products</span>
+                                <span class="stock-value">{{ summary.products_count }}</span>
                             </div>
                         </div>
-                        <div class="card-actions">
-                            <a href="{% url 'godown_detail' summary.godown_id %}" class="btn-view-details">
-                                <i class="fas fa-eye"></i>
-                                View Details
-                            </a>
-                        </div>
                     </div>
-                    {% endfor %}
+                    <div class="card-actions">
+                        <a href="{% url 'godown_detail' summary.godown_id %}" class="btn-view-details">
+                            <i class="fas fa-eye"></i>
+                            View Details
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
                 {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <p>No godown data available</p>
-                    </div>
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>No godown data available</p>
+                </div>
                 {% endif %}
             </div>
         </div>
 
-       
-        
+
+
         <!-- Quick Links Section -->
         <div class="dashboard-section full-width">
             <div class="section-header">
@@ -84,7 +85,7 @@
                     Quick Links
                 </h2>
             </div>
-            
+
             <div class="quick-links-grid">
                 <a href="{% url 'loading_record_create' %}" class="quick-link-card priority">
                     <div class="link-icon">
@@ -95,7 +96,7 @@
                         <p class="link-description">Create loading record</p>
                     </div>
                 </a>
-                
+
                 <a href="{% url 'godown_inventory_list' %}" class="quick-link-card">
                     <div class="link-icon">
                         <i class="fas fa-boxes"></i>
@@ -105,7 +106,7 @@
                         <p class="link-description">View stock levels</p>
                     </div>
                 </a>
-                
+
                 <a href="{% url 'orderintransit_list' %}" class="quick-link-card">
                     <div class="link-icon">
                         <i class="fas fa-truck-moving"></i>
@@ -114,9 +115,19 @@
                         <h3 class="link-title">Transit Orders</h3>
                         <p class="link-description">Track shipments</p>
                     </div>
-                </a> 
+                </a>
 
-               
+                <a href="{% url 'stock_aging_report' %}" class="quick-link-card">
+                    <div class="link-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="link-content">
+                        <h3 class="link-title">Aging Report</h3>
+                        <p class="link-description">Stock age analysis</p>
+                    </div>
+                </a>
+
+
             </div>
         </div>
     </div>

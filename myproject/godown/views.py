@@ -1787,3 +1787,169 @@ def share_opening_stock_image(request):
     response['Content-Disposition'] = f'inline; filename="Current_Stock_Matrix_{today.strftime("%Y%m%d")}.png"'
 
     return response
+
+
+@login_required
+def stock_aging_report(request):
+    """View to display stock aging report"""
+    
+    # Get all active inventory
+    active_inventory = GodownInventory.objects.filter(
+        status='ACTIVE',
+        good_bags_available__gt=0
+    ).select_related('product')
+    
+    today = timezone.now().date()
+    
+    # Aggregate data by product
+    product_data = {}
+    
+    for item in active_inventory:
+        product_id = item.product.id
+        product_name = item.product.name
+        
+        if product_id not in product_data:
+            product_data[product_id] = {
+                'product_name': product_name,
+                'bucket_0_30': 0,
+                'bucket_31_60': 0,
+                'bucket_61_90': 0,
+                'bucket_90_plus': 0,
+                'total_stock': 0
+            }
+            
+        # Calculate age
+        age_days = (today - item.received_date.date()).days
+        quantity = item.good_bags_available
+        
+        # Add to appropriate bucket
+        if age_days <= 30:
+            product_data[product_id]['bucket_0_30'] += quantity
+        elif age_days <= 60:
+            product_data[product_id]['bucket_31_60'] += quantity
+        elif age_days <= 90:
+            product_data[product_id]['bucket_61_90'] += quantity
+        else:
+            product_data[product_id]['bucket_90_plus'] += quantity
+            
+        product_data[product_id]['total_stock'] += quantity
+
+        # Determine Action
+        if product_data[product_id]['bucket_90_plus'] > 0:
+            product_data[product_id]['action'] = "CRITICAL: Stop Sending"
+            product_data[product_id]['action_class'] = "text-danger font-weight-bold"
+        elif product_data[product_id]['bucket_61_90'] > 0:
+            product_data[product_id]['action'] = "High Alert: Reduce Orders"
+            product_data[product_id]['action_class'] = "text-warning font-weight-bold"
+        elif product_data[product_id]['bucket_31_60'] > 0:
+            product_data[product_id]['action'] = "Monitor Stock"
+            product_data[product_id]['action_class'] = "text-info"
+        else:
+            product_data[product_id]['action'] = "Normal Procurement"
+            product_data[product_id]['action_class'] = "text-success"
+    
+    # Convert to list and sort by total stock
+    aging_data = sorted(
+        product_data.values(),
+        key=lambda x: x['total_stock'],
+        reverse=True
+    )
+    
+    # Calculate totals
+    total_0_30 = sum(item['bucket_0_30'] for item in aging_data)
+    total_31_60 = sum(item['bucket_31_60'] for item in aging_data)
+    total_61_90 = sum(item['bucket_61_90'] for item in aging_data)
+    total_90_plus = sum(item['bucket_90_plus'] for item in aging_data)
+    grand_total = sum(item['total_stock'] for item in aging_data)
+    
+    context = {
+        'aging_data': aging_data,
+        'total_0_30': total_0_30,
+        'total_31_60': total_31_60,
+        'total_61_90': total_61_90,
+        'total_90_plus': total_90_plus,
+        'grand_total': grand_total,
+        'title': 'Stock Aging Report'
+    }
+    
+    return render(request, 'godown/reports/stock_aging.html', context)
+
+
+@login_required
+def stock_aging_image(request):
+    """Generate and serve stock aging report image"""
+    from .utils import generate_stock_aging_image
+    
+    # Get all active inventory
+    active_inventory = GodownInventory.objects.filter(
+        status='ACTIVE',
+        good_bags_available__gt=0
+    ).select_related('product')
+    
+    today = timezone.now().date()
+    
+    # Aggregate data by product
+    product_data = {}
+    
+    for item in active_inventory:
+        product_id = item.product.id
+        product_name = item.product.name
+        
+        if product_id not in product_data:
+            product_data[product_id] = {
+                'product_name': product_name,
+                'bucket_0_30': 0,
+                'bucket_31_60': 0,
+                'bucket_61_90': 0,
+                'bucket_90_plus': 0,
+                'total_stock': 0
+            }
+            
+        # Calculate age
+        age_days = (today - item.received_date.date()).days
+        quantity = item.good_bags_available
+        
+        # Add to appropriate bucket
+        if age_days <= 30:
+            product_data[product_id]['bucket_0_30'] += quantity
+        elif age_days <= 60:
+            product_data[product_id]['bucket_31_60'] += quantity
+        elif age_days <= 90:
+            product_data[product_id]['bucket_61_90'] += quantity
+        else:
+            product_data[product_id]['bucket_90_plus'] += quantity
+            
+        product_data[product_id]['total_stock'] += quantity
+
+        # Determine Action
+        if product_data[product_id]['bucket_90_plus'] > 0:
+            product_data[product_id]['action'] = "CRITICAL: Stop Sending"
+        elif product_data[product_id]['bucket_61_90'] > 0:
+            product_data[product_id]['action'] = "High Alert: Reduce Orders"
+        elif product_data[product_id]['bucket_31_60'] > 0:
+            product_data[product_id]['action'] = "Monitor Stock"
+        else:
+            product_data[product_id]['action'] = "Normal Procurement"
+    
+    # Convert to list and sort by total stock
+    aging_data = sorted(
+        product_data.values(),
+        key=lambda x: x['total_stock'],
+        reverse=True
+    )
+    
+    # Generate image
+    date_str = today.strftime("%d %b, %Y")
+    img = generate_stock_aging_image(aging_data, date_str)
+    
+    # Convert to bytes
+    img_io = BytesIO()
+    img.save(img_io, format='PNG', quality=95)
+    img_io.seek(0)
+    
+    # Return as PNG response
+    response = HttpResponse(img_io, content_type='image/png')
+    response['Content-Disposition'] = f'inline; filename="Stock_Aging_Report_{today.strftime("%Y%m%d")}.png"'
+    
+    return response
+

@@ -953,3 +953,154 @@ def generate_opening_stock_matrix_image_bytes(products_matrix, godown_codes, god
     img_io.seek(0)
 
     return img_io
+
+
+def generate_stock_aging_image(aging_data, date_str):
+    """
+    Generate a clean image showing stock aging report.
+
+    Args:
+        aging_data: List of dicts with keys: product_name, bucket_0_30, bucket_31_60, bucket_61_90, bucket_90_plus, total_stock
+        date_str: Date string to display
+
+    Returns:
+        PIL Image object
+    """
+    # Image dimensions
+    width = 1400 # Increased width for Action column
+    height = 560 + (len(aging_data) * 80)  # Adaptive height
+
+    # Colors
+    bg_color = (255, 255, 255)
+    text_color = (40, 40, 40)
+    header_bg = (240, 240, 240)
+    line_color = (200, 200, 200)
+    watermark_color = (220, 220, 220)
+    danger_color = (220, 53, 69) # Red for >90 days
+    warning_color = (255, 193, 7) # Yellow/Orange for warning
+    success_color = (40, 167, 69) # Green for success
+
+    # Create image
+    img = Image.new('RGB', (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Load fonts
+    title_font = _load_font(40, bold=True)
+    date_font = _load_font(30)
+    header_font = _load_font(28, bold=True)
+    content_font = _load_font(28)
+    watermark_font = _load_font(36)
+    action_font = _load_font(18, bold=True)
+
+    # Draw Title and Date
+    draw.text((60, 60), "Stock Aging Report", fill=text_color, font=title_font)
+    draw.text((60, 140), f"As of: {date_str}", fill=text_color, font=date_font)
+
+    # Table Layout
+    start_y = 250
+    row_height = 80
+    
+    # Column positions (adjusted for center alignment of numbers)
+    col_prod = 60
+    # For numeric columns, these are center points
+    col_0_30 = 450
+    col_31_60 = 600
+    col_61_90 = 750
+    col_90_plus = 900
+    col_total = 1020
+    col_action = 1250 # Center for Action
+
+    # Draw Header Background
+    draw.rectangle([(40, start_y), (width - 40, start_y + row_height)], fill=header_bg)
+
+    # Draw Headers
+    header_y = start_y + 20
+    draw.text((col_prod, header_y), "Product", fill=text_color, font=header_font)
+    
+    # Helper to draw centered text
+    def draw_centered(text, x, y, font, fill):
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        draw.text((x - text_width / 2, y), text, fill=fill, font=font)
+
+    draw_centered("0-30", col_0_30, header_y, header_font, text_color)
+    draw_centered("31-60", col_31_60, header_y, header_font, text_color)
+    draw_centered("61-90", col_61_90, header_y, header_font, text_color)
+    draw_centered(">90", col_90_plus, header_y, header_font, danger_color)
+    draw_centered("Total", col_total, header_y, header_font, text_color)
+    draw_centered("Action", col_action, header_y, header_font, text_color)
+
+    current_y = start_y + row_height
+
+    # Draw Rows
+    total_0_30 = 0
+    total_31_60 = 0
+    total_61_90 = 0
+    total_90_plus = 0
+    grand_total = 0
+
+    for item in aging_data:
+        # Product Name (Truncate if too long)
+        prod_name = item['product_name']
+        if len(prod_name) > 18:
+            prod_name = prod_name[:15] + "..."
+        
+        draw.text((col_prod, current_y + 20), prod_name, fill=text_color, font=content_font)
+        
+        draw_centered(str(item['bucket_0_30']), col_0_30, current_y + 20, content_font, text_color)
+        draw_centered(str(item['bucket_31_60']), col_31_60, current_y + 20, content_font, text_color)
+        draw_centered(str(item['bucket_61_90']), col_61_90, current_y + 20, content_font, text_color)
+        draw_centered(str(item['bucket_90_plus']), col_90_plus, current_y + 20, content_font, danger_color)
+        draw_centered(str(item['total_stock']), col_total, current_y + 20, _load_font(32, bold=True), text_color)
+
+        # Action Column
+        action_text = item.get('action', '')
+        action_color = text_color
+        if "CRITICAL" in action_text:
+            action_color = danger_color
+        elif "High Alert" in action_text:
+            action_color = warning_color # Use warning color but maybe darker for visibility? Let's stick to danger for high alert too or standard text
+            action_color = (255, 140, 0) # Dark Orange
+        elif "Monitor" in action_text:
+            action_color = (23, 162, 184) # Info Blue
+        elif "Normal" in action_text:
+            action_color = success_color
+
+        # Split action text if too long? "CRITICAL: Stop Sending" fits?
+        # Let's just draw centered
+        draw_centered(action_text, col_action, current_y + 25, _load_font(24, bold=True), action_color)
+
+        # Draw separator line
+        draw.line([(60, current_y + row_height), (width - 60, current_y + row_height)], fill=line_color, width=1)
+        
+        current_y += row_height
+
+        # Accumulate totals
+        total_0_30 += item['bucket_0_30']
+        total_31_60 += item['bucket_31_60']
+        total_61_90 += item['bucket_61_90']
+        total_90_plus += item['bucket_90_plus']
+        grand_total += item['total_stock']
+
+    # Draw Totals Row
+    current_y += 10
+    draw.line([(60, current_y), (width - 60, current_y)], fill=text_color, width=3)
+    current_y += 10
+    
+    draw.text((col_prod, current_y + 20), "TOTAL", fill=text_color, font=header_font)
+    
+    draw_centered(str(total_0_30), col_0_30, current_y + 20, header_font, text_color)
+    draw_centered(str(total_31_60), col_31_60, current_y + 20, header_font, text_color)
+    draw_centered(str(total_61_90), col_61_90, current_y + 20, header_font, text_color)
+    draw_centered(str(total_90_plus), col_90_plus, current_y + 20, header_font, danger_color)
+    draw_centered(str(grand_total), col_total, current_y + 20, header_font, text_color)
+    
+    # Bottom line for table closure
+    current_y += 80
+    draw.line([(60, current_y), (width - 60, current_y)], fill=text_color, width=3)
+
+    # Watermark
+    watermark_text = "Shyam Distributors"
+    draw.text((60, height - 80), watermark_text, fill=watermark_color, font=watermark_font)
+
+    return img

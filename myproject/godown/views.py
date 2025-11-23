@@ -1794,12 +1794,24 @@ def stock_aging_report(request):
     """View to display stock aging report"""
     
     # Get all active inventory (including reserved and damaged)
-    from django.db.models import F
+    from django.db.models import F, Sum
+    from .models import LoadingRequest
+    
     active_inventory = GodownInventory.objects.annotate(
         total_physical=F('good_bags_available') + F('good_bags_reserved') + F('damaged_bags')
     ).filter(
         total_physical__gt=0
-    ).select_related('product')
+    ).select_related('product').order_by('received_date')
+    
+    # Get total loaded quantity per product (FIFO deduction)
+    # Filter by loaded_bags > 0 since status field is not used
+    loading_data = LoadingRequest.objects.filter(
+        loaded_bags__gt=0
+    ).values('product').annotate(
+        total_loaded=Sum('loaded_bags')
+    )
+    
+    loading_map = {item['product']: item['total_loaded'] for item in loading_data}
     
     today = timezone.now().date()
     
@@ -1820,23 +1832,38 @@ def stock_aging_report(request):
                 'total_stock': 0
             }
             
-        # Calculate age
-        age_days = (today - item.received_date.date()).days
-        quantity = item.total_physical / 20.0
+        # FIFO Deduction Logic
+        current_qty = item.total_physical
+        loaded_qty = loading_map.get(product_id, 0)
         
-        # Add to appropriate bucket
-        if age_days <= 30:
-            product_data[product_id]['bucket_0_30'] += quantity
-        elif age_days <= 60:
-            product_data[product_id]['bucket_31_60'] += quantity
-        elif age_days <= 90:
-            product_data[product_id]['bucket_61_90'] += quantity
-        else:
-            product_data[product_id]['bucket_90_plus'] += quantity
+        if loaded_qty > 0:
+            if loaded_qty >= current_qty:
+                # Batch fully consumed
+                loading_map[product_id] = loaded_qty - current_qty
+                current_qty = 0
+            else:
+                # Batch partially consumed
+                current_qty -= loaded_qty
+                loading_map[product_id] = 0
+        
+        if current_qty > 0:
+            # Calculate age
+            age_days = (today - item.received_date.date()).days
+            quantity_tons = current_qty / 20.0
             
-        product_data[product_id]['total_stock'] += quantity
+            # Add to appropriate bucket
+            if age_days <= 30:
+                product_data[product_id]['bucket_0_30'] += quantity_tons
+            elif age_days <= 60:
+                product_data[product_id]['bucket_31_60'] += quantity_tons
+            elif age_days <= 90:
+                product_data[product_id]['bucket_61_90'] += quantity_tons
+            else:
+                product_data[product_id]['bucket_90_plus'] += quantity_tons
+                
+            product_data[product_id]['total_stock'] += quantity_tons
 
-        # Determine Action
+        # Determine Action (moved inside loop but logic remains per product)
         if product_data[product_id]['bucket_90_plus'] > 0:
             product_data[product_id]['action'] = "CRITICAL: Stop Sending"
             product_data[product_id]['action_class'] = "text-danger font-weight-bold"
@@ -1882,12 +1909,24 @@ def stock_aging_image(request):
     """View to generate and return stock aging report image"""
     
     # Get all active inventory (including reserved and damaged)
-    from django.db.models import F
+    from django.db.models import F, Sum
+    from .models import LoadingRequest
+    
     active_inventory = GodownInventory.objects.annotate(
         total_physical=F('good_bags_available') + F('good_bags_reserved') + F('damaged_bags')
     ).filter(
         total_physical__gt=0
-    ).select_related('product')
+    ).select_related('product').order_by('received_date')
+    
+    # Get total loaded quantity per product (FIFO deduction)
+    # Filter by loaded_bags > 0 since status field is not used
+    loading_data = LoadingRequest.objects.filter(
+        loaded_bags__gt=0
+    ).values('product').annotate(
+        total_loaded=Sum('loaded_bags')
+    )
+    
+    loading_map = {item['product']: item['total_loaded'] for item in loading_data}
     
     today = timezone.now().date()
     
@@ -1908,21 +1947,36 @@ def stock_aging_image(request):
                 'total_stock': 0
             }
             
-        # Calculate age
-        age_days = (today - item.received_date.date()).days
-        quantity = item.total_physical / 20.0
+        # FIFO Deduction Logic
+        current_qty = item.total_physical
+        loaded_qty = loading_map.get(product_id, 0)
         
-        # Add to appropriate bucket
-        if age_days <= 30:
-            product_data[product_id]['bucket_0_30'] += quantity
-        elif age_days <= 60:
-            product_data[product_id]['bucket_31_60'] += quantity
-        elif age_days <= 90:
-            product_data[product_id]['bucket_61_90'] += quantity
-        else:
-            product_data[product_id]['bucket_90_plus'] += quantity
+        if loaded_qty > 0:
+            if loaded_qty >= current_qty:
+                # Batch fully consumed
+                loading_map[product_id] = loaded_qty - current_qty
+                current_qty = 0
+            else:
+                # Batch partially consumed
+                current_qty -= loaded_qty
+                loading_map[product_id] = 0
+        
+        if current_qty > 0:
+            # Calculate age
+            age_days = (today - item.received_date.date()).days
+            quantity_tons = current_qty / 20.0
             
-        product_data[product_id]['total_stock'] += quantity
+            # Add to appropriate bucket
+            if age_days <= 30:
+                product_data[product_id]['bucket_0_30'] += quantity_tons
+            elif age_days <= 60:
+                product_data[product_id]['bucket_31_60'] += quantity_tons
+            elif age_days <= 90:
+                product_data[product_id]['bucket_61_90'] += quantity_tons
+            else:
+                product_data[product_id]['bucket_90_plus'] += quantity_tons
+                
+            product_data[product_id]['total_stock'] += quantity_tons
     
     # Convert to list and determine actions
     aging_data = []

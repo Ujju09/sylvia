@@ -713,7 +713,7 @@ def godown_inventory_dashboard(request):
     # Recent inventory additions (last 10)
     recent_additions = GodownInventory.objects.select_related(
         'product', 'godown', 'order_in_transit'
-    ).order_by('-received_date')[:10]
+    ).order_by('-order_in_transit__actual_arrival_date')[:10]
     
     # Low stock alerts (products with less than 50 bags)
     low_stock_products = product_summaries.filter(total_bags__lt=50)
@@ -745,7 +745,7 @@ def godown_inventory_list(request):
     # Start with all records
     inventory_items = GodownInventory.objects.select_related(
         'product', 'godown', 'order_in_transit'
-    ).order_by('-received_date')
+    ).order_by('-order_in_transit__actual_arrival_date')
 
     # Apply filters
     if godown_filter:
@@ -766,10 +766,10 @@ def godown_inventory_list(request):
         )
     
     if date_from:
-        inventory_items = inventory_items.filter(received_date__date__gte=date_from)
-    
+        inventory_items = inventory_items.filter(order_in_transit__actual_arrival_date__date__gte=date_from)
+
     if date_to:
-        inventory_items = inventory_items.filter(received_date__date__lte=date_to)
+        inventory_items = inventory_items.filter(order_in_transit__actual_arrival_date__date__lte=date_to)
 
     # Calculate summary statistics for the filtered results
     summary_stats = inventory_items.aggregate(
@@ -1801,7 +1801,7 @@ def stock_aging_report(request):
         total_physical=F('good_bags_available') + F('good_bags_reserved') + F('damaged_bags')
     ).filter(
         total_physical__gt=0
-    ).select_related('product').order_by('received_date')
+    ).select_related('product', 'order_in_transit').order_by('order_in_transit__actual_arrival_date')
     
     # Get total loaded quantity per product (FIFO deduction)
     # Filter by loaded_bags > 0 since status field is not used
@@ -1847,8 +1847,9 @@ def stock_aging_report(request):
                 loading_map[product_id] = 0
         
         if current_qty > 0:
-            # Calculate age
-            age_days = (today - item.received_date.date()).days
+            # Calculate age using actual arrival date from order in transit
+            arrival_date = item.order_in_transit.actual_arrival_date.date() if item.order_in_transit.actual_arrival_date else item.received_date.date()
+            age_days = (today - arrival_date).days
             quantity_tons = current_qty / 20.0
             
             # Add to appropriate bucket
@@ -1916,7 +1917,7 @@ def stock_aging_image(request):
         total_physical=F('good_bags_available') + F('good_bags_reserved') + F('damaged_bags')
     ).filter(
         total_physical__gt=0
-    ).select_related('product').order_by('received_date')
+    ).select_related('product', 'order_in_transit').order_by('order_in_transit__actual_arrival_date')
     
     # Get total loaded quantity per product (FIFO deduction)
     # Filter by loaded_bags > 0 since status field is not used
@@ -1962,8 +1963,9 @@ def stock_aging_image(request):
                 loading_map[product_id] = 0
         
         if current_qty > 0:
-            # Calculate age
-            age_days = (today - item.received_date.date()).days
+            # Calculate age using actual arrival date from order in transit
+            arrival_date = item.order_in_transit.actual_arrival_date.date() if item.order_in_transit.actual_arrival_date else item.received_date.date()
+            age_days = (today - arrival_date).days
             quantity_tons = current_qty / 20.0
             
             # Add to appropriate bucket

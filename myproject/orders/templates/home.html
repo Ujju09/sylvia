@@ -378,8 +378,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var ctx = document.getElementById('orderTrendChart').getContext('2d');
-    var trendData = {{ trend_data| safe
-  }};
+    var trendData = {{ trend_data| safe }};
   var trendLabels = {{ trend_labels| safe }};
 
   var chart = new Chart(ctx, {

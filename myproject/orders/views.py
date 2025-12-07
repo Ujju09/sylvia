@@ -175,6 +175,7 @@ def order_workflow(request):
 def home(request):
     from datetime import date, timedelta
     from django.db.models import Q, Sum
+    from godown.models import GodownInventory
     
     settings = {s.key: s.value for s in AppSettings.objects.all()}
     today = date.today()
@@ -224,6 +225,18 @@ def home(request):
         daily_trend_labels.append(d.strftime('%d %b'))
         daily_trend_data.append(day_count)
 
+    # 8. Godown Inventory Summary
+    # Aggregate active inventory by product
+    godown_summary = GodownInventory.objects.filter(
+        status='ACTIVE'
+    ).values(
+        'product__name'
+    ).annotate(
+        total_available=Sum('good_bags_available')
+    ).filter(
+        total_available__gt=0
+    ).order_by('-total_available')
+
     # Check for audit reminder
     audit_reminder = check_audit_reminder()
     godown_audit_reminder = check_godown_audit_reminder()
@@ -252,6 +265,7 @@ def home(request):
         'pipeline_data': pipeline_data,
         'trend_labels': json.dumps(daily_trend_labels),
         'trend_data': json.dumps(daily_trend_data),
+        'godown_summary': godown_summary,
     }
     return render(request, 'home.html', context)
 

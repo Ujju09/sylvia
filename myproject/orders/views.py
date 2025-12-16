@@ -49,8 +49,8 @@ def check_godown_audit_reminder():
     today = timezone.now().date()
     current_day = today.day
 
-    # Show reminder from 10th to 15th of every month
-    if 10 <= current_day <= 15:
+    # Show reminder from 10th to 17th of every month
+    if 10 <= current_day <= 17:
         # Get all active godowns
         godowns = GodownLocation.objects.filter(is_active=True).order_by('name')
 

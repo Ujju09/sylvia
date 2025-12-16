@@ -1579,6 +1579,10 @@ def generate_audit_pdf(request, godown_id):
         ['___________', '_______', '_______', '_____'],
         ['___________', '_______', '_______', '_____'],
         ['___________', '_______', '_______', '_____'],
+        ['___________', '_______', '_______', '_____'],
+        ['___________', '_______', '_______', '_____'],
+        ['___________', '_______', '_______', '_____'],
+        ['___________', '_______', '_______', '_____'],
     ]
 
     physical_count_table = Table(physical_count_table_data, colWidths=[105, 90, 90, 90])
@@ -1599,9 +1603,6 @@ def generate_audit_pdf(request, godown_id):
     elements.append(Spacer(1, 2*mm))
 
     verification_checks = [
-        "[ ] <b>Variance Analysis:</b> Difference = Physical - Software",
-        "  • Acceptable range: ±___ bags",
-        "  • Variance: _____ bags (Within/Outside acceptable range)",
         "[ ] <b>FIFO Compliance:</b> Older stock accessible and being used first",
         "[ ] <b>Damaged Stock:</b> Segregated and marked clearly",
         "[ ] <b>Manufacturing Dates:</b> Checked on random samples (min. 10%)",

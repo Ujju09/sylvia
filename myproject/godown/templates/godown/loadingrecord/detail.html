@@ -272,6 +272,81 @@
     </div>
 </div>
 
+<!-- Loading Image Preview Modal -->
+<div class="modal fade" id="loadingImageModal" tabindex="-1" aria-labelledby="loadingImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="loadingImageModalLabel">
+                    <i class="fas fa-image me-2"></i>Loading Proof Image
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="text-center">
+                            <img id="modalLoadingImage"
+                                 src=""
+                                 class="img-fluid rounded shadow"
+                                 alt="Loading Proof Image"
+                                 style="max-height: 70vh; object-fit: contain;">
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title border-bottom pb-2 mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>Image Details
+                                </h6>
+
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted">Filename</label>
+                                    <p id="modalImageFilename" class="mb-0 fw-bold"></p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted">Type</label>
+                                    <p id="modalImageType" class="mb-0">
+                                        <span class="badge bg-info"></span>
+                                    </p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted">Upload Date</label>
+                                    <p id="modalImageDate" class="mb-0"></p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted">File Size</label>
+                                    <p id="modalImageSize" class="mb-0"></p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted">Description</label>
+                                    <p id="modalImageDescription" class="mb-0 text-muted fst-italic"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Close
+                </button>
+                <a id="modalLoadingDownloadLink"
+                   href=""
+                   class="btn btn-primary"
+                   target="_blank"
+                   download>
+                    <i class="fas fa-download me-2"></i>Download Original
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Get loading request ID from the template
@@ -317,15 +392,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const imageDiv = document.createElement('div');
             imageDiv.className = 'col-12 col-sm-6 col-md-4 col-lg-3';
             imageDiv.innerHTML = `
-                <div class="position-relative">
-                    <a href="${image.secure_image_url || image.image_url}" target="_blank" class="d-block">
+                <div class="loading-image-card">
+                    <div class="image-thumbnail-wrapper"
+                         style="cursor: pointer;"
+                         onclick="showLoadingImageModal('${image.secure_image_url || image.image_url}',
+                                                        '${escapeHtml(image.original_filename)}',
+                                                        '${escapeHtml(image.description || '')}',
+                                                        '${image.image_type || 'UNKNOWN'}',
+                                                        '${formatDate(image.upload_timestamp)}',
+                                                        '${formatFileSize(image.file_size)}')">
                         <img src="${image.secure_image_url || image.image_url}"
                              alt="${escapeHtml(image.original_filename)}"
-                             class="img-thumbnail w-100"
-                             style="height: 200px; object-fit: cover; cursor: pointer;"
-                             title="Click to view full size"
+                             class="img-thumbnail loading-thumbnail"
                              onerror="this.onerror=null; this.src='/static/images/placeholder.png'; this.alt='Failed to load image';">
-                    </a>
+                        <div class="thumbnail-overlay">
+                            <i class="fas fa-search-plus fa-2x text-white"></i>
+                        </div>
+                    </div>
                     ${image.is_primary ? `
                     <span class="badge bg-primary position-absolute top-0 end-0 m-2">
                         <i class="fas fa-star"></i> Primary
@@ -339,20 +422,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${escapeHtml(truncate(image.original_filename, 20))}
                                 </small>
                                 <small class="text-muted d-block">
-                                    <i class="fas fa-clock me-1"></i>
-                                    ${formatDate(image.upload_timestamp)}
+                                    <i class="fas fa-tag me-1"></i>
+                                    ${(image.image_type || 'UNKNOWN').replace(/_/g, ' ')}
                                 </small>
-                                ${image.file_size ? `
-                                <small class="text-muted d-block">
-                                    <i class="fas fa-weight me-1"></i>
-                                    ${formatFileSize(image.file_size)}
-                                </small>
-                                ` : ''}
                             </div>
                         </div>
-                        ${image.description ? `
-                        <small class="text-muted d-block mt-2">${escapeHtml(image.description)}</small>
-                        ` : ''}
                     </div>
                 </div>
             `;
@@ -431,6 +505,34 @@ document.addEventListener('DOMContentLoaded', function() {
         if (str.length <= maxLength) return str;
         return str.substring(0, maxLength - 3) + '...';
     }
+
+    // Global function to show loading image modal
+    window.showLoadingImageModal = function(imageUrl, filename, description, imageType, uploadDate, fileSize) {
+        // Set image source
+        document.getElementById('modalLoadingImage').src = imageUrl;
+
+        // Set metadata
+        document.getElementById('modalImageFilename').textContent = filename || 'Unknown';
+
+        const typeElement = document.getElementById('modalImageType');
+        const typeBadge = typeElement.querySelector('.badge');
+        if (typeBadge) {
+            typeBadge.textContent = (imageType || 'UNKNOWN').replace(/_/g, ' ');
+        }
+
+        document.getElementById('modalImageDate').textContent = uploadDate || 'Unknown';
+        document.getElementById('modalImageSize').textContent = fileSize || 'Unknown';
+        document.getElementById('modalImageDescription').textContent = description || 'No description provided';
+
+        // Set download link
+        const downloadLink = document.getElementById('modalLoadingDownloadLink');
+        downloadLink.href = imageUrl;
+        downloadLink.download = filename;
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('loadingImageModal'));
+        modal.show();
+    };
 });
 </script>
 

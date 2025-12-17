@@ -120,87 +120,105 @@
             </div>
             
             {% if page_obj %}
-                {% for record in page_obj %}
-                    <div class="widget-card">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                                <h4 class="mb-1">{{ record.loading_request_id }}</h4>
-                                <small class="text-muted">{{ record.created_at|date:"M d, Y g:i A" }}</small>
-                            </div>
-                            <div>
-                                {% if record.loaded_bags >= record.requested_bags %}
-                                    <span class="status-badge status-completed">Complete</span>
-                                {% elif record.loaded_bags > 0 %}
-                                    <span class="status-badge status-loading_in_progress">Partial</span>
-                                {% else %}
-                                    <span class="status-badge status-pending">Pending</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="row g-3 mb-3">
-                            <div class="col-12 col-md-6">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-warehouse text-primary me-2"></i>
-                                    <div>
-                                        <strong>{{ record.godown.name }}</strong>
-                                        <small class="text-muted d-block">{{ record.godown.code }}</small>
+                <div class="loading-records-table-wrapper">
+                    <table class="table table-hover table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th><i class="fas fa-dolly-flatbed me-1"></i> Loading ID</th>
+                                <th><i class="fas fa-calendar me-1"></i> Date</th>
+                                <th><i class="fas fa-warehouse me-1"></i> Warehouse</th>
+                                <th><i class="fas fa-store me-1"></i> Customer</th>
+                                <th><i class="fas fa-cubes me-1"></i> Product</th>
+                                <th class="text-center"><i class="fas fa-boxes me-1"></i> Requested / Loaded</th>
+                                <th class="text-center"><i class="fas fa-info-circle me-1"></i> Status</th>
+                                <th class="text-center"><i class="fas fa-cog me-1"></i> Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in page_obj %}
+                            <tr>
+                                <!-- Loading ID Column -->
+                                <td>
+                                    <strong class="text-primary">{{ record.loading_request_id }}</strong>
+                                </td>
+
+                                <!-- Date Column -->
+                                <td>
+                                    <div>{{ record.created_at|date:"M d, Y" }}</div>
+                                    <small class="text-muted">{{ record.created_at|date:"g:i A" }}</small>
+                                </td>
+
+                                <!-- Warehouse Column -->
+                                <td>
+                                    <div><strong>{{ record.godown.name }}</strong></div>
+                                    <small class="text-muted">{{ record.godown.code }}</small>
+                                </td>
+
+                                <!-- Customer Column -->
+                                <td>
+                                    <div><strong>{{ record.dealer.name }}</strong></div>
+                                    <small class="text-muted">{{ record.dealer.code }}</small>
+                                </td>
+
+                                <!-- Product Column -->
+                                <td>{{ record.product.name }}</td>
+
+                                <!-- Quantity Column with Progress -->
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center align-items-center gap-2 mb-1">
+                                        <span class="badge bg-primary">{{ record.requested_bags }}</span>
+                                        <i class="fas fa-arrow-right text-muted small"></i>
+                                        <span class="badge bg-success">{{ record.loaded_bags }}</span>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-store text-success me-2"></i>
-                                    <div>
-                                        <strong>{{ record.dealer.name }}</strong>
-                                        <small class="text-muted d-block">{{ record.dealer.code }}</small>
+                                    {% if record.requested_bags > 0 %}
+                                        {% widthratio record.loaded_bags record.requested_bags 100 as completion %}
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar {% if completion == 100 %}bg-success{% elif completion > 0 %}bg-warning{% else %}bg-secondary{% endif %}"
+                                                 role="progressbar"
+                                                 style="width: {{ completion }}%"
+                                                 title="{{ completion }}% complete"></div>
+                                        </div>
+                                        <small class="text-muted">{{ completion }}%</small>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Status Column -->
+                                <td class="text-center">
+                                    {% if record.loaded_bags >= record.requested_bags %}
+                                        <span class="status-badge status-completed">
+                                            <i class="fas fa-check-circle"></i> Complete
+                                        </span>
+                                    {% elif record.loaded_bags > 0 %}
+                                        <span class="status-badge status-loading_in_progress">
+                                            <i class="fas fa-clock"></i> Partial
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge status-pending">
+                                            <i class="fas fa-hourglass-half"></i> Pending
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Actions Column -->
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'loading_record_detail' record.loading_request_id %}"
+                                           class="btn btn-outline-info"
+                                           title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'loading_record_update' record.loading_request_id %}"
+                                           class="btn btn-outline-warning"
+                                           title="Edit Record">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="detail-zone mb-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-cubes text-info me-2"></i>
-                                <strong>{{ record.product.name }}</strong>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <div class="text-center p-2 border rounded bg-light">
-                                        <div class="quantity-display text-primary">{{ record.requested_bags }}</div>
-                                        <div class="small text-muted">Requested</div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="text-center p-2 border rounded bg-light">
-                                        <div class="quantity-display text-success">{{ record.loaded_bags }}</div>
-                                        <div class="small text-muted">Loaded</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {% if record.requested_bags > 0 %}
-                                {% widthratio record.loaded_bags record.requested_bags 100 as completion %}
-                                <div class="progress mt-2 loading-progress">
-                                    <div class="progress-bar {% if completion == 100 %}bg-success{% elif completion > 0 %}bg-warning{% else %}bg-secondary{% endif %}" 
-                                         role="progressbar" style="width: {{ completion }}%"></div>
-                                </div>
-                                <small class="text-muted">{{ completion }}% Complete</small>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="d-flex gap-2">
-                            <a href="{% url 'loading_record_detail' record.loading_request_id %}" 
-                               class="action-button flex-fill">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                            <a href="{% url 'loading_record_update' record.loading_request_id %}" 
-                               class="action-button flex-fill">
-                                <i class="fas fa-edit"></i> Edit
-                            </a>
-                        </div>
-                    </div>
-                {% endfor %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
                 {% if page_obj.has_other_pages %}
                     <div class="d-flex justify-content-center mt-4">

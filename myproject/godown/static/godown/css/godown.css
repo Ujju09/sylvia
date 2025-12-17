@@ -1400,3 +1400,183 @@
         font-size: 1.25rem;
     }
 }
+
+/* ============================================================================
+   LOADING RECORDS TABLE - Responsive Design
+   ============================================================================ */
+
+/* Table wrapper for responsive scrolling */
+.loading-records-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 2rem;
+}
+
+/* Progress bar in table cells */
+.table td .progress {
+    min-width: 80px;
+    max-width: 120px;
+    margin: 0 auto;
+}
+
+/* Compact status badges for table */
+.table .status-badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Button group sizing in tables */
+.table .btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Desktop: Full width with comfortable spacing */
+@media (min-width: 1025px) {
+    .loading-records-table-wrapper {
+        overflow-x: visible;
+    }
+
+    .loading-records-table-wrapper th,
+    .loading-records-table-wrapper td {
+        padding: 1rem 0.75rem;
+    }
+}
+
+/* Tablet: Optimize spacing */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .loading-records-table-wrapper th,
+    .loading-records-table-wrapper td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Mobile: Horizontal scroll with reduced padding */
+@media (max-width: 768px) {
+    .loading-records-table-wrapper table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .loading-records-table-wrapper th,
+    .loading-records-table-wrapper td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.875rem;
+    }
+
+    /* Make columns narrower on mobile */
+    .loading-records-table-wrapper .table {
+        font-size: 0.875rem;
+    }
+}
+
+/* Very small screens: Hide less critical columns */
+@media (max-width: 576px) {
+    .loading-records-table-wrapper .hide-mobile {
+        display: none;
+    }
+}
+
+/* ============================================================================
+   LOADING IMAGE GALLERY ENHANCEMENTS
+   ============================================================================ */
+
+/* Loading Image Card with hover effects */
+.loading-image-card {
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.loading-image-card:hover {
+    transform: translateY(-4px);
+}
+
+/* Image thumbnail wrapper with hover overlay */
+.image-thumbnail-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+}
+
+.loading-thumbnail {
+    transition: transform 0.3s ease;
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.image-thumbnail-wrapper:hover .loading-thumbnail {
+    transform: scale(1.05);
+}
+
+/* Hover overlay with magnifying glass */
+.thumbnail-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+}
+
+.image-thumbnail-wrapper:hover .thumbnail-overlay {
+    opacity: 1;
+}
+
+/* Modal image optimization */
+#loadingImageModal .modal-body img {
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-light);
+}
+
+/* Modal image details card */
+#loadingImageModal .card {
+    border: 1px solid var(--border-light);
+}
+
+#loadingImageModal .card-title {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Responsive modal adjustments */
+@media (max-width: 992px) {
+    #loadingImageModal .modal-xl {
+        max-width: 95%;
+    }
+
+    #loadingImageModal .row {
+        flex-direction: column-reverse;
+    }
+
+    #loadingImageModal .col-lg-4 {
+        margin-bottom: 1rem;
+    }
+
+    #loadingImageModal .modal-body {
+        padding: 1rem;
+    }
+}
+
+/* Image gallery grid responsiveness */
+@media (max-width: 576px) {
+    .loading-image-card {
+        margin-bottom: 1rem;
+    }
+
+    .loading-thumbnail {
+        height: 180px;
+    }
+}

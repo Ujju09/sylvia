@@ -992,9 +992,19 @@ def generate_stock_aging_image(aging_data, date_str):
     watermark_font = _load_font(36)
     action_font = _load_font(18, bold=True)
 
+    # Calculate days until godown closure (31st Jan 2026)
+    closure_date = datetime(2026, 1, 31).date()
+    today = datetime.now().date()
+    days_until_closure = (closure_date - today).days
+
     # Draw Title and Date
     draw.text((60, 60), "Stock Aging Report", fill=text_color, font=title_font)
     draw.text((60, 140), f"As of: {date_str}", fill=text_color, font=date_font)
+
+    # Draw days until closure counter in red and bold
+    closure_text = f"Days till Godown Closure: {days_until_closure}"
+    closure_font = _load_font(32, bold=True)
+    draw.text((60, 190), closure_text, fill=danger_color, font=closure_font)
 
     # Table Layout
     start_y = 250

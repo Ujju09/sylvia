@@ -42,6 +42,28 @@ def check_audit_reminder():
     return {'show_reminder': False}
 
 
+@login_required
+def organization_detail(request):
+    """Display details of the current user's organization."""
+    organization = request.organization
+
+    if not organization:
+        return render(request, 'organization/organization_error.html', {
+            'error_message': 'You are not associated with any organization.'
+        })
+
+    # Get all user profiles for this organization
+    user_profiles = organization.users.select_related('user').order_by('user__date_joined')
+
+    context = {
+        'organization': organization,
+        'user_profiles': user_profiles,
+        'total_users': user_profiles.count(),
+    }
+
+    return render(request, 'organization/organization_detail.html', context)
+
+
 def check_godown_audit_reminder():
     """Check if godown audit reminder should be shown (10-15 of each month)"""
     from godown.models import GodownLocation

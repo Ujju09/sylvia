@@ -58,7 +58,17 @@
                   {{ user.get_full_name|default:user.username }}{% if user_organization %} <small class="text-muted">· {{ user_organization.name|slice:":2"|upper }}</small>{% endif %}
                 </a>
                 <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="/logout/">Logout</a></li>
+                  <li>
+                    <a class="dropdown-item" href="{% url 'organization_detail' %}">
+                      <i class="fas fa-building"></i> Organization
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <a class="dropdown-item" href="/logout/">
+                      <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                  </li>
                 </ul>
               </li>
             {% else %}

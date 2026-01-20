@@ -16,10 +16,6 @@ from .bi_views import (
     depot_analytics, operations_live
 )
 
-# Import MemoTab ViewSets
-from memotab.api_views import SourceViewSet, CashCollectViewSet
-from memotab.api_views import UserViewSet as MemoTabUserViewSet
-
 # Import Godown ViewSets
 from godown.api_views import LoadingRequestImageViewSet
 
@@ -38,10 +34,6 @@ router.register(r'app-settings', AppSettingsViewSet)
 router.register(r'notification-templates', NotificationTemplateViewSet)
 router.register(r'dealer-context', DealerContextViewSet)
 
-# MemoTab ViewSets
-router.register(r'memotab/sources', SourceViewSet, basename='memotab-source')
-router.register(r'memotab/cash-collections', CashCollectViewSet, basename='memotab-cashcollect')
-router.register(r'memotab/users', MemoTabUserViewSet, basename='memotab-user')
 
 # Godown ViewSets
 router.register(r'loading-request-images', LoadingRequestImageViewSet, basename='loadingrequestimage')

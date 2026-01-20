@@ -4,50 +4,184 @@ from django.core.validators import RegexValidator
 from django.utils import timezone
 from decimal import Decimal
 import uuid
+from .managers import TenantManager
+
+class Organization(models.Model):
+    """Multi-tenant organization model for row-level isolation"""
+
+    # Core identification
+    name = models.CharField(max_length=200, unique=True, help_text="Organization name")
+    slug = models.SlugField(max_length=200, unique=True, help_text="URL-friendly identifier")
+
+    # Contact and location
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=15, blank=True)
+    address = models.TextField(blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    pincode = models.CharField(max_length=10, blank=True)
+
+    # Business details
+    gstin = models.CharField(max_length=15, blank=True, unique=True, null=True)
+    pan = models.CharField(max_length=10, blank=True)
+
+    # Status and metadata
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    settings = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['slug']),
+            models.Index(fields=['is_active', 'name']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class UserProfile(models.Model):
+    """User profile linking users to organizations"""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='users')
+    role = models.CharField(max_length=50, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['user__username']
+        indexes = [
+            models.Index(fields=['organization']),  # Fast organization-based user lookups
+            models.Index(fields=['user', 'organization']),  # Composite index for quick profile access
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.organization.name}"
+
 
 class BaseModel(models.Model):
-    """Base model with common fields"""
+    """
+    DEPRECATED: Use TenantBaseModel instead.
+
+    This model is kept for backward compatibility during migration.
+    All new models should inherit from TenantBaseModel.
+    """
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     class Meta:
         abstract = True
 
-class Depot(BaseModel):
+
+class TenantBaseModel(models.Model):
+    """
+    Base model with tenant isolation and audit fields.
+
+    All tenant-aware models should inherit from this class.
+    Provides automatic organization filtering via TenantManager.
+    """
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        help_text="Organization this record belongs to"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_%(class)s_set'  # Avoid reverse accessor clashes
+    )
+
+    # Default manager with auto-filtering
+    objects = TenantManager()
+    # Unfiltered manager for admin/migrations
+    all_objects = models.Manager()
+
+    class Meta:
+        abstract = True
+        indexes = [
+            models.Index(fields=['organization', '-created_at']),
+        ]
+
+    def save(self, *args, **kwargs):
+        """
+        Auto-assign organization from thread-local context if not set.
+        This prevents errors when creating records without explicitly setting organization.
+        """
+        # Only auto-assign on creation (not on updates)
+        if not self.pk:
+            # Check if organization_id is not set (safer than checking self.organization)
+            # organization_id is the actual database field name for the ForeignKey
+            if getattr(self, 'organization_id', None) is None:
+                from .middleware import get_current_organization
+                current_org = get_current_organization()
+                if current_org:
+                    self.organization = current_org
+                else:
+                    # No organization in context - this will raise an error which is intentional
+                    # to prevent creating records without organization
+                    raise ValueError(
+                        f"Cannot create {self.__class__.__name__} without organization context. "
+                        "Ensure user is authenticated and has a valid organization."
+                    )
+        super().save(*args, **kwargs)
+
+class Depot(TenantBaseModel):
     """Model for depot/warehouse locations"""
-    name = models.CharField(max_length=100, unique=True)
-    code = models.CharField(max_length=10, unique=True)
+    name = models.CharField(max_length=100)  # unique=True removed - will be org-scoped
+    code = models.CharField(max_length=10)  # unique=True removed - will be org-scoped
     address = models.TextField(blank=True)
     city = models.CharField(max_length=50)
     state = models.CharField(max_length=50)
     pincode = models.CharField(max_length=6, blank=True)
     is_active = models.BooleanField(default=True)
-    
+
     def __str__(self):
         return f"{self.name} ({self.code})"
-    
+
     class Meta:
         ordering = ['name']
+        unique_together = [
+            ('organization', 'code'),
+        ]
+        indexes = [
+            models.Index(fields=['organization', 'is_active']),  # Filter active depots by org
+            models.Index(fields=['organization', 'name']),  # Search/lookup by name
+        ]
 
-class Product(BaseModel):
+class Product(TenantBaseModel):
     """Model for products/materials"""
-    name = models.CharField(max_length=100, unique=True)
-    code = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)  # unique=True removed - will be org-scoped
+    code = models.CharField(max_length=20)  # unique=True removed - will be org-scoped
     description = models.TextField(blank=True)
     unit = models.CharField(max_length=20, default='MT')  # Metric Ton
     is_active = models.BooleanField(default=True)
-    
+
     def __str__(self):
         return f"{self.name} ({self.code})"
-    
+
     class Meta:
         ordering = ['name']
+        unique_together = [
+            ('organization', 'code'),
+        ]
+        indexes = [
+            models.Index(fields=['organization', 'is_active']),  # Filter active products by org
+            models.Index(fields=['organization', 'name']),  # Search/lookup by name
+        ]
 
-class Dealer(BaseModel):
+class Dealer(TenantBaseModel):
     """Model for dealers/customers"""
     name = models.CharField(max_length=200)
-    code = models.CharField(max_length=20, unique=True)
+    code = models.CharField(max_length=20)  # unique=True removed - will be org-scoped
     contact_person = models.CharField(max_length=100, blank=True)
     phone = models.CharField(max_length=15, validators=[
         RegexValidator(regex=r'^\+?1?\d{9,15}$', message="Enter a valid phone number.")
@@ -62,24 +196,32 @@ class Dealer(BaseModel):
     pincode = models.CharField(max_length=6, blank=True)
     gstin = models.CharField(max_length=15, blank=True, unique=True, null=True)
     is_active = models.BooleanField(default=True)
-    
+
     # Business relationship fields
     credit_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     credit_days = models.IntegerField(default=0)
-    
+
     def __str__(self):
         return f"{self.name} ({self.code})"
-    
+
     def get_whatsapp_number(self):
         """Return WhatsApp number or phone number for messaging"""
         return self.whatsapp_number if self.whatsapp_number else self.phone
-    
+
     class Meta:
         ordering = ['name']
+        unique_together = [
+            ('organization', 'code'),
+        ]
+        indexes = [
+            models.Index(fields=['organization', 'is_active']),  # Filter active dealers by org
+            models.Index(fields=['organization', 'name']),  # Search/lookup by name
+            models.Index(fields=['gstin']),  # GSTIN lookups (already unique but helps with queries)
+        ]
 
-class Vehicle(BaseModel):
+class Vehicle(TenantBaseModel):
     """Model for vehicles/trucks"""
-    truck_number = models.CharField(max_length=20, unique=True, validators=[
+    truck_number = models.CharField(max_length=20, validators=[  # unique=True removed - will be org-scoped
         RegexValidator(
             regex=r'^[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}$',
             message="Enter a valid truck number (e.g., CG15EA0464)"
@@ -96,14 +238,21 @@ class Vehicle(BaseModel):
         ('OTHER', 'Other')
     ], default='TRUCK')
     is_active = models.BooleanField(default=True)
-    
+
     def __str__(self):
         return self.truck_number
-    
+
     class Meta:
         ordering = ['truck_number']
+        unique_together = [
+            ('organization', 'truck_number'),
+        ]
+        indexes = [
+            models.Index(fields=['organization', 'is_active']),  # Filter active vehicles by org
+            models.Index(fields=['organization', 'truck_number']),  # Quick vehicle lookups
+        ]
 
-class Order(BaseModel):
+class Order(TenantBaseModel):
     """Main order model"""
     ORDER_STATUS_CHOICES = [
         ('PENDING', 'Pending'),
@@ -111,8 +260,8 @@ class Order(BaseModel):
         ('MRN_CREATED', 'MRN Created'),
         ('BILLED', 'Billed'),
     ]
-    
-    order_number = models.CharField(max_length=20, unique=True, editable=False)
+
+    order_number = models.CharField(max_length=20, editable=False)  # unique=True removed - will be org-scoped
     dealer = models.ForeignKey(Dealer, on_delete=models.CASCADE, related_name='orders')
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='orders')
     depot = models.ForeignKey(Depot, on_delete=models.CASCADE, related_name='orders')
@@ -133,37 +282,85 @@ class Order(BaseModel):
     whatsapp_sent_at = models.DateTimeField(null=True, blank=True)
     
     def save(self, *args, **kwargs):
+        # First, ensure organization is set (either explicitly or from context)
+        if not self.pk and getattr(self, 'organization_id', None) is None:
+            from .middleware import get_current_organization
+            current_org = get_current_organization()
+            if current_org:
+                self.organization = current_org
+            else:
+                raise ValueError(
+                    f"Cannot create {self.__class__.__name__} without organization context. "
+                    "Ensure user is authenticated and has a valid organization."
+                )
+
+        # Now generate order number with organization context
         if not self.order_number:
+            # Get organization_id safely - it might be an object or just an ID
+            org_id = getattr(self, 'organization_id', None)
+            if org_id is None and hasattr(self, 'organization'):
+                try:
+                    org_id = self.organization.id if self.organization else None
+                except Exception:
+                    org_id = None
+
+            if org_id is None:
+                raise ValueError("Order must have an organization before generating order number")
+
             from django.db import transaction
             with transaction.atomic():
-                # Simple incremental order numbering
-                # Get the highest existing order ID and increment
-                last_order = Order.objects.select_for_update().order_by('id').last()
-                
-                if last_order:
-                    next_id = last_order.id + 1
+                # Organization-scoped incremental order numbering
+                # Use all_objects to bypass TenantManager and explicitly filter by organization
+                # This ensures reliability during concurrent saves
+                last_order = (
+                    Order.all_objects.select_for_update()
+                    .filter(organization_id=org_id)
+                    .order_by('-id')
+                    .first()
+                )
+
+                if last_order and last_order.order_number:
+                    # Extract number from existing order_number (format: ORD123456)
+                    try:
+                        last_number = int(last_order.order_number.replace('ORD', ''))
+                        next_number = last_number + 1
+                    except (ValueError, AttributeError):
+                        # Fallback if order_number format is unexpected
+                        next_number = Order.all_objects.filter(organization_id=org_id).count() + 1
                 else:
-                    next_id = 1
-                
-                # Simple format: ORD + 6-digit incremental number
-                self.order_number = f"ORD{next_id:06d}"
-        super().save(*args, **kwargs)
+                    next_number = 1
+
+                # Format: ORD + 6-digit incremental number
+                self.order_number = f"ORD{next_number:06d}"
+
+        # Call parent save (skip TenantBaseModel.save to avoid double organization assignment)
+        super(TenantBaseModel, self).save(*args, **kwargs)
     
     def __str__(self):
         return f"{self.order_number} - {self.dealer.name}"
-    
+
     def get_total_quantity(self):
         """Calculate total quantity across all order items"""
         return sum(item.quantity for item in self.order_items.all())
-    
+
     def get_total_value(self):
         """Calculate total value of the order"""
         return sum(item.get_total_value() for item in self.order_items.all())
-    
+
     class Meta:
         ordering = ['-order_date']
+        unique_together = [
+            ('organization', 'order_number'),
+        ]
+        indexes = [
+            models.Index(fields=['organization', 'status', '-order_date']),  # Filter by status
+            models.Index(fields=['organization', 'dealer', '-order_date']),  # Dealer's orders
+            models.Index(fields=['organization', 'depot', '-order_date']),  # Depot's orders
+            models.Index(fields=['organization', 'order_number']),  # Quick order lookups
+            models.Index(fields=['whatsapp_sent', 'status']),  # WhatsApp sending queue
+        ]
 
-class OrderItem(BaseModel):
+class OrderItem(TenantBaseModel):
     """Order line items for different products"""
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -180,15 +377,15 @@ class OrderItem(BaseModel):
     class Meta:
         unique_together = ['order', 'product']
 
-class MRN(BaseModel):
+class MRN(TenantBaseModel):
     """Material Receipt Note model"""
     MRN_STATUS_CHOICES = [
         ('PENDING', 'Pending'),
         ('APPROVED', 'Approved'),
         ('REJECTED', 'Rejected'),
     ]
-    
-    mrn_number = models.CharField(max_length=20, unique=True, editable=False)
+
+    mrn_number = models.CharField(max_length=20, editable=False)  # unique=True removed - will be org-scoped
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='mrn')
     mrn_date = models.DateField(default=timezone.now)
     status = models.CharField(max_length=20, choices=MRN_STATUS_CHOICES, default='PENDING')
@@ -205,12 +402,19 @@ class MRN(BaseModel):
     
     def __str__(self):
         return f"{self.mrn_number} - {self.order.order_number}"
-    
+
     class Meta:
         ordering = ['-mrn_date']
+        unique_together = [
+            ('organization', 'mrn_number'),
+        ]
+        indexes = [
+            models.Index(fields=['organization', 'status', '-mrn_date']),  # Filter MRNs by status
+            models.Index(fields=['organization', 'mrn_number']),  # Quick MRN lookups
+        ]
 
 
-class OrderMRNImage(BaseModel):
+class OrderMRNImage(TenantBaseModel):
     """Model to store MRN proof images for orders"""
     
     ORDER_IMAGE_TYPE_CHOICES = [
@@ -250,7 +454,7 @@ class OrderMRNImage(BaseModel):
         ]
 
 
-class AuditLog(BaseModel):
+class AuditLog(TenantBaseModel):
     """Audit trail for important actions"""
     ACTION_CHOICES = [
         ('ORDER_CREATED', 'Order Created'),
@@ -278,19 +482,22 @@ class AuditLog(BaseModel):
         ordering = ['-created_at']
 
 # Additional utility models for system configuration
-class AppSettings(BaseModel):
+class AppSettings(TenantBaseModel):
     """Application settings and configurations"""
-    key = models.CharField(max_length=100, unique=True)
+    key = models.CharField(max_length=100)  # unique=True removed - will be org-scoped
     value = models.TextField()
     description = models.TextField(blank=True)
-    
+
     def __str__(self):
         return f"{self.key}: {self.value}"
-    
+
     class Meta:
         ordering = ['key']
+        unique_together = [
+            ('organization', 'key'),
+        ]
 
-class NotificationTemplate(BaseModel):
+class NotificationTemplate(TenantBaseModel):
     """Templates for various notifications"""
     TEMPLATE_TYPE_CHOICES = [
         ('WHATSAPP', 'WhatsApp'),
@@ -312,7 +519,7 @@ class NotificationTemplate(BaseModel):
         ordering = ['name']
 
 # Think this through before implementing a model.
-class DealerContext(BaseModel):
+class DealerContext(TenantBaseModel):
     """Model to store contextual information about dealers for AI-enhanced relationship management
     
     Based on psychological principles:

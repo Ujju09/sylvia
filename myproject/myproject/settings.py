@@ -53,11 +53,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'rest_framework.authtoken',  
+    'rest_framework.authtoken',
     'corsheaders',
-    'sylvia', 
+    'sylvia',
     'orders',
-    'memotab',
     'godown',
 
 ]
@@ -71,8 +70,14 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'sylvia.middleware.TenantMiddleware',  # Add tenant context after authentication
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# Authentication backends with optimized profile loading
+AUTHENTICATION_BACKENDS = [
+    'sylvia.backends.ProfileAwareAuthBackend',  # Custom backend with select_related optimization
 ]
 
 ROOT_URLCONF = 'myproject.urls'
@@ -87,6 +92,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'sylvia.context_processors.organization_context',  # Add organization context
             ],
         },
     },

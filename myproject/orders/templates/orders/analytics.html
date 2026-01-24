@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container py-4">
-  <h2 class="mb-4 text-primary"><i class="fas fa-book"></i> Order Register</h2>
-  <p class="text-muted mb-4">Generate physical register for record-keeping</p>
+  <h2 class="mb-4 text-primary"><i class="fas fa-book"></i> Partnership Record</h2>
+  <p class="text-muted mb-4">Review and document our journey together</p>
 
   <!-- Date Range Selection Form -->
   <div class="card mb-4">
@@ -30,7 +30,7 @@
           <div class="col-md-2 mb-2">
             <button type="submit" class="btn btn-primary w-100"
                     formaction="{% url 'export_analytics' %}" formtarget="_blank">
-              <i class="fas fa-print"></i> Print Register
+              <i class="fas fa-print"></i> Print Record
             </button>
           </div>
         </div>
@@ -82,8 +82,8 @@
   <div class="card">
     <div class="card-header">
       <h5 class="mb-0">
-        <i class="fas fa-table"></i> Order Register Preview
-        <span class="badge badge-primary ml-2">{{ orders|length }} orders</span>
+        <i class="fas fa-table"></i> Journey Record Preview
+        <span class="badge badge-primary ml-2">{{ orders|length }} journeys</span>
       </h5>
       <small class="text-muted">
         From {{ start_date|date:"d M Y" }} to {{ end_date|date:"d M Y" }}
@@ -95,13 +95,13 @@
           <thead class="thead-light">
             <tr>
               <th width="8%">S.No.</th>
-              <th width="12%">Order Date</th>
-              <th width="15%">Truck Number</th>
-              <th width="20%">Product</th>
+              <th width="12%">Journey Date</th>
+              <th width="15%">Vehicle</th>
+              <th width="20%">Materials</th>
               <th width="10%">Qty (MT)</th>
-              <th width="15%">Dealer Name</th>
-              <th width="10%">MRN Date</th>
-              <th width="10%">Billing Date</th>
+              <th width="15%">Partner</th>
+              <th width="10%">Receipt Date</th>
+              <th width="10%">Completion Date</th>
             </tr>
           </thead>
           <tbody>
@@ -148,16 +148,16 @@
   <div class="card">
     <div class="card-body text-center">
       <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-      <h5>No Orders Found</h5>
-      <p class="text-muted">No orders were found in the selected date range.</p>
+      <h5>No Journeys Found</h5>
+      <p class="text-muted">No journeys were recorded in the selected date range.</p>
     </div>
   </div>
   {% else %}
   <div class="card">
     <div class="card-body text-center">
       <i class="fas fa-calendar-alt fa-3x text-primary mb-3"></i>
-      <h5>Select Date Range</h5>
-      <p class="text-muted">Please select a date range above to preview the order register.</p>
+      <h5>Choose a Time Period</h5>
+      <p class="text-muted">Please select a date range above to review our partnership history.</p>
     </div>
   </div>
   {% endif %}

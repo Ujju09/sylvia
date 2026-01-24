@@ -6,9 +6,9 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Vehicle Management</h4>
+                    <h4 class="mb-0">Fleet & Drivers</h4>
                     <a href="{% url 'add_vehicle' %}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add New Vehicle
+                        <i class="fas fa-plus"></i> Add Vehicle & Driver
                     </a>
                 </div>
                 <div class="card-body">
@@ -77,8 +77,8 @@
                                         </div>
                                         {% if vehicle.is_active %}
                                         <div class="vehicle-hover-action">
-                                            <a href="{% url 'order_workflow' %}?vehicle_id={{ vehicle.id }}" class="btn btn-sm btn-success create-order-btn" title="Create Order">
-                                                <i class="fas fa-plus-circle"></i> Create
+                                            <a href="{% url 'order_workflow' %}?vehicle_id={{ vehicle.id }}" class="btn btn-sm btn-success create-order-btn" title="Begin Journey">
+                                                <i class="fas fa-plus-circle"></i> Begin
                                             </a>
                                         </div>
                                         {% endif %}
@@ -88,7 +88,7 @@
                                 <tr>
                                     <td colspan="9" class="text-center text-muted">
                                         <i class="fas fa-truck fa-3x mb-3"></i>
-                                        <p>No vehicles found. <a href="{% url 'add_vehicle' %}">Add the first vehicle</a></p>
+                                        <p>No vehicles yet. <a href="{% url 'add_vehicle' %}">Add your first vehicle and driver</a></p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -107,13 +107,13 @@
                                         <div class="col-md-3">
                                             <div class="text-center">
                                                 <h5 class="text-primary">{{ stats.total_vehicles }}</h5>
-                                                <small class="text-muted">Total Vehicles</small>
+                                                <small class="text-muted">Fleet Size</small>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="text-center">
                                                 <h5 class="text-success">{{ stats.active_vehicles }}</h5>
-                                                <small class="text-muted">Active Vehicles</small>
+                                                <small class="text-muted">Active on Road</small>
                                             </div>
                                         </div>
                                         <div class="col-md-3">

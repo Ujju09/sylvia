@@ -19,7 +19,7 @@
         <div class="card bg-primary text-white shadow-sm h-100 stat-card">
           <div class="card-body text-center p-3">
             <h5 class="card-title mb-1">{{ order_stats.total_orders }}</h5>
-            <p class="card-text small mb-0">Total Orders</p>
+            <p class="card-text small mb-0">All Journeys</p>
           </div>
         </div>
       </a>
@@ -28,7 +28,7 @@
       <div class="card bg-info text-white shadow-sm h-100 stat-card">
         <div class="card-body text-center p-3">
           <h5 class="card-title mb-1">{{ order_stats.anonymous_dealers_count }}</h5>
-          <p class="card-text small mb-0">Anonymous Dealers</p>
+          <p class="card-text small mb-0">New Partners</p>
         </div>
       </div>
     </div>
@@ -37,7 +37,7 @@
         <div class="card bg-warning text-white shadow-sm h-100 stat-card">
           <div class="card-body text-center p-3">
             <h5 class="card-title mb-1">{{ order_stats.pending_orders }}</h5>
-            <p class="card-text small mb-0">Pending</p>
+            <p class="card-text small mb-0">Initiated</p>
           </div>
         </div>
       </a>
@@ -47,7 +47,7 @@
         <div class="card bg-secondary text-white shadow-sm h-100 stat-card">
           <div class="card-body text-center p-3">
             <h5 class="card-title mb-1">{{ order_stats.mrn_created_orders }}</h5>
-            <p class="card-text small mb-0">MRN Created</p>
+            <p class="card-text small mb-0">In Transit</p>
           </div>
         </div>
       </a>
@@ -57,7 +57,7 @@
         <div class="card bg-success text-white shadow-sm h-100 stat-card">
           <div class="card-body text-center p-3">
             <h5 class="card-title mb-1">{{ order_stats.billed_orders }}</h5>
-            <p class="card-text small mb-0">Billed</p>
+            <p class="card-text small mb-0">Fulfilled</p>
           </div>
         </div>
       </a>
@@ -68,10 +68,10 @@
     <div class="card-body">
       <div class="row mb-4">
         <div class="col-md-6">
-          <h3 class="text-primary">All Orders</h3>
+          <h3 class="text-primary">Partnership Journeys</h3>
         </div>
         <div class="col-md-6">
-          <a href="{% url 'order_workflow' %}" class="btn btn-primary float-end">Create New Order</a>
+          <a href="{% url 'order_workflow' %}" class="btn btn-primary float-end">Begin New Journey</a>
         </div>
       </div>
 
@@ -80,15 +80,15 @@
         <div class="card-body">
           <form method="get" class="row g-3">
             <div class="col-md-4">
-              <label for="search" class="form-label">Search</label>
-              <input type="text" class="form-control" id="search" name="search" 
-                     value="{{ search_query }}" 
-                     placeholder="Order number, dealer name, vehicle...">
+              <label for="search" class="form-label">Find Journey</label>
+              <input type="text" class="form-control" id="search" name="search"
+                     value="{{ search_query }}"
+                     placeholder="Journey number, partner name, vehicle...">
             </div>
             <div class="col-md-3">
-              <label for="dealer" class="form-label">Dealer</label>
+              <label for="dealer" class="form-label">Partner</label>
               <select class="form-select" id="dealer" name="dealer">
-                <option value="">All Dealers</option>
+                <option value="">All Partners</option>
                 {% for dealer in dealers %}
                   <option value="{{ dealer.id }}" {% if dealer_filter == dealer.id|stringformat:"s" %}selected{% endif %}>
                     {{ dealer.name }}
@@ -97,9 +97,9 @@
               </select>
             </div>
             <div class="col-md-3">
-              <label for="status" class="form-label">Status</label>
+              <label for="status" class="form-label">Stage</label>
               <select class="form-select" id="status" name="status">
-                <option value="">All Statuses</option>
+                <option value="">All Stages</option>
                 {% for status_code, status_display in order_status_choices %}
                   <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
                     {{ status_display }}
@@ -120,8 +120,8 @@
               <span class="text-muted ms-2">
                 Showing filtered results
                 {% if search_query %}for "{{ search_query }}"{% endif %}
-                {% if dealer_filter %}• Selected dealer{% endif %}
-                {% if status_filter %}• Status: {{ status_filter }}{% endif %}
+                {% if dealer_filter %}• Selected partner{% endif %}
+                {% if status_filter %}• Stage: {{ status_filter }}{% endif %}
               </span>
             </div>
           {% endif %}
@@ -130,16 +130,16 @@
       <table class="table table-bordered table-hover align-middle">
         <thead class="table-light">
           <tr>
-            <th>Order Date</th>
-            <th>Dealer</th>
-            <th>Vehicle</th>
-            <th>Depot</th>
-            <th>Product Types</th>
-            <th>Total Quantity</th>
-            <th>MRN Status</th>
-            <th>Invoice Status</th>
-            <th>Indicators</th>
-            <th>Actions</th>
+            <th>Journey Date</th>
+            <th>Partner</th>
+            <th>Driver & Vehicle</th>
+            <th>Warehouse</th>
+            <th>Materials</th>
+            <th>Quantity</th>
+            <th>Receipt Status</th>
+            <th>Completion</th>
+            <th>Notes</th>
+            <th>View</th>
           </tr>
         </thead>
         <tbody>
@@ -158,30 +158,30 @@
             <td>{{ order.get_total_quantity }}</td>
             <td>
               {% if order.mrn_date %}
-                <span class="badge bg-success">Approved</span>
+                <span class="badge bg-success">Received</span>
                 <br><small class="text-muted">{{ order.mrn_date|date:'j M, Y' }}</small>
               {% else %}
-                <span class="badge bg-secondary">Not Created</span>
+                <span class="badge bg-secondary">In Progress</span>
                 <br><small class="text-muted">{{ order.order_date|timesince }} ago</small>
               {% endif %}
             </td>
             <td>
               {% if order.bill_date %}
-                <span class="badge bg-success">Billed</span>
+                <span class="badge bg-success">Complete</span>
                 <br><small class="text-muted">{{ order.bill_date|date:'j M, Y' }}</small>
               {% else %}
-                <span class="badge bg-warning">Pending</span>
+                <span class="badge bg-warning">Ongoing</span>
               {% endif %}
             </td>
             <td class="text-center">
               <div class="d-flex flex-column align-items-center gap-1">
                 {% if order.remarks %}
-                  <span class="badge bg-warning rounded-pill" title="Order has remarks: {{ order.remarks|truncatechars:100 }}" data-bs-toggle="tooltip">
+                  <span class="badge bg-warning rounded-pill" title="Journey notes: {{ order.remarks|truncatechars:100 }}" data-bs-toggle="tooltip">
                     <i class="fas fa-comment-dots"></i>
                   </span>
                 {% endif %}
                 {% if order.mrn_images.exists %}
-                  <span class="badge bg-info rounded-pill" title="{{ order.mrn_images.count }} MRN image{% if order.mrn_images.count != 1 %}s{% endif %} uploaded" data-bs-toggle="tooltip">
+                  <span class="badge bg-info rounded-pill" title="{{ order.mrn_images.count }} receipt image{% if order.mrn_images.count != 1 %}s{% endif %} saved" data-bs-toggle="tooltip">
                     <i class="fas fa-images"></i> {{ order.mrn_images.count }}
                   </span>
                 {% endif %}
@@ -189,19 +189,19 @@
             </td>
             <td>
               <div class="btn-group" role="group">
-                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-outline-info" title="View Order Details">
+                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-outline-info" title="View Journey">
                   <i class="fas fa-eye"></i> View
                 </a>
                 {% if order.status == 'PENDING' or order.status == 'MRN_CREATED' %}
-                  <a href="{% url 'update_order' order.id %}" class="btn btn-sm btn-primary" title="Edit Order">
-                    <i class="fas fa-edit"></i> Edit
+                  <a href="{% url 'update_order' order.id %}" class="btn btn-sm btn-primary" title="Update Journey">
+                    <i class="fas fa-edit"></i> Update
                   </a>
                 {% endif %}
               </div>
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="11" class="text-center">No orders found.</td></tr>
+          <tr><td colspan="11" class="text-center">No journeys found matching your criteria.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -241,7 +241,7 @@
           {% endif %}
         </ul>
         <div class="text-center text-muted">
-          Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} orders
+          Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} journeys
           {% if search_query or dealer_filter or status_filter %}(filtered){% endif %}
         </div>
       </nav>

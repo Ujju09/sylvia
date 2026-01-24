@@ -4,44 +4,44 @@
 <div class="container py-4">
   <div class="card ">
     <div class="card-body">
-      <h3 class="mb-4 text-primary">Order Processing Workflow</h3>
+      <h3 class="mb-4 text-primary">Begin a New Journey</h3>
       <form id="order-form" method="post">
         {% csrf_token %}
         <div class="mb-3">
-          <label for="vehicle" class="form-label">Vehicle Number</label>
+          <label for="vehicle" class="form-label">Vehicle & Driver</label>
           <select class="form-select" id="vehicle" name="vehicle" required>
-            <option value="">Select vehicle</option>
+            <option value="">Select vehicle and driver</option>
             {% for v in vehicles %}
               <option value="{{ v.id }}">{{ v.truck_number }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="mb-3">
-          <label for="depot" class="form-label">Depot</label>
+          <label for="depot" class="form-label">Warehouse</label>
           <select class="form-select" id="depot" name="depot" required>
-            <option value="">Select depot</option>
+            <option value="">Select warehouse</option>
             {% for depot in depots %}
               <option value="{{ depot.id }}">{{ depot.name }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="mb-3">
-          <label for="dealer" class="form-label">Dealer</label>
+          <label for="dealer" class="form-label">Partner</label>
           <select class="form-select" id="dealer" name="dealer" required>
-            <option value="">Select dealer</option>
+            <option value="">Select partner</option>
             {% for d in dealers %}
               <option value="{{ d.id }}">{{ d.name }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="mb-3">
-          <label for="order_date" class="form-label">Order Date</label>
+          <label for="order_date" class="form-label">Journey Date</label>
           <input type="date" class="form-control" id="order_date" name="order_date" value="{{ today|date:'Y-m-d' }}" required>
-          <div class="form-text">Order time will be set to 1:00 PM IST automatically</div>
+          <div class="form-text">Journey time will be set to 1:00 PM IST automatically</div>
         </div>
         <hr>
         <div class="mb-3">
-          <label class="form-label">Products</label>
+          <label class="form-label">Materials to Send</label>
           <div class="row">
             {% for p in products %}
             <div class="col-md-4 col-sm-6 mb-3">
@@ -59,7 +59,7 @@
         
         <hr>
         <div class="mb-3">
-          <label class="form-label">MRN Proof Images</label>
+          <label class="form-label">Receipt Images</label>
           <div class="upload-zone border border-2 border-dashed rounded p-4 text-center bg-light" id="imageUploadZone" style="cursor: pointer; transition: all 0.3s ease;">
             <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
             <p class="mb-2 text-muted">Drop images here or click to upload</p>
@@ -71,11 +71,11 @@
           <div id="imagePreview" class="mt-3 row"></div>
           <small class="form-text text-muted">
             <i class="fas fa-info-circle me-1"></i>
-            Upload photos as proof that MRN has been completed. Supported formats: JPG, PNG, WEBP (Max 5MB each)
+            Upload photos documenting material receipt. Supported formats: JPG, PNG, WEBP (Max 5MB each)
           </small>
         </div>
         
-        <button type="submit" class="btn btn-success float-end">Finish & Save</button>
+        <button type="submit" class="btn btn-success float-end">Complete & Document</button>
       </form>
     </div>
   </div>

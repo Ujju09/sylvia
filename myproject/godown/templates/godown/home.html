@@ -25,7 +25,7 @@
         <a href="{% url 'share_opening_stock_image' %}" target="_blank" class="btn btn-primary"
             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
             <i class="fas fa-share-alt"></i>
-            Share Opening Stock
+            Share Today's Inventory
         </a>
     </div>
 
@@ -35,7 +35,7 @@
         <div class="dashboard-section full-width">
             <div class="section-header">
                 <h2 class="section-title">
-                    Today's Opening
+                    What We Have Today
                 </h2>
             </div>
 
@@ -49,11 +49,11 @@
                     <div class="card-content">
                         <div class="stock-summary">
                             <div class="stock-item">
-                                <span class="stock-label">Total Bags Available</span>
+                                <span class="stock-label">Bags Ready</span>
                                 <span class="stock-value">{{ summary.total_bags|floatformat:0 }}</span>
                             </div>
                             <div class="stock-item">
-                                <span class="stock-label">Products</span>
+                                <span class="stock-label">Material Types</span>
                                 <span class="stock-value">{{ summary.products_count }}</span>
                             </div>
                         </div>
@@ -69,7 +69,7 @@
                 {% else %}
                 <div class="empty-state">
                     <i class="fas fa-inbox"></i>
-                    <p>No godown data available</p>
+                    <p>No warehouse data available yet</p>
                 </div>
                 {% endif %}
             </div>
@@ -92,8 +92,8 @@
                         <i class="fas fa-truck-loading"></i>
                     </div>
                     <div class="link-content">
-                        <h3 class="link-title">New Loading</h3>
-                        <p class="link-description">Create loading record</p>
+                        <h3 class="link-title">Begin Loading</h3>
+                        <p class="link-description">Start a new dispatch</p>
                     </div>
                 </a>
 
@@ -102,8 +102,8 @@
                         <i class="fas fa-boxes"></i>
                     </div>
                     <div class="link-content">
-                        <h3 class="link-title">Inventory</h3>
-                        <p class="link-description">View stock levels</p>
+                        <h3 class="link-title">Current Stock</h3>
+                        <p class="link-description">What's available now</p>
                     </div>
                 </a>
 
@@ -112,8 +112,8 @@
                         <i class="fas fa-truck-moving"></i>
                     </div>
                     <div class="link-content">
-                        <h3 class="link-title">Transit Orders</h3>
-                        <p class="link-description">Track shipments</p>
+                        <h3 class="link-title">On the Road</h3>
+                        <p class="link-description">Journeys in progress</p>
                     </div>
                 </a>
 
@@ -122,8 +122,8 @@
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="link-content">
-                        <h3 class="link-title">Aging Report</h3>
-                        <p class="link-description">Stock age analysis</p>
+                        <h3 class="link-title">Stock Review</h3>
+                        <p class="link-description">Material timeline</p>
                     </div>
                 </a>
 

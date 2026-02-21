@@ -31,6 +31,27 @@ class Organization(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     settings = models.JSONField(default=dict, blank=True)
 
+    # Navigation access control
+    NAV_ITEMS = [
+        'home',
+        'intelligence',
+        'partnerships',
+        'insights',
+        'begin_journey',
+        'fleet_drivers',
+        'partners',
+        'warehouse',
+    ]
+    allowed_nav_items = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "List of sidebar nav items this organisation can access. "
+            "Empty list means all items are visible. "
+            f"Valid values: {', '.join(NAV_ITEMS)}"
+        ),
+    )
+
     class Meta:
         ordering = ['name']
         indexes = [

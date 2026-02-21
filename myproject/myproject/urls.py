@@ -20,6 +20,7 @@ from django.urls import include
 from orders.views import home, login_view, logout_view
 
 urlpatterns = [
+    path('admin/doc/', include('django.contrib.admindocs.urls')),
     path('admin/', admin.site.urls),
     path('orders/', include('orders.urls')),
     path('godown/', include('godown.urls')),  # Godown web interface routes

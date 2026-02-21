@@ -34,65 +34,92 @@
         </button>
       </div>
 
+      {% comment %}
+        nav_allowed: helper that returns True when a nav item should be shown.
+        Rule: if user_organization.allowed_nav_items is empty → show all items.
+              Otherwise → show only items whose key appears in the list.
+        We simulate this with a boolean assignment inside each block using the
+        `with` tag to avoid repeating the condition.
+      {% endcomment %}
+      {% with nav=user_organization.allowed_nav_items %}
       <div class="sidebar-menu">
         <ul class="nav flex-column">
+
+          {% if not nav or 'home' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/" data-tooltip="Home">
               <i class="fas fa-home"></i>
               <span>Home</span>
             </a>
           </li>
+          {% endif %}
 
+          {% if not nav or 'intelligence' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if '/orders/dispatch-table/' in request.path %}active{% endif %}" href="/orders/dispatch-table/" data-tooltip="Intelligence">
               <i class="fas fa-robot"></i>
               <span>Intelligence</span>
             </a>
           </li>
+          {% endif %}
 
+          {% if not nav or 'partnerships' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if request.path == '/orders/orders/' %}active{% endif %}" href="/orders/orders/" data-tooltip="Partnerships">
               <i class="fas fa-list"></i>
               <span>Partnerships</span>
             </a>
           </li>
+          {% endif %}
 
+          {% if not nav or 'insights' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if request.path == '/orders/analytics/' %}active{% endif %}" href="/orders/analytics/" data-tooltip="Insights">
               <i class="fas fa-chart-bar"></i>
               <span>Insights</span>
             </a>
           </li>
+          {% endif %}
 
+          {% if not nav or 'begin_journey' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if request.path == '/orders/order-workflow/' %}active{% endif %}" href="/orders/order-workflow/" data-tooltip="Begin Journey">
               <i class="fas fa-plus-circle"></i>
               <span>Begin Journey</span>
             </a>
           </li>
+          {% endif %}
 
+          {% if not nav or 'fleet_drivers' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if '/orders/vehicles/' in request.path %}active{% endif %}" href="/orders/vehicles/" data-tooltip="Fleet & Drivers">
               <i class="fas fa-truck"></i>
               <span>Fleet & Drivers</span>
             </a>
           </li>
+          {% endif %}
 
+          {% if not nav or 'partners' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if '/orders/dealers/' in request.path %}active{% endif %}" href="/orders/dealers/" data-tooltip="Partners">
               <i class="fas fa-handshake"></i>
               <span>Partners</span>
             </a>
           </li>
+          {% endif %}
 
+          {% if not nav or 'warehouse' in nav %}
           <li class="nav-item">
             <a class="nav-link {% if '/godown/' in request.path %}active{% endif %}" href="/godown/" data-tooltip="Warehouse">
               <i class="fas fa-warehouse"></i>
               <span>Warehouse</span>
             </a>
           </li>
+          {% endif %}
+
         </ul>
       </div>
+      {% endwith %}
 
       <!-- Sidebar Footer -->
       <div class="sidebar-footer">

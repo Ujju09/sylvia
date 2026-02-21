@@ -9,8 +9,8 @@ from .models import (
 
 @admin.register(GodownLocation)
 class GodownLocationAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'city', 'state', 'manager', 'is_active', 'created_at']
-    list_filter = ['is_active', 'city', 'state', 'created_at']
+    list_display = ['name', 'code', 'organization', 'city', 'state', 'manager', 'is_active', 'created_at']
+    list_filter = ['organization', 'is_active', 'city', 'state', 'created_at']
     search_fields = ['name', 'code', 'city', 'address']
     readonly_fields = ['created_at', 'updated_at', 'created_by']
     ordering = ['name']
@@ -19,11 +19,11 @@ class GodownLocationAdmin(admin.ModelAdmin):
 @admin.register(OrderInTransit)
 class OrderInTransitAdmin(admin.ModelAdmin):
     list_display = [
-        'eway_bill_number', 'dispatch_id', 'status', 'godown', 'actual_arrival_date','product',
+        'eway_bill_number', 'dispatch_id', 'organization', 'status', 'godown', 'actual_arrival_date', 'product',
         'expected_total_bags', 'actual_received_bags', 'good_bags'
     ]
     list_filter = [
-        'status', 'godown', 'crossover_required', 'actual_arrival_date'
+        'organization', 'status', 'godown', 'crossover_required', 'actual_arrival_date'
     ]
     search_fields = [
         'eway_bill_number', 'transport_document_number',
@@ -54,12 +54,12 @@ class OrderInTransitAdmin(admin.ModelAdmin):
 @admin.register(GodownInventory)
 class GodownInventoryAdmin(admin.ModelAdmin):
     list_display = [
-        'batch_id', 'godown', 'product', 'status',
+        'batch_id', 'organization', 'godown', 'product', 'status',
         'good_bags_available', 'good_bags_reserved', 'damaged_bags',
         'received_date', 'quality_grade'
     ]
     list_filter = [
-        'status', 'godown', 'product', 'quality_grade',
+        'organization', 'status', 'godown', 'product', 'quality_grade',
         'received_date', 'expiry_alert_date'
     ]
     search_fields = [
@@ -99,12 +99,12 @@ class GodownInventoryAdmin(admin.ModelAdmin):
 @admin.register(CrossoverRecord)
 class CrossoverRecordAdmin(admin.ModelAdmin):
     list_display = [
-        'crossover_id', 'destination_dealer', 'product', 
+        'crossover_id', 'organization', 'destination_dealer', 'product',
         'requested_bags', 'actual_transferred_bags',
     ]
     list_filter = [
-       'destination_dealer', 'product',
-       'approved_date'
+        'organization', 'destination_dealer', 'product',
+        'approved_date'
     ]
     search_fields = [
         'crossover_id', 'destination_dealer__name'
@@ -133,11 +133,11 @@ class CrossoverRecordAdmin(admin.ModelAdmin):
 @admin.register(LoadingRequest)
 class LoadingRequestAdmin(admin.ModelAdmin):
     list_display = [
-        'loading_request_id', 'godown', 'dealer', 'product',
+        'loading_request_id', 'organization', 'godown', 'dealer', 'product',
         'requested_bags', 'loaded_bags', 'get_completion_status', 'created_at'
     ]
     list_filter = [
-        'godown', 'product', 'dealer', 'supervised_by', 'created_at'
+        'organization', 'godown', 'product', 'dealer', 'supervised_by', 'created_at'
     ]
     search_fields = [
         'loading_request_id', 'dealer__name', 'dealer__code',
@@ -232,11 +232,11 @@ class LoadingRequestImageAdmin(admin.ModelAdmin):
 @admin.register(DeliveryChallan)
 class DeliveryChallanAdmin(admin.ModelAdmin):
     list_display = [
-        'challan_number', 'challan_type', 'dealer', 'vehicle', 'status',
+        'challan_number', 'organization', 'challan_type', 'dealer', 'vehicle', 'status',
         'total_bags', 'total_weight_mt', 'issue_date'
     ]
     list_filter = [
-        'challan_type', 'status', 'godown', 'dealer',
+        'organization', 'challan_type', 'status', 'godown', 'dealer',
         'issue_date', 'actual_delivery_date'
     ]
     search_fields = [
@@ -372,12 +372,12 @@ class LedgerBatchMappingInline(admin.TabularInline):
 @admin.register(GodownInventoryLedger)
 class GodownInventoryLedgerAdmin(admin.ModelAdmin):
     list_display = [
-        'transaction_id', 'transaction_type', 'godown', 'product',
+        'transaction_id', 'organization', 'transaction_type', 'godown', 'product',
         'inward_quantity', 'outward_quantity', 'balance_after_transaction',
         'entry_status', 'transaction_date'
     ]
     list_filter = [
-        'transaction_type', 'entry_status', 'godown', 'product',
+        'organization', 'transaction_type', 'entry_status', 'godown', 'product',
         'transaction_date', 'is_system_generated', 'approval_required'
     ]
     search_fields = [
@@ -444,12 +444,12 @@ class LedgerBatchMappingAdmin(admin.ModelAdmin):
 @admin.register(GodownDailyBalance)
 class GodownDailyBalanceAdmin(admin.ModelAdmin):
     list_display = [
-        'balance_date', 'godown', 'product', 'opening_balance',
+        'balance_date', 'organization', 'godown', 'product', 'opening_balance',
         'total_inward', 'total_outward', 'closing_balance',
         'physical_count', 'variance_quantity', 'balance_status'
     ]
     list_filter = [
-        'balance_date', 'godown', 'product', 'balance_status',
+        'organization', 'balance_date', 'godown', 'product', 'balance_status',
         'count_verification_date', 'is_auto_calculated'
     ]
     search_fields = [
@@ -512,12 +512,12 @@ class GodownDailyBalanceAdmin(admin.ModelAdmin):
 @admin.register(InventoryVariance)
 class InventoryVarianceAdmin(admin.ModelAdmin):
     list_display = [
-        'variance_id', 'variance_type', 'godown', 'product',
+        'variance_id', 'organization', 'variance_type', 'godown', 'product',
         'variance_quantity', 'priority_level', 'status',
         'variance_date', 'get_variance_direction'
     ]
     list_filter = [
-        'variance_type', 'status', 'priority_level', 'godown', 'product',
+        'organization', 'variance_type', 'status', 'priority_level', 'godown', 'product',
         'variance_date', 'resolved_at'
     ]
     search_fields = [

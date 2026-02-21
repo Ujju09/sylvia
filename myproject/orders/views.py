@@ -193,10 +193,27 @@ def order_workflow(request):
     }
     return render(request, 'orders/order_workflow.html', context)
 
+_NAV_URLS = {
+    'home':          '/',
+    'intelligence':  '/orders/dispatch-table/',
+    'partnerships':  '/orders/orders/',
+    'insights':      '/orders/analytics/',
+    'begin_journey': '/orders/order-workflow/',
+    'fleet_drivers': '/orders/vehicles/',
+    'partners':      '/orders/dealers/',
+    'warehouse':     '/godown/',
+}
+
 @login_required
 def home(request):
     from datetime import date, timedelta
     from django.db.models import Q, Sum
+
+    # If the org restricts navigation to a single item, redirect there directly.
+    if hasattr(request.user, 'profile') and request.user.profile:
+        nav = request.user.profile.organization.allowed_nav_items or []
+        if len(nav) == 1 and nav[0] != 'home' and nav[0] in _NAV_URLS:
+            return redirect(_NAV_URLS[nav[0]])
     
     settings = {s.key: s.value for s in AppSettings.objects.all()}
     today = date.today()

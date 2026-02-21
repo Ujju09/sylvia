@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from .managers import GodownTenantManager
 
 
 class BaseModel(models.Model):
@@ -8,15 +9,55 @@ class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_%(class)s_records')
-    
+
     class Meta:
         abstract = True
 
 
-class GodownLocation(BaseModel):
+class GodownTenantBaseModel(models.Model):
+    """
+    Base model with tenant isolation for the godown app.
+
+    Reuses sylvia.Organization for multi-tenancy. The organization is auto-assigned
+    from the thread-local context set by sylvia.middleware.TenantMiddleware.
+    """
+    organization = models.ForeignKey(
+        'sylvia.Organization',
+        on_delete=models.PROTECT,
+        help_text="Organization this record belongs to"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_%(class)s_records'
+    )
+
+    objects = GodownTenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        abstract = True
+        indexes = [
+            models.Index(fields=['organization', '-created_at']),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.pk and getattr(self, 'organization_id', None) is None:
+            from sylvia.middleware import get_current_organization
+            current_org = get_current_organization()
+            if current_org:
+                self.organization = current_org
+        super().save(*args, **kwargs)
+
+
+class GodownLocation(GodownTenantBaseModel):
     """Model for godown/warehouse locations"""
     name = models.CharField(max_length=200, help_text="Name of the godown/warehouse")
-    code = models.CharField(max_length=20, unique=True, help_text="Unique code for the godown")
+    code = models.CharField(max_length=20, help_text="Unique code for the godown (unique within organization)")
     address = models.TextField(blank=True, help_text="Full address of the godown")
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
@@ -46,9 +87,10 @@ class GodownLocation(BaseModel):
         ordering = ['name']
         verbose_name = "Godown Location"
         verbose_name_plural = "Godown Locations"
+        unique_together = [('organization', 'code')]
 
 
-class OrderInTransit(BaseModel):
+class OrderInTransit(GodownTenantBaseModel):
     """Model for tracking incoming dispatches with e-way bills and expected quantities"""
 
     TRANSIT_STATUS_CHOICES = [
@@ -71,8 +113,8 @@ class OrderInTransit(BaseModel):
 
     # E-way bill and transport details
     eway_bill_number = models.CharField(
-        max_length=15, unique=True,
-        help_text="E-way bill number for the shipment"
+        max_length=15,
+        help_text="E-way bill number for the shipment (unique within organization)"
     )
     transport_document_number = models.CharField(
         max_length=50, blank=True,
@@ -153,6 +195,7 @@ class OrderInTransit(BaseModel):
     class Meta:
         verbose_name = "Order in Transit"
         verbose_name_plural = "Orders in Transit"
+        unique_together = [('organization', 'eway_bill_number')]
         indexes = [
             models.Index(fields=['eway_bill_number']),
             models.Index(fields=['status', 'actual_arrival_date']),
@@ -160,7 +203,7 @@ class OrderInTransit(BaseModel):
         ]
 
 
-class GodownInventory(BaseModel):
+class GodownInventory(GodownTenantBaseModel):
     """FIFO-based inventory management for cement bags with separate quantity tracking"""
     
     INVENTORY_STATUS_CHOICES = [
@@ -173,8 +216,8 @@ class GodownInventory(BaseModel):
     
     # Core identification
     batch_id = models.CharField(
-        max_length=50, unique=True, editable=False,
-        help_text="Auto-generated FIFO batch identifier"
+        max_length=50, editable=False,
+        help_text="Auto-generated FIFO batch identifier (unique within organization)"
     )
     
     # Links to existing system
@@ -296,6 +339,7 @@ class GodownInventory(BaseModel):
         ordering = ['received_date']  # FIFO ordering
         verbose_name = "Godown Inventory Batch"
         verbose_name_plural = "Godown Inventory Batches"
+        unique_together = [('organization', 'batch_id')]
         indexes = [
             models.Index(fields=['godown', 'product', 'received_date']),
             models.Index(fields=['status', 'received_date']),
@@ -303,14 +347,14 @@ class GodownInventory(BaseModel):
         ]
 
 
-class CrossoverRecord(BaseModel):
+class CrossoverRecord(GodownTenantBaseModel):
     """Model for direct vehicle-to-vehicle transfers with delivery challan linkage"""
     
     
     # Identification
     crossover_id = models.CharField(
-        max_length=50, unique=True, editable=False,
-        help_text="Auto-generated crossover identifier"
+        max_length=50, editable=False,
+        help_text="Auto-generated crossover identifier (unique within organization)"
     )
     
     # Source details
@@ -380,13 +424,14 @@ class CrossoverRecord(BaseModel):
         ordering = ['-approved_date']
         verbose_name = "Crossover Record"
         verbose_name_plural = "Crossover Records"
+        unique_together = [('organization', 'crossover_id')]
         indexes = [
             models.Index(fields=['destination_dealer']),
             models.Index(fields=['crossover_id']),
         ]
 
 
-class LoadingRequest(BaseModel):
+class LoadingRequest(GodownTenantBaseModel):
     """Model for outbound loading requests from stored inventory"""
 
     LOADING_STATUS_CHOICES = [
@@ -407,8 +452,8 @@ class LoadingRequest(BaseModel):
 
     # Identification
     loading_request_id = models.CharField(
-        max_length=50, unique=True, editable=False,
-        help_text="Auto-generated loading request identifier"
+        max_length=50, editable=False,
+        help_text="Auto-generated loading request identifier (unique within organization)"
     )
 
     # Core details
@@ -497,6 +542,7 @@ class LoadingRequest(BaseModel):
         ordering = ['-created_at']
         verbose_name = "Loading Records"
         verbose_name_plural = "Loading Records"
+        unique_together = [('organization', 'loading_request_id')]
         indexes = [
             models.Index(fields=['dealer']),
             models.Index(fields=['godown']),
@@ -504,7 +550,7 @@ class LoadingRequest(BaseModel):
         ]
 
 
-class LoadingRequestImage(BaseModel):
+class LoadingRequestImage(GodownTenantBaseModel):
     """Model to store proof images for loading requests"""
 
     LOADING_IMAGE_TYPE_CHOICES = [
@@ -563,7 +609,7 @@ class LoadingRequestImage(BaseModel):
         ]
 
 
-class DeliveryChallan(BaseModel):
+class DeliveryChallan(GodownTenantBaseModel):
     """Unified delivery document for both crossover and independent loading operations"""
     
     CHALLAN_TYPE_CHOICES = [
@@ -580,8 +626,8 @@ class DeliveryChallan(BaseModel):
     
     # Identification
     challan_number = models.CharField(
-        max_length=50, unique=True, editable=False,
-        help_text="Auto-generated delivery challan number"
+        max_length=50, editable=False,
+        help_text="Auto-generated delivery challan number (unique within organization)"
     )
     challan_type = models.CharField(
         max_length=15, choices=CHALLAN_TYPE_CHOICES,
@@ -672,6 +718,7 @@ class DeliveryChallan(BaseModel):
         ordering = ['-issue_date']
         verbose_name = "Delivery Challan"
         verbose_name_plural = "Delivery Challans"
+        unique_together = [('organization', 'challan_number')]
         indexes = [
             models.Index(fields=['status', 'issue_date']),
             models.Index(fields=['dealer', 'status']),
@@ -679,7 +726,7 @@ class DeliveryChallan(BaseModel):
         ]
 
 
-class DeliveryChallanItem(BaseModel):
+class DeliveryChallanItem(GodownTenantBaseModel):
     """Line items for delivery challans with product and quantity details"""
     
     challan = models.ForeignKey(
@@ -727,7 +774,7 @@ class DeliveryChallanItem(BaseModel):
         ordering = ['product__name']
 
 
-class ChallanItemBatchMapping(BaseModel):
+class ChallanItemBatchMapping(GodownTenantBaseModel):
     """Mapping table to track which inventory batches were used for challan items (FIFO compliance)"""
     
     challan_item = models.ForeignKey(
@@ -748,7 +795,7 @@ class ChallanItemBatchMapping(BaseModel):
         ordering = ['inventory_batch__received_date']  # FIFO ordering
 
 
-class NotificationLog(BaseModel):
+class NotificationLog(GodownTenantBaseModel):
     """Model for tracking damage, shortage, delay alerts and notifications to teams"""
     
     NOTIFICATION_TYPES = [
@@ -862,7 +909,7 @@ class NotificationLog(BaseModel):
         ]
 
 
-class NotificationRecipient(BaseModel):
+class NotificationRecipient(GodownTenantBaseModel):
     """Through model for tracking notification recipients and their responses"""
     
     DELIVERY_STATUS_CHOICES = [
@@ -921,7 +968,7 @@ class NotificationRecipient(BaseModel):
         ordering = ['-created_at']
 
 
-class GodownInventoryLedger(BaseModel):
+class GodownInventoryLedger(GodownTenantBaseModel):
     """
     Complete transaction-based inventory ledger for audit compliance and real-time stock tracking.
     Records every inward and outward movement with full traceability.
@@ -949,8 +996,8 @@ class GodownInventoryLedger(BaseModel):
     
     # Core identification and classification
     transaction_id = models.CharField(
-        max_length=50, unique=True, editable=False,
-        help_text="Auto-generated unique transaction identifier"
+        max_length=50, editable=False,
+        help_text="Auto-generated unique transaction identifier (unique within organization)"
     )
     transaction_type = models.CharField(
         max_length=20, choices=TRANSACTION_TYPES,
@@ -1113,6 +1160,7 @@ class GodownInventoryLedger(BaseModel):
         ordering = ['-transaction_date', '-created_at']
         verbose_name = "Godown Inventory Ledger Entry"
         verbose_name_plural = "Godown Inventory Ledger Entries"
+        unique_together = [('organization', 'transaction_id')]
         indexes = [
             models.Index(fields=['godown', 'product', '-transaction_date']),
             models.Index(fields=['transaction_type', '-transaction_date']),
@@ -1122,7 +1170,7 @@ class GodownInventoryLedger(BaseModel):
         ]
 
 
-class LedgerBatchMapping(BaseModel):
+class LedgerBatchMapping(GodownTenantBaseModel):
     """
     Mapping table to track which inventory batches were affected by ledger transactions.
     Essential for FIFO compliance and batch traceability.
@@ -1154,7 +1202,7 @@ class LedgerBatchMapping(BaseModel):
         ordering = ['inventory_batch__received_date']  # FIFO ordering
 
 
-class GodownDailyBalance(BaseModel):
+class GodownDailyBalance(GodownTenantBaseModel):
     """
     Daily balance snapshots for each godown-product combination.
     Provides fast lookups for current stock levels and historical balance tracking.
@@ -1354,7 +1402,7 @@ class GodownDailyBalance(BaseModel):
         ]
 
 
-class InventoryVariance(BaseModel):
+class InventoryVariance(GodownTenantBaseModel):
     """
     Model to track and analyze inventory discrepancies requiring investigation.
     Helps maintain audit trail for all stock variances and their resolution.
@@ -1389,8 +1437,8 @@ class InventoryVariance(BaseModel):
     
     # Core identification
     variance_id = models.CharField(
-        max_length=50, unique=True, editable=False,
-        help_text="Auto-generated variance identifier"
+        max_length=50, editable=False,
+        help_text="Auto-generated variance identifier (unique within organization)"
     )
     
     # Source information
@@ -1563,6 +1611,7 @@ class InventoryVariance(BaseModel):
         ordering = ['-variance_date', '-created_at']
         verbose_name = "Inventory Variance"
         verbose_name_plural = "Inventory Variances"
+        unique_together = [('organization', 'variance_id')]
         indexes = [
             models.Index(fields=['variance_id']),
             models.Index(fields=['godown', 'product', '-variance_date']),

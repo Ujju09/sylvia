@@ -144,6 +144,31 @@ class OrganizationAdmin(admin.ModelAdmin):
     list_filter = ['is_active', 'created_at']
     search_fields = ['name']
     ordering = ['name']
+    fieldsets = (
+        ('Identity', {
+            'fields': ('name', 'slug', 'is_active'),
+        }),
+        ('Contact', {
+            'fields': ('contact_email', 'contact_phone', 'address', 'city', 'state', 'pincode'),
+        }),
+        ('Business', {
+            'fields': ('gstin', 'pan'),
+        }),
+        ('Navigation Access', {
+            'description': (
+                'Control which sidebar links are visible for users in this organisation. '
+                'Leave empty to show all links. '
+                'Add only the keys you want to allow, e.g. ["warehouse", "home"]. '
+                'Valid keys: home, intelligence, partnerships, insights, '
+                'begin_journey, fleet_drivers, partners, warehouse'
+            ),
+            'fields': ('allowed_nav_items',),
+        }),
+        ('Advanced', {
+            'fields': ('settings',),
+            'classes': ('collapse',),
+        }),
+    )
 
 
 @admin.register(UserProfile)

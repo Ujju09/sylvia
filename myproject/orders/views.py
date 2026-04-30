@@ -996,6 +996,55 @@ def delete_dealer(request, dealer_id):
     return render(request, 'dealers/dealer_confirm_delete.html', context)
 
 
+MRN_TO_BILL_THRESHOLD = 10  # days — dealers exceeding this avg get auto-flagged
+
+
+def _compute_mrn_to_bill_avg(dealer):
+    """Return avg MRN-to-bill days for a dealer, or None if insufficient data."""
+    billed = Order.objects.filter(
+        dealer=dealer, status='BILLED',
+        bill_date__isnull=False, mrn_date__isnull=False
+    ).values('mrn_date', 'bill_date')
+    gaps = [(o['bill_date'] - o['mrn_date']).days for o in billed if o['bill_date'] >= o['mrn_date']]
+    return round(sum(gaps) / len(gaps), 1) if gaps else None
+
+
+def auto_flag_slow_billing_dealers(user=None):
+    """
+    Scan all active dealers. Any dealer whose avg MRN→bill gap exceeds
+    MRN_TO_BILL_THRESHOLD days gets risk_flag set to HIGH (unless already
+    CRITICAL, which is never auto-downgraded). Returns list of flagged dealers.
+    """
+    flagged = []
+    for dealer in Dealer.objects.filter(is_active=True):
+        avg = _compute_mrn_to_bill_avg(dealer)
+        if avg is None:
+            continue
+        if avg > MRN_TO_BILL_THRESHOLD and dealer.risk_flag not in ('HIGH', 'CRITICAL'):
+            old_flag = dealer.risk_flag
+            dealer.risk_flag = 'HIGH'
+            dealer.risk_notes = (
+                f'Auto-flagged: avg MRN→bill gap is {avg} days '
+                f'(threshold: {MRN_TO_BILL_THRESHOLD} days).'
+            )
+            dealer.save()
+            AuditLog.objects.create(
+                action='DEALER_RISK_FLAGGED',
+                model_name='Dealer',
+                object_id=str(dealer.id),
+                user=user,
+                details={
+                    'dealer_name': dealer.name,
+                    'old_flag': old_flag,
+                    'new_flag': 'HIGH',
+                    'mrn_to_bill_avg': avg,
+                    'auto_flagged': True,
+                },
+            )
+            flagged.append(dealer)
+    return flagged
+
+
 @login_required
 def dealer_detail(request, dealer_id):
     dealer = get_object_or_404(Dealer, id=dealer_id)
@@ -1070,6 +1119,34 @@ def dealer_detail(request, dealer_id):
                 mrn_gaps.append((o['bill_date'] - o['mrn_date']).days)
         avg_billing_delay = round(sum(delays) / len(delays), 1) if delays else 0
         mrn_to_bill_avg = round(sum(mrn_gaps) / len(mrn_gaps), 1) if mrn_gaps else 0
+
+    # Auto-flag this dealer if MRN→bill avg exceeds threshold
+    if mrn_to_bill_avg > MRN_TO_BILL_THRESHOLD and dealer.risk_flag not in ('HIGH', 'CRITICAL'):
+        old_flag = dealer.risk_flag
+        dealer.risk_flag = 'HIGH'
+        dealer.risk_notes = (
+            f'Auto-flagged: avg MRN→bill gap is {mrn_to_bill_avg} days '
+            f'(threshold: {MRN_TO_BILL_THRESHOLD} days).'
+        )
+        dealer.save()
+        AuditLog.objects.create(
+            action='DEALER_RISK_FLAGGED',
+            model_name='Dealer',
+            object_id=str(dealer.id),
+            user=request.user,
+            details={
+                'dealer_name': dealer.name,
+                'old_flag': old_flag,
+                'new_flag': 'HIGH',
+                'mrn_to_bill_avg': mrn_to_bill_avg,
+                'auto_flagged': True,
+            },
+        )
+        messages.warning(
+            request,
+            f'Dealer "{dealer.name}" has been auto-flagged HIGH risk — '
+            f'avg MRN→bill gap is {mrn_to_bill_avg} days (threshold: {MRN_TO_BILL_THRESHOLD} days).'
+        )
 
     # Oldest pending order
     oldest_pending = all_orders.exclude(status='BILLED').order_by('order_date').first()
@@ -1215,6 +1292,33 @@ def flag_dealer(request, dealer_id):
     )
     messages.success(request, f'Dealer "{dealer.name}" risk level set to {risk_flag}.')
     return redirect('dealer_detail', dealer_id=dealer_id)
+
+
+@login_required
+def slow_billing_dealers(request):
+    """List all dealers whose avg MRN→bill gap exceeds the threshold, sorted worst-first.
+    Also runs auto-flag on any newly-qualifying dealers found during this scan."""
+    auto_flag_slow_billing_dealers(user=request.user)
+
+    dealer_rows = []
+    for dealer in Dealer.objects.filter(is_active=True).order_by('name'):
+        avg = _compute_mrn_to_bill_avg(dealer)
+        if avg is not None and avg > MRN_TO_BILL_THRESHOLD:
+            dealer_rows.append({
+                'dealer': dealer,
+                'mrn_to_bill_avg': avg,
+                'pending_billing_count': Order.objects.filter(
+                    dealer=dealer, mrn_date__isnull=False, bill_date__isnull=True
+                ).count(),
+            })
+
+    dealer_rows.sort(key=lambda x: x['mrn_to_bill_avg'], reverse=True)
+
+    context = {
+        'dealer_rows': dealer_rows,
+        'threshold': MRN_TO_BILL_THRESHOLD,
+    }
+    return render(request, 'dealers/slow_billing_dealers.html', context)
 
 
 @login_required

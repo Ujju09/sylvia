@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+  .risk-badge-low    { background-color: #198754; color: white; }
+  .risk-badge-medium { background-color: #ffc107; color: #212529; }
+  .risk-badge-high   { background-color: #fd7e14; color: white; }
+  .risk-badge-critical { background-color: #dc3545; color: white; }
+  .stat-card { border-left: 4px solid #0d6efd; }
+  .stat-card.warning { border-left-color: #ffc107; }
+  .stat-card.danger  { border-left-color: #dc3545; }
+  .stat-card.success { border-left-color: #198754; }
+  .metric-value { font-size: 1.6rem; font-weight: 700; }
+  .metric-label { font-size: 0.78rem; color: #6c757d; text-transform: uppercase; letter-spacing: .05em; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+
+  {% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- SECTION A: Header Card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h4 class="mb-1 fw-bold">
+            {{ dealer.name }}
+            {% if dealer.is_active %}
+              <span class="badge bg-success ms-1">Active</span>
+            {% else %}
+              <span class="badge bg-secondary ms-1">Inactive</span>
+            {% endif %}
+            {% if dealer.is_blocked %}
+              <span class="badge bg-danger ms-1"><i class="fas fa-ban me-1"></i>Blocked</span>
+            {% endif %}
+            {% if dealer.risk_flag != 'NONE' %}
+              <span class="badge ms-1 risk-badge-{{ dealer.risk_flag|lower }}">
+                <i class="fas fa-flag me-1"></i>{{ dealer.get_risk_flag_display }} Risk
+              </span>
+            {% endif %}
+          </h4>
+          <div class="text-muted small">
+            Code: <strong>{{ dealer.code }}</strong>
+            {% if dealer.gstin %} &nbsp;|&nbsp; GSTIN: <strong>{{ dealer.gstin }}</strong>{% endif %}
+            {% if dealer.contact_person %} &nbsp;|&nbsp; Contact: <strong>{{ dealer.contact_person }}</strong>{% endif %}
+          </div>
+          <div class="text-muted small mt-1">
+            {% if dealer.phone %}<i class="fas fa-phone me-1"></i>{{ dealer.phone }}{% endif %}
+            {% if dealer.email %} &nbsp;|&nbsp; <i class="fas fa-envelope me-1"></i>{{ dealer.email }}{% endif %}
+            {% if dealer.city %} &nbsp;|&nbsp; <i class="fas fa-map-marker-alt me-1"></i>{{ dealer.city }}{% if dealer.state %}, {{ dealer.state }}{% endif %}{% endif %}
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'edit_dealer' dealer.id %}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-edit me-1"></i>Edit
+          </a>
+          <a href="{% url 'dealer_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to List
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- LEFT COLUMN -->
+    <div class="col-lg-4">
+
+      <!-- SECTION B: Risk & Credit Panel -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+          <i class="fas fa-shield-alt me-2 text-primary"></i>Risk & Credit Status
+        </div>
+        <div class="card-body">
+          <dl class="row mb-3 small">
+            <dt class="col-6 text-muted">Credit Limit</dt>
+            <dd class="col-6 fw-semibold">₹{{ dealer.credit_limit|floatformat:0 }}</dd>
+            <dt class="col-6 text-muted">Unbilled Exposure</dt>
+            <dd class="col-6 fw-semibold {% if current_exposure > dealer.credit_limit and dealer.credit_limit > 0 %}text-danger{% endif %}">
+              {{ current_exposure|floatformat:2 }} MT
+            </dd>
+            <dt class="col-6 text-muted">Credit Days</dt>
+            <dd class="col-6 fw-semibold">{{ dealer.credit_days }} days</dd>
+          </dl>
+
+          {% if dealer.is_blocked %}
+          <div class="alert alert-danger py-2 small mb-3">
+            <strong><i class="fas fa-ban me-1"></i>Blocked</strong>
+            {% if dealer.block_reason %}<br>{{ dealer.block_reason }}{% endif %}
+            {% if dealer.blocked_at %}<br><span class="text-muted">Since {{ dealer.blocked_at|date:"d M Y, H:i" }}</span>{% endif %}
+          </div>
+          <form method="post" action="{% url 'unblock_dealer' dealer.id %}">
+            {% csrf_token %}
+            <button class="btn btn-warning btn-sm w-100">
+              <i class="fas fa-unlock me-1"></i>Unblock Dealer
+            </button>
+          </form>
+          {% else %}
+          <button class="btn btn-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#blockModal">
+            <i class="fas fa-ban me-1"></i>Block Dealer
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Flag Risk -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+          <i class="fas fa-flag me-2 text-warning"></i>Risk Flag
+        </div>
+        <div class="card-body">
+          <form method="post" action="{% url 'flag_dealer' dealer.id %}">
+            {% csrf_token %}
+            <div class="mb-2">
+              <select name="risk_flag" class="form-select form-select-sm">
+                {% for val, label in dealer.RISK_FLAG_CHOICES %}
+                <option value="{{ val }}" {% if dealer.risk_flag == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm w-100">Update Risk Level</button>
+          </form>
+          {% if dealer.risk_notes %}
+          <p class="mt-2 mb-0 small text-muted"><i class="fas fa-sticky-note me-1"></i>{{ dealer.risk_notes }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Advance Billing Notes (Section D) -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+          <i class="fas fa-file-invoice me-2 text-info"></i>Advance Billing
+        </div>
+        <div class="card-body small">
+          {% if dealer.advance_bill_notes %}
+          <p class="mb-2">{{ dealer.advance_bill_notes }}</p>
+          {% endif %}
+          {% if oldest_unbilled_mrn %}
+          <div class="alert alert-warning py-2 mb-2">
+            <i class="fas fa-clock me-1"></i>Billing pending since
+            <strong>{{ oldest_unbilled_mrn.mrn_date|date:"d M Y" }}</strong>
+          </div>
+          {% endif %}
+          <p class="mb-0">Pending billing orders: <strong>{{ pending_billing_count }}</strong></p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col-lg-8">
+
+      <!-- SECTION C: Quantity Analytics -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+          <i class="fas fa-boxes me-2 text-success"></i>Order Quantity Analytics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3 g-3">
+            <div class="col-4">
+              <div class="card stat-card success h-100 p-3">
+                <div class="metric-value text-success">{{ qty_this_month|floatformat:2 }}</div>
+                <div class="metric-label">This Month (MT)</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="card stat-card h-100 p-3">
+                <div class="metric-value">{{ qty_last_month|floatformat:2 }}</div>
+                <div class="metric-label">Last Month (MT)</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="card stat-card h-100 p-3">
+                <div class="metric-value text-primary">{{ qty_lifetime|floatformat:2 }}</div>
+                <div class="metric-label">Lifetime (MT)</div>
+              </div>
+            </div>
+          </div>
+          <canvas id="qtyChart" height="100"></canvas>
+        </div>
+      </div>
+
+      <!-- SECTION E: Delay Metrics -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+          <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Billing Delay Metrics
+        </div>
+        <div class="card-body">
+          <div class="row text-center g-3">
+            <div class="col-3">
+              <div class="card stat-card {% if late_billed_count > 0 %}danger{% endif %} p-3">
+                <div class="metric-value {% if late_billed_count > 0 %}text-danger{% endif %}">{{ late_billed_count }}</div>
+                <div class="metric-label">Late Billed</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="card stat-card {% if avg_billing_delay > dealer.credit_days and dealer.credit_days > 0 %}warning{% endif %} p-3">
+                <div class="metric-value">{{ avg_billing_delay }}</div>
+                <div class="metric-label">Avg Delay (days)</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="card stat-card p-3">
+                <div class="metric-value">{{ mrn_to_bill_avg }}</div>
+                <div class="metric-label">MRN→Bill Avg (days)</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="card stat-card {% if oldest_pending_age > dealer.credit_days and dealer.credit_days > 0 %}danger{% endif %} p-3">
+                <div class="metric-value {% if oldest_pending_age > dealer.credit_days and dealer.credit_days > 0 %}text-danger{% endif %}">{{ oldest_pending_age }}</div>
+                <div class="metric-label">Oldest Pending (days)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION F: Recent Orders Table -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+      <span><i class="fas fa-list me-2 text-primary"></i>Recent Orders (last 20)</span>
+      {% if total_orders > 20 %}
+      <span class="text-muted small">{{ total_orders }} total orders</span>
+      {% endif %}
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Order #</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Qty (MT)</th>
+              <th>Value (₹)</th>
+              <th>MRN Date</th>
+              <th>Bill Date</th>
+              <th>Dispatch</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in recent_orders %}
+            <tr {% if item.is_overdue %}class="table-danger"{% endif %}>
+              <td>
+                <a href="{% url 'order_detail' item.order.id %}" class="fw-semibold text-decoration-none">
+                  {{ item.order.order_number }}
+                </a>
+                {% if item.is_overdue %}
+                  <span class="badge bg-danger ms-1 small">Overdue</span>
+                {% endif %}
+              </td>
+              <td class="small">{{ item.order.order_date|date:"d M Y" }}</td>
+              <td>
+                {% if item.order.status == 'BILLED' %}
+                  <span class="badge bg-success">{{ item.order.status }}</span>
+                {% elif item.order.status == 'MRN_CREATED' %}
+                  <span class="badge bg-info">{{ item.order.status }}</span>
+                {% elif item.order.status == 'CONFIRMED' %}
+                  <span class="badge bg-primary">{{ item.order.status }}</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ item.order.status }}</span>
+                {% endif %}
+              </td>
+              <td>{{ item.total_qty|floatformat:2 }}</td>
+              <td>{{ item.total_value|floatformat:0 }}</td>
+              <td class="small">{{ item.order.mrn_date|date:"d M Y"|default:"—" }}</td>
+              <td class="small">{{ item.order.bill_date|date:"d M Y"|default:"—" }}</td>
+              <td class="small">{{ item.order.dispatch_date|date:"d M Y"|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted py-4">No orders found for this dealer.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION G: Order History Summary -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+      <i class="fas fa-chart-line me-2 text-primary"></i>Order History Summary
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <h6 class="fw-semibold mb-3">Summary</h6>
+          <p class="mb-1">Total Orders: <strong>{{ total_orders }}</strong></p>
+          <p class="mb-3">Total Qty: <strong>{{ total_qty_all|floatformat:2 }} MT</strong></p>
+          <h6 class="fw-semibold mb-2">By Status</h6>
+          {% for s in status_breakdown %}
+          <div class="d-flex justify-content-between small mb-1">
+            <span>
+              {% if s.status == 'BILLED' %}<span class="badge bg-success">{{ s.status }}</span>
+              {% elif s.status == 'MRN_CREATED' %}<span class="badge bg-info">{{ s.status }}</span>
+              {% elif s.status == 'CONFIRMED' %}<span class="badge bg-primary">{{ s.status }}</span>
+              {% else %}<span class="badge bg-secondary">{{ s.status }}</span>{% endif %}
+            </span>
+            <strong>{{ s.count }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="col-md-8">
+          <canvas id="monthlyTrendChart" height="180"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Block Dealer Modal -->
+<div class="modal fade" id="blockModal" tabindex="-1" aria-labelledby="blockModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'block_dealer' dealer.id %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="blockModalLabel">
+            <i class="fas fa-ban me-2 text-danger"></i>Block Dealer
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">Blocking <strong>{{ dealer.name }}</strong> will prevent new orders from being created for this dealer.</p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Reason for blocking</label>
+            <textarea name="block_reason" class="form-control" rows="3" placeholder="Enter reason (e.g. overdue payment, billing dispute...)"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-ban me-1"></i>Confirm Block
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // Monthly quantity bar chart (6 months)
+  (function() {
+    const ctx = document.getElementById('qtyChart');
+    if (!ctx) return;
+    new Chart(ctx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: {{ qty_chart_labels|safe }},
+        datasets: [{
+          label: 'Quantity (MT)',
+          data: {{ qty_chart_data|safe }},
+          backgroundColor: 'rgba(13,110,253,0.65)',
+          borderColor: 'rgba(13,110,253,1)',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'MT' } } }
+      }
+    });
+  })();
+
+  // Monthly trend line chart (12 months)
+  (function() {
+    const ctx = document.getElementById('monthlyTrendChart');
+    if (!ctx) return;
+    new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: {{ monthly_trend_labels|safe }},
+        datasets: [
+          {
+            label: 'Orders',
+            data: {{ monthly_trend_counts|safe }},
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13,110,253,0.1)',
+            tension: 0.4,
+            fill: true,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Qty (MT)',
+            data: {{ monthly_trend_qty|safe }},
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25,135,84,0.08)',
+            tension: 0.4,
+            fill: false,
+            yAxisID: 'y1',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          y:  { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: 'Orders' } },
+          y1: { type: 'linear', position: 'right', beginAtZero: true, title: { display: true, text: 'Qty (MT)' }, grid: { drawOnChartArea: false } }
+        }
+      }
+    });
+  })();
+</script>
+{% endblock %}

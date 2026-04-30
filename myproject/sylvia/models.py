@@ -222,6 +222,25 @@ class Dealer(TenantBaseModel):
     credit_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     credit_days = models.IntegerField(default=0)
 
+    # Risk assessment
+    RISK_FLAG_CHOICES = [
+        ('NONE', 'None'),
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+        ('CRITICAL', 'Critical'),
+    ]
+    risk_flag = models.CharField(max_length=10, choices=RISK_FLAG_CHOICES, default='NONE')
+    risk_notes = models.TextField(blank=True)
+
+    # Block/dispatch control
+    is_blocked = models.BooleanField(default=False)
+    block_reason = models.TextField(blank=True)
+    blocked_at = models.DateTimeField(null=True, blank=True)
+
+    # Advance billing notes
+    advance_bill_notes = models.TextField(blank=True)
+
     def __str__(self):
         return f"{self.name} ({self.code})"
 
@@ -235,9 +254,11 @@ class Dealer(TenantBaseModel):
             ('organization', 'code'),
         ]
         indexes = [
-            models.Index(fields=['organization', 'is_active']),  # Filter active dealers by org
-            models.Index(fields=['organization', 'name']),  # Search/lookup by name
-            models.Index(fields=['gstin']),  # GSTIN lookups (already unique but helps with queries)
+            models.Index(fields=['organization', 'is_active']),
+            models.Index(fields=['organization', 'name']),
+            models.Index(fields=['gstin']),
+            models.Index(fields=['organization', 'is_blocked']),
+            models.Index(fields=['organization', 'risk_flag']),
         ]
 
 class Vehicle(TenantBaseModel):
@@ -487,8 +508,12 @@ class AuditLog(TenantBaseModel):
         ('ORDER_CANCELLED', 'Order Cancelled'),
         ('IMAGE_UPLOADED', 'MRN Image Uploaded'),
         ('IMAGE_DELETED', 'MRN Image Deleted'),
+        ('DEALER_BLOCKED', 'Dealer Blocked'),
+        ('DEALER_UNBLOCKED', 'Dealer Unblocked'),
+        ('DEALER_RISK_FLAGGED', 'Dealer Risk Flagged'),
+        ('DEALER_RISK_CLEARED', 'Dealer Risk Cleared'),
     ]
-    
+
     action = models.CharField(max_length=30, choices=ACTION_CHOICES)
     model_name = models.CharField(max_length=50)
     object_id = models.CharField(max_length=20)

@@ -77,8 +77,9 @@ class DealerForm(forms.ModelForm):
     
     class Meta:
         model = Dealer
-        fields = ['name', 'code', 'contact_person', 'phone', 'whatsapp_number', 'email', 
-                 'address', 'city', 'state', 'pincode', 'gstin', 'credit_limit', 'credit_days', 'is_active']
+        fields = ['name', 'code', 'contact_person', 'phone', 'whatsapp_number', 'email',
+                 'address', 'city', 'state', 'pincode', 'gstin', 'credit_limit', 'credit_days', 'is_active',
+                 'advance_bill_notes', 'risk_notes']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'code': forms.TextInput(attrs={'class': 'form-control'}),
@@ -93,7 +94,9 @@ class DealerForm(forms.ModelForm):
             'gstin': forms.TextInput(attrs={'class': 'form-control'}),
             'credit_limit': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'credit_days': forms.NumberInput(attrs={'class': 'form-control'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'advance_bill_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'risk_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
 

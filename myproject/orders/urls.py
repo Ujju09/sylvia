@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views_order_list import order_list
-from .views import order_detail, update_order, analytics, export_analytics, add_vehicle, edit_vehicle, vehicle_list, delete_vehicle, dealer_list, add_dealer, edit_dealer, delete_dealer, add_product, add_depot, organization_detail
+from .views import order_detail, update_order, analytics, export_analytics, add_vehicle, edit_vehicle, vehicle_list, delete_vehicle, dealer_list, add_dealer, edit_dealer, delete_dealer, dealer_detail, block_dealer, unblock_dealer, flag_dealer, add_product, add_depot, organization_detail
 from .views_dispatch_table import dispatch_table_upload, process_dispatch_image, confirm_dispatch_data, create_dispatch_orders
 
 urlpatterns = [
@@ -26,6 +26,10 @@ urlpatterns = [
     path('dealers/add/', add_dealer, name='add_dealer'),
     path('dealers/edit/<int:dealer_id>/', edit_dealer, name='edit_dealer'),
     path('dealers/delete/<int:dealer_id>/', delete_dealer, name='delete_dealer'),
+    path('dealers/<int:dealer_id>/', dealer_detail, name='dealer_detail'),
+    path('dealers/<int:dealer_id>/block/', block_dealer, name='block_dealer'),
+    path('dealers/<int:dealer_id>/unblock/', unblock_dealer, name='unblock_dealer'),
+    path('dealers/<int:dealer_id>/flag/', flag_dealer, name='flag_dealer'),
     
     # Other entity management URLs (placeholders for future expansion)
     path('products/add/', add_product, name='add_product'),

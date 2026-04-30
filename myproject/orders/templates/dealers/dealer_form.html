@@ -172,6 +172,31 @@
                             </div>
                         </div>
 
+                        <!-- Notes & Risk Assessment -->
+                        <h6 class="mt-4 mb-3 text-primary"><i class="fas fa-sticky-note me-1"></i>Notes & Risk Assessment</h6>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.advance_bill_notes.id_for_label }}" class="form-label">Advance Bill Notes</label>
+                                    {{ form.advance_bill_notes }}
+                                    {% if form.advance_bill_notes.errors %}
+                                        <div class="text-danger small">{{ form.advance_bill_notes.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Notes about advance billing arrangements, payment schedules, etc.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.risk_notes.id_for_label }}" class="form-label">Risk Notes</label>
+                                    {{ form.risk_notes }}
+                                    {% if form.risk_notes.errors %}
+                                        <div class="text-danger small">{{ form.risk_notes.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Any risk-related observations about this dealer.</small>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-between mt-4">
                             <a href="{% url 'dealer_list' %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Back to List

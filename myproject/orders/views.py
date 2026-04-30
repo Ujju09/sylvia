@@ -1,15 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.core.paginator import Paginator
-from sylvia.models import Vehicle, Dealer, Product, Order, OrderItem, Depot, AppSettings, MRN, OrderMRNImage, AuditLog
+from sylvia.models import Vehicle, Dealer, Product, Order, OrderItem, Depot, AppSettings, MRN, OrderMRNImage
 from sylvia.forms import VehicleForm, DealerForm, ProductForm, DepotForm
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Avg, Min, Max, Count, Sum, F, ExpressionWrapper, DurationField, Q
-from django.db.models.functions import TruncMonth
-from django.contrib import messages
+from django.db.models import Avg, Min, Max, Count, F, ExpressionWrapper, DurationField, Q
 from datetime import timedelta
 import json
 import io
@@ -131,18 +129,6 @@ def order_workflow(request):
         if dealer_id and vehicle_id and depot_id and product_ids and quantities and len(product_ids) == len(quantities):
             try:
                 dealer = Dealer.objects.get(id=dealer_id)
-                if dealer.is_blocked:
-                    return render(request, 'orders/order_workflow.html', {
-                        'vehicles': vehicles,
-                        'dealers': dealers,
-                        'products': products,
-                        'depots': depots,
-                        'now': timezone.now(),
-                        'today': timezone.now().date(),
-                        'selected_vehicle': selected_vehicle,
-                        'selected_vehicle_id': selected_vehicle_id,
-                        'error': f'Cannot create order: Dealer "{dealer.name}" is currently blocked. Reason: {dealer.block_reason or "No reason given"}',
-                    })
                 vehicle = Vehicle.objects.get(id=vehicle_id)
                 depot = Depot.objects.get(id=depot_id)
                 # Set order date with constant time (1 PM IST)
@@ -893,43 +879,27 @@ def dealer_list(request):
         dealers = dealers.filter(is_active=True)
     elif status_filter == 'inactive':
         dealers = dealers.filter(is_active=False)
-
-    # Filter by block status
-    blocked_filter = request.GET.get('blocked', '')
-    if blocked_filter == '1':
-        dealers = dealers.filter(is_blocked=True)
-    elif blocked_filter == '0':
-        dealers = dealers.filter(is_blocked=False)
-
-    # Filter by risk level
-    risk_filter = request.GET.get('risk', '')
-    if risk_filter:
-        dealers = dealers.filter(risk_flag=risk_filter)
-
+    
     # Calculate statistics (before pagination)
     total_dealers = dealers.count()
     active_dealers = dealers.filter(is_active=True).count()
-    blocked_dealers = dealers.filter(is_blocked=True).count()
     total_credit_limit = sum(dealer.credit_limit for dealer in dealers)
     avg_credit_limit = total_credit_limit / total_dealers if total_dealers > 0 else 0
-
+    
     # Pagination
     paginator = Paginator(dealers, 15)  # Show 15 dealers per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
+    
     context = {
         'dealers': page_obj,
         'page_obj': page_obj,
         'is_paginated': page_obj.has_other_pages(),
         'search_query': search_query,
         'status_filter': status_filter,
-        'blocked_filter': blocked_filter,
-        'risk_filter': risk_filter,
         'stats': {
             'total_dealers': total_dealers,
             'active_dealers': active_dealers,
-            'blocked_dealers': blocked_dealers,
             'total_credit_limit': total_credit_limit,
             'avg_credit_limit': avg_credit_limit,
         }
@@ -994,227 +964,6 @@ def delete_dealer(request, dealer_id):
         'title': 'Delete Dealer'
     }
     return render(request, 'dealers/dealer_confirm_delete.html', context)
-
-
-@login_required
-def dealer_detail(request, dealer_id):
-    dealer = get_object_or_404(Dealer, id=dealer_id)
-    today = timezone.now().date()
-
-    all_orders = Order.objects.filter(dealer=dealer).prefetch_related('order_items__product')
-
-    # Monthly boundaries
-    this_month_start = today.replace(day=1)
-    last_month_end = this_month_start - timedelta(days=1)
-    last_month_start = last_month_end.replace(day=1)
-
-    # Quantity analytics (all products)
-    qty_this_month = all_orders.filter(
-        order_date__date__gte=this_month_start
-    ).aggregate(qty=Sum('order_items__quantity'))['qty'] or 0
-
-    qty_last_month = all_orders.filter(
-        order_date__date__gte=last_month_start,
-        order_date__date__lte=last_month_end
-    ).aggregate(qty=Sum('order_items__quantity'))['qty'] or 0
-
-    qty_lifetime = all_orders.aggregate(qty=Sum('order_items__quantity'))['qty'] or 0
-
-    # 6-month monthly bar chart
-    six_months_starts = []
-    cursor = this_month_start
-    for _ in range(6):
-        six_months_starts.append(cursor)
-        cursor = (cursor - timedelta(days=1)).replace(day=1)
-    six_months_starts.reverse()
-    six_month_boundary = six_months_starts[0]
-
-    monthly_qty_raw = {
-        row['month'].date(): row['total_qty']
-        for row in all_orders.filter(order_date__date__gte=six_month_boundary)
-        .annotate(month=TruncMonth('order_date'))
-        .values('month')
-        .annotate(total_qty=Sum('order_items__quantity'))
-    }
-    qty_chart_labels = []
-    qty_chart_data = []
-    for ms in six_months_starts:
-        qty_chart_labels.append(ms.strftime('%b %Y'))
-        qty_chart_data.append(float(monthly_qty_raw.get(ms, 0)))
-
-    # Credit exposure: unbilled orders (MRN created, not yet billed)
-    unbilled_orders = all_orders.filter(bill_date__isnull=True, mrn_date__isnull=False)
-    current_exposure = unbilled_orders.aggregate(qty=Sum('order_items__quantity'))['qty'] or 0
-
-    # Pending billing orders
-    pending_billing_orders = all_orders.filter(
-        mrn_date__isnull=False, bill_date__isnull=True
-    ).order_by('mrn_date')
-    oldest_unbilled_mrn = pending_billing_orders.first()
-
-    # Billing delay metrics
-    billed_orders = all_orders.filter(status='BILLED', bill_date__isnull=False)
-    avg_billing_delay = 0
-    late_billed_count = 0
-    mrn_to_bill_avg = 0
-    if billed_orders.exists():
-        delays = []
-        mrn_gaps = []
-        for o in billed_orders.values('order_date', 'bill_date', 'mrn_date'):
-            if o['bill_date'] and o['order_date']:
-                delta = (o['bill_date'] - o['order_date'].date()).days
-                delays.append(delta)
-                if dealer.credit_days > 0 and delta > dealer.credit_days:
-                    late_billed_count += 1
-            if o['bill_date'] and o['mrn_date']:
-                mrn_gaps.append((o['bill_date'] - o['mrn_date']).days)
-        avg_billing_delay = round(sum(delays) / len(delays), 1) if delays else 0
-        mrn_to_bill_avg = round(sum(mrn_gaps) / len(mrn_gaps), 1) if mrn_gaps else 0
-
-    # Oldest pending order
-    oldest_pending = all_orders.exclude(status='BILLED').order_by('order_date').first()
-    oldest_pending_age = (today - oldest_pending.order_date.date()).days if oldest_pending else 0
-
-    # Recent orders (last 20) with overdue annotation
-    recent_orders_qs = all_orders.order_by('-order_date')[:20]
-    recent_orders = []
-    for o in recent_orders_qs:
-        age_days = (today - o.order_date.date()).days
-        is_overdue = (o.status != 'BILLED') and dealer.credit_days > 0 and (age_days > dealer.credit_days)
-        recent_orders.append({
-            'order': o,
-            'age_days': age_days,
-            'is_overdue': is_overdue,
-            'total_qty': o.get_total_quantity(),
-            'total_value': o.get_total_value(),
-        })
-
-    # Order history summary
-    total_orders = all_orders.count()
-    total_qty_all = qty_lifetime
-    status_breakdown = list(all_orders.values('status').annotate(count=Count('id')))
-
-    # Monthly trend last 12 months
-    twelve_months_starts = []
-    cursor = this_month_start
-    for _ in range(12):
-        twelve_months_starts.append(cursor)
-        cursor = (cursor - timedelta(days=1)).replace(day=1)
-    twelve_months_starts.reverse()
-    twelve_month_boundary = twelve_months_starts[0]
-
-    monthly_trend_raw = {
-        row['month'].date(): row
-        for row in all_orders.filter(order_date__date__gte=twelve_month_boundary)
-        .annotate(month=TruncMonth('order_date'))
-        .values('month')
-        .annotate(count=Count('id'), qty=Sum('order_items__quantity'))
-    }
-    trend_labels = []
-    trend_counts = []
-    trend_qty = []
-    for ms in twelve_months_starts:
-        trend_labels.append(ms.strftime('%b %Y'))
-        row = monthly_trend_raw.get(ms, {})
-        trend_counts.append(row.get('count', 0))
-        trend_qty.append(float(row.get('qty') or 0))
-
-    context = {
-        'dealer': dealer,
-        'today': today,
-        # Credit
-        'current_exposure': current_exposure,
-        # Quantity analytics
-        'qty_this_month': qty_this_month,
-        'qty_last_month': qty_last_month,
-        'qty_lifetime': qty_lifetime,
-        'qty_chart_labels': json.dumps(qty_chart_labels),
-        'qty_chart_data': json.dumps(qty_chart_data),
-        # Billing
-        'pending_billing_orders': pending_billing_orders,
-        'pending_billing_count': pending_billing_orders.count(),
-        'oldest_unbilled_mrn': oldest_unbilled_mrn,
-        # Delay metrics
-        'avg_billing_delay': avg_billing_delay,
-        'late_billed_count': late_billed_count,
-        'mrn_to_bill_avg': mrn_to_bill_avg,
-        'oldest_pending': oldest_pending,
-        'oldest_pending_age': oldest_pending_age,
-        # Orders
-        'recent_orders': recent_orders,
-        'total_orders': total_orders,
-        'total_qty_all': total_qty_all,
-        'status_breakdown': status_breakdown,
-        'monthly_trend_labels': json.dumps(trend_labels),
-        'monthly_trend_counts': json.dumps(trend_counts),
-        'monthly_trend_qty': json.dumps(trend_qty),
-    }
-    return render(request, 'dealers/dealer_detail.html', context)
-
-
-@login_required
-def block_dealer(request, dealer_id):
-    if request.method != 'POST':
-        return redirect('dealer_detail', dealer_id=dealer_id)
-    dealer = get_object_or_404(Dealer, id=dealer_id)
-    block_reason = request.POST.get('block_reason', '').strip()
-    dealer.is_blocked = True
-    dealer.block_reason = block_reason
-    dealer.blocked_at = timezone.now()
-    dealer.save()
-    AuditLog.objects.create(
-        action='DEALER_BLOCKED',
-        model_name='Dealer',
-        object_id=str(dealer.id),
-        user=request.user,
-        details={'block_reason': block_reason, 'dealer_name': dealer.name},
-    )
-    messages.success(request, f'Dealer "{dealer.name}" has been blocked.')
-    return redirect('dealer_detail', dealer_id=dealer_id)
-
-
-@login_required
-def unblock_dealer(request, dealer_id):
-    if request.method != 'POST':
-        return redirect('dealer_detail', dealer_id=dealer_id)
-    dealer = get_object_or_404(Dealer, id=dealer_id)
-    dealer.is_blocked = False
-    dealer.block_reason = ''
-    dealer.blocked_at = None
-    dealer.save()
-    AuditLog.objects.create(
-        action='DEALER_UNBLOCKED',
-        model_name='Dealer',
-        object_id=str(dealer.id),
-        user=request.user,
-        details={'dealer_name': dealer.name},
-    )
-    messages.success(request, f'Dealer "{dealer.name}" has been unblocked.')
-    return redirect('dealer_detail', dealer_id=dealer_id)
-
-
-@login_required
-def flag_dealer(request, dealer_id):
-    if request.method != 'POST':
-        return redirect('dealer_detail', dealer_id=dealer_id)
-    dealer = get_object_or_404(Dealer, id=dealer_id)
-    risk_flag = request.POST.get('risk_flag', 'NONE')
-    valid_flags = [c[0] for c in Dealer.RISK_FLAG_CHOICES]
-    if risk_flag not in valid_flags:
-        risk_flag = 'NONE'
-    old_flag = dealer.risk_flag
-    dealer.risk_flag = risk_flag
-    dealer.save()
-    action = 'DEALER_RISK_CLEARED' if risk_flag == 'NONE' else 'DEALER_RISK_FLAGGED'
-    AuditLog.objects.create(
-        action=action,
-        model_name='Dealer',
-        object_id=str(dealer.id),
-        user=request.user,
-        details={'old_flag': old_flag, 'new_flag': risk_flag, 'dealer_name': dealer.name},
-    )
-    messages.success(request, f'Dealer "{dealer.name}" risk level set to {risk_flag}.')
-    return redirect('dealer_detail', dealer_id=dealer_id)
 
 
 @login_required

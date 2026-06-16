@@ -134,7 +134,7 @@ def process_dispatch_image(request):
         # Call Claude vision API
         try:
             message = claude_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6",
                 max_tokens=6000,
                 messages=[
                     {

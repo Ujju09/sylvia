@@ -4,6 +4,15 @@
 <div class="container py-5">
   <div class="row justify-content-center">
     <div class="col-md-12">
+      <!-- Sunset Notice Banner -->
+      <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert" id="sunsetNoticeBanner">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <div>
+          <strong>Notice:</strong> This platform will be sunset and retired starting <strong>August 2026</strong>. Please plan accordingly.
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+
       <!-- Data Audit Reminder Banner -->
       {% if audit_reminder.show_reminder %}
       <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert" id="auditReminderBanner">
